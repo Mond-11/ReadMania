@@ -1,0 +1,13 @@
+spring:
+  application:
+    name: readmania-backend
+  datasource:
+    url: jdbc:postgresql://localhost:5432/readmania
+    username: readmania
+    password: ${DB_PASSWORD:readmania}
+  jpa:
+    open-in-view: false
+    hibernate:
+      ddl-auto: validate
+  flyway:
+    enabled: true
