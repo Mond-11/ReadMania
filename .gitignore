@@ -1,0 +1,21 @@
+.idea/*
+!.idea/codeStyles/
+!.idea/inspectionProfiles/
+!.idea/.gitignore
+!.idea/encodings.xml
+!.idea/compiler.xml
+!.idea/misc.xml
+*.iml
+!.run/
+
+# Build
+backend/target/
+backend/build/
+backend/.gradle/
+frontend/node_modules/
+frontend/dist/
+
+# Секрети та локальні конфіги
+.env
+application-local.yml
+*.dump
