@@ -1,0 +1,32 @@
+server:
+  forward-headers-strategy: framework
+  servlet:
+    session:
+      timeout: 30m
+      cookie:
+        http-only: true
+        same-site: lax
+        secure: false
+
+spring:
+  application:
+    name: readmania-backend
+  datasource:
+    url: jdbc:postgresql://localhost:5432/readmania
+    username: readmania
+    password: your_secure_db_password_here
+  jpa:
+    open-in-view: false
+    hibernate:
+      ddl-auto: validate
+  flyway:
+    enabled: true
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health
+  endpoint:
+    health:
+      show-details: never
