@@ -5,6 +5,9 @@ spring:
       ddl-auto: validate
   flyway:
     enabled: true
+    ignore-migration-patterns:
+      - "*:missing"
+      - "*:future"
 
 management:
   endpoints:

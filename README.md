@@ -49,12 +49,22 @@ ReadMania/
 │       │       ├── application.yml         # Основна конфігурація застосунку (БД, JPA, Flyway, Actuator, сесії)
 │       │       ├── application-prod.yml    # Профіль для продакшн-середовища (Secure cookie)
 │       │       ├── application-example.yml # Приклад конфігурації для локального налаштування
-│       │       └── db/migration/
-│       │           └── V1__init.sql        # Початкова схема бази даних (Flyway)
+│       │       ├── db/migration/
+│       │       │   ├── V1__init.sql        # Початкова схема бази даних
+│       │       │   ├── V2__users.sql       # Користувачі, ролі, статус та бонуси
+│       │       │   ├── V3__catalog.sql     # Жанри, автори, книги (3НФ), обкладинки
+│       │       │   ├── V4__cart_institutions.sql # Кошик та благодійні заклади
+│       │       │   ├── V5__orders.sql      # Замовлення, позиції, історія статусів
+│       │       │   ├── V6__loyalty.sql     # Журнал бонусів та оцінки книг
+│       │       │   ├── V7__challenges.sql  # Читацькі виклики
+│       │       │   └── V8__gift_log.sql    # Журнал благодійних дарунків
+│       │       └── db/seed/
+│       │           └── R__dev_seed.sql     # Початкові дані для локальної розробки (profile local)
 │       └── test/
 │           ├── java/ua/readmania/
 │           │   ├── BaseIntegrationTest.java          # Базовий клас інтеграційних тестів (@Transactional, Flyway, validate)
 │           │   ├── TestcontainersConfiguration.java  # Singleton-контейнер PostgreSQL 17 (@ServiceConnection)
+│           │   ├── SchemaIT.java                     # Інтеграційні тести схеми БД, FK-індексів та бізнес-обмежень
 │           │   ├── ReadmaniaBackendApplicationTests.java # Тест завантаження контексту Spring Boot
 │           │   ├── common/
 │           │   │   └── GlobalExceptionHandlerTest.java   # Тести типізованих відповідей та статусів помилок
@@ -78,6 +88,8 @@ ReadMania/
 │   └── README.md                      # Документація клієнтської частини
 ├── docs/                              # Проєктна документація
 │   ├── API.md                         # Специфікація REST API ендпоінтів та контрактів
+│   ├── DATABASE_DECISIONS.md          # Реєстр архітектурних рішень щодо БД (M1, 3НФ, M5, лояльність тощо)
+│   ├── ERD.md                         # Діаграма сутностей і зв'язків (Mermaid ERD) та опис схеми (O2)
 │   ├── Технічне завдання розробки Вебзастосунку.pdf # ТЗ проєкту
 │   └── Cпецифікація вимог до Вебзастосунку.pdf       # SRS проєкту
 ├── docker-compose.yml                 # Локальне середовище бази даних PostgreSQL 17
