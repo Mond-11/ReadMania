@@ -1,0 +1,221 @@
+### ==============================================================================
+### Домен: Замовлення та розрахунки (Orders)
+### ==============================================================================
+
+### 1. Підготовка: Вхід користувача (User Login)
+POST {{host}}/api/auth/login
+Content-Type: application/json
+
+{
+  "email": "{{userEmail}}",
+  "password": "{{userPassword}}"
+}
+
+### 2. Щасливий сценарій: Попередній розрахунок замовлення (Preview)
+POST {{host}}/api/orders/preview
+Content-Type: application/json
+
+{
+  "items": [
+    {
+      "bookId": 1,
+      "quantity": 2
+    }
+  ],
+  "bonusPoints": 50
+}
+
+> {%
+    client.test("Розрахунок вартості успішний (200 OK)", function() {
+        client.assert(response.status === 200, "Очікувався статус 200");
+    });
+%}
+
+### 3. Щасливий сценарій: Оформлення звичайного замовлення (Checkout)
+POST {{host}}/api/orders
+Content-Type: application/json
+
+{
+  "deliveryMethod": "COURIER",
+  "address": "м. Київ, вул. Хрещатик, буд. 1, кв. 10",
+  "contacts": {
+    "recipientName": "Іван Франко",
+    "phone": "+380501234567"
+  },
+  "paymentMethod": "ON_DELIVERY",
+  "bonusPoints": 0
+}
+
+> {%
+    client.test("Замовлення успішно створено (201 Created або 200 OK)", function() {
+        client.assert(response.status === 201 || response.status === 200, "Очікувався успішний статус");
+    });
+%}
+
+### 4. Щасливий сценарій: Оформлення замовлення в дар закладу (Gift Order)
+POST {{host}}/api/orders/gift
+Content-Type: application/json
+
+{
+  "institutionId": 1,
+  "items": [
+    {
+      "bookId": 1,
+      "quantity": 3
+    }
+  ],
+  "paymentMethod": "TRANSFER",
+  "bonusPoints": 20
+}
+
+> {%
+    client.test("Подарункове замовлення успішно створено (201 Created або 200 OK)", function() {
+        client.assert(response.status === 201 || response.status === 200, "Очікувався успішний статус");
+    });
+%}
+
+### 5. Щасливий сценарій: Отримання списку власних замовлень користувача
+GET {{host}}/api/orders
+Accept: application/json
+
+> {%
+    client.test("Отримано історію замовлень (200 OK)", function() {
+        client.assert(response.status === 200, "Очікувався статус 200");
+    });
+%}
+
+### 6. Щасливий сценарій: Перегляд деталей конкретного замовлення за ID
+GET {{host}}/api/orders/1
+Accept: application/json
+
+> {%
+    client.test("Отримано деталі замовлення (200 OK)", function() {
+        client.assert(response.status === 200, "Очікувався статус 200");
+    });
+%}
+
+### 7. Щасливий сценарій: Скасування замовлення користувачем
+POST {{host}}/api/orders/1/cancel
+Content-Type: application/json
+
+> {%
+    client.test("Замовлення успішно скасовано (200 OK)", function() {
+        client.assert(response.status === 200, "Очікувався статус 200");
+    });
+%}
+
+### 8. Щасливий сценарій: Менеджер змінює статус замовлення
+# Вхід як менеджер
+POST {{host}}/api/auth/login
+Content-Type: application/json
+
+{
+  "email": "{{managerEmail}}",
+  "password": "{{managerPassword}}"
+}
+
+###
+PATCH {{host}}/api/manager/orders/1/status
+Content-Type: application/json
+
+{
+  "expectedStatus": "PROCESSING",
+  "status": "ASSEMBLED"
+}
+
+> {%
+    client.test("Статус замовлення змінено менеджером (200 OK)", function() {
+        client.assert(response.status === 200, "Очікувався статус 200");
+    });
+%}
+
+### ==============================================================================
+### Сценарії помилок (400, 401, 403, 404, 409)
+### ==============================================================================
+
+### Помилка 400 Bad Request: Помилка валідації при оформленні (відсутня адреса / контактні дані)
+POST {{host}}/api/orders
+Content-Type: application/json
+
+{
+  "deliveryMethod": "INVALID_METHOD",
+  "address": "",
+  "paymentMethod": "TRANSFER"
+}
+
+> {%
+    client.test("Невалідні дані замовлення повертають 400 Problem Details", function() {
+        client.assert(response.status === 400, "Очікувався статус 400");
+        client.assert(response.body.status === 400, "Problem Details status 400");
+    });
+%}
+
+### Помилка 401 Unauthorized: Спроба перегляду замовлень без авторизації
+POST {{host}}/api/auth/logout
+
+###
+GET {{host}}/api/orders
+Accept: application/json
+
+> {%
+    client.test("Анонімний доступ до /api/orders повертає 401 Problem Details", function() {
+        client.assert(response.status === 401, "Очікувався статус 401");
+        client.assert(response.body.status === 401, "Problem Details status 401");
+    });
+%}
+
+### Помилка 403 Forbidden: Звичайний користувач викликає список замовлень менеджера
+POST {{host}}/api/auth/login
+Content-Type: application/json
+
+{
+  "email": "{{userEmail}}",
+  "password": "{{userPassword}}"
+}
+
+###
+GET {{host}}/api/manager/orders
+Accept: application/json
+
+> {%
+    client.test("USER не має доступу до /api/manager/orders (403 Forbidden)", function() {
+        client.assert(response.status === 403, "Очікувався статус 403");
+        client.assert(response.body.status === 403, "Problem Details status 403");
+    });
+%}
+
+### Помилка 404 Not Found: Запит неіснуючого замовлення
+GET {{host}}/api/orders/99999999
+Accept: application/json
+
+> {%
+    client.test("Неіснуюче замовлення повертає 404 Problem Details", function() {
+        client.assert(response.status === 404, "Очікувався статус 404");
+        client.assert(response.body.status === 404, "Problem Details status 404");
+    });
+%}
+
+### Помилка 409 Conflict: Конфлікт зміни статусу замовлення (невідповідність expectedStatus / SRS M3)
+POST {{host}}/api/auth/login
+Content-Type: application/json
+
+{
+  "email": "{{managerEmail}}",
+  "password": "{{managerPassword}}"
+}
+
+###
+PATCH {{host}}/api/manager/orders/1/status
+Content-Type: application/json
+
+{
+  "expectedStatus": "DELIVERED",
+  "status": "PROCESSING"
+}
+
+> {%
+    client.test("Розбіжність expectedStatus повертає 409 Conflict Problem Details", function() {
+        client.assert(response.status === 409, "Очікувався статус 409");
+        client.assert(response.body.status === 409, "Problem Details status 409");
+    });
+%}

@@ -1,0 +1,153 @@
+### ==============================================================================
+### Домен: Автентифікація та сесії (Auth)
+### ==============================================================================
+
+### 1. Щасливий сценарій: Реєстрація нового користувача
+POST {{host}}/api/auth/register
+Content-Type: application/json
+
+{
+  "email": "{{userEmail}}",
+  "password": "{{userPassword}}",
+  "confirmPassword": "{{userPassword}}"
+}
+
+> {%
+    client.test("Реєстрація успішна (201 Created або 200 OK)", function() {
+        client.assert(response.status === 201 || response.status === 200, "Очікувався статус успіху");
+    });
+%}
+
+### 2. Щасливий сценарій: Вхід користувача (User Login)
+# IntelliJ IDEA автоматично зберігає сесійну cookie JSESSIONID для наступних запитів
+POST {{host}}/api/auth/login
+Content-Type: application/json
+
+{
+  "email": "{{userEmail}}",
+  "password": "{{userPassword}}"
+}
+
+> {%
+    client.test("Вхід успішний (200 OK)", function() {
+        client.assert(response.status === 200, "Очікувався статус 200");
+    });
+%}
+
+### 3. Щасливий сценарій: Отримання інформації про поточного користувача (GET /me)
+GET {{host}}/api/auth/me
+Accept: application/json
+
+> {%
+    client.test("Дані профілю отримано (200 OK)", function() {
+        client.assert(response.status === 200, "Очікувався статус 200");
+        client.assert(response.body.email === client.global.get("userEmail") || response.body.role !== undefined, "Отримано профіль");
+    });
+%}
+
+### 4. Щасливий сценарій: Вхід менеджера (Manager Login)
+POST {{host}}/api/auth/login
+Content-Type: application/json
+
+{
+  "email": "{{managerEmail}}",
+  "password": "{{managerPassword}}"
+}
+
+> {%
+    client.test("Вхід менеджера успішний (200 OK)", function() {
+        client.assert(response.status === 200, "Очікувався статус 200");
+    });
+%}
+
+### 5. Щасливий сценарій: Завершення сеансу (Logout)
+POST {{host}}/api/auth/logout
+
+> {%
+    client.test("Вихід успішний (200 OK або 204 No Content)", function() {
+        client.assert(response.status === 200 || response.status === 204, "Сесія завершена");
+    });
+%}
+
+### ==============================================================================
+### Сценарії помилок (400, 401, 403, 409)
+### ==============================================================================
+
+### Помилка 400 Bad Request: Невалідний формат email або порожній пароль
+POST {{host}}/api/auth/register
+Content-Type: application/json
+
+{
+  "email": "invalid-email-format",
+  "password": "",
+  "confirmPassword": "123"
+}
+
+> {%
+    client.test("Помилка валідації повертає 400 Problem Details", function() {
+        client.assert(response.status === 400, "Очікувався статус 400");
+        client.assert(response.body.errors && response.body.errors.length > 0, "Має містити масив помилок валідації");
+    });
+%}
+
+### Помилка 401 Unauthorized: Невірні облікові дані під час входу
+POST {{host}}/api/auth/login
+Content-Type: application/json
+
+{
+  "email": "{{userEmail}}",
+  "password": "WrongPassword123!"
+}
+
+> {%
+    client.test("Невірний пароль повертає 401 Problem Details", function() {
+        client.assert(response.status === 401, "Очікувався статус 401");
+        client.assert(response.body.status === 401, "Problem Details status 401");
+    });
+%}
+
+### Помилка 401 Unauthorized: Доступ до /me без активної сесії
+POST {{host}}/api/auth/logout
+
+###
+GET {{host}}/api/auth/me
+Accept: application/json
+
+> {%
+    client.test("Анонімний доступ до захищеного /me повертає 401", function() {
+        client.assert(response.status === 401, "Очікувався статус 401");
+    });
+%}
+
+### Помилка 403 Forbidden: Спроба входу в заблокований обліковий запис (Вимога G4, M6)
+POST {{host}}/api/auth/login
+Content-Type: application/json
+
+{
+  "email": "{{blockedUserEmail}}",
+  "password": "{{blockedUserPassword}}"
+}
+
+> {%
+    client.test("Заблокований акаунт повертає 403 Problem Details", function() {
+        client.assert(response.status === 403, "Очікувався статус 403");
+        client.assert(response.body.status === 403, "Problem Details status 403");
+    });
+%}
+
+### Помилка 409 Conflict: Спроба реєстрації вже існуючого email (Дублікат)
+POST {{host}}/api/auth/register
+Content-Type: application/json
+
+{
+  "email": "{{userEmail}}",
+  "password": "{{userPassword}}",
+  "confirmPassword": "{{userPassword}}"
+}
+
+> {%
+    client.test("Дублювання користувача повертає 409 Conflict Problem Details", function() {
+        client.assert(response.status === 409, "Очікувався статус 409");
+        client.assert(response.body.status === 409, "Problem Details status 409");
+    });
+%}

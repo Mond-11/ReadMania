@@ -1,0 +1,200 @@
+### ==============================================================================
+### Домен: Каталог книг та жанрів (Catalog)
+### ==============================================================================
+
+### 1. Щасливий сценарій: Отримання списку книг (Публічний доступ)
+GET {{host}}/api/catalog/books
+Accept: application/json
+
+> {%
+    client.test("Отримано список книг (200 OK)", function() {
+        client.assert(response.status === 200, "Очікувався статус 200");
+    });
+%}
+
+### 2. Щасливий сценарій: Фільтрація, сортування та пагінація книг
+GET {{host}}/api/catalog/books?genre=Fiction&priceMin=50.00&priceMax=600.00&inStock=true&page=0&size=10&sort=price,asc
+Accept: application/json
+
+> {%
+    client.test("Фільтрація та пагінація працює (200 OK)", function() {
+        client.assert(response.status === 200, "Очікувався статус 200");
+    });
+%}
+
+### 3. Щасливий сценарій: Отримання повної інформації про книгу за ID
+GET {{host}}/api/catalog/books/1
+Accept: application/json
+
+> {%
+    client.test("Отримано інформацію про книгу (200 OK)", function() {
+        client.assert(response.status === 200, "Очікувався статус 200");
+    });
+%}
+
+### 4. Щасливий сценарій: Отримання списку жанрів
+GET {{host}}/api/catalog/genres
+Accept: application/json
+
+> {%
+    client.test("Отримано список жанрів (200 OK)", function() {
+        client.assert(response.status === 200, "Очікувався статус 200");
+    });
+%}
+
+### 5. Щасливий сценарій: Менеджер додає нову книгу (Потрібна роль MANAGER)
+# Попередній крок: вхід як менеджер
+POST {{host}}/api/auth/login
+Content-Type: application/json
+
+{
+  "email": "{{managerEmail}}",
+  "password": "{{managerPassword}}"
+}
+
+###
+POST {{host}}/api/manager/books
+Content-Type: application/json
+
+{
+  "title": "Кобзар",
+  "author": "Тарас Шевченко",
+  "isbn": "978-966-03-7000-1",
+  "price": 350.00,
+  "stock": 25,
+  "genres": ["Класика", "Поезія"],
+  "description": "Повне зібрання поетичних творів"
+}
+
+> {%
+    client.test("Книгу успішно створено менеджером (201 Created або 200 OK)", function() {
+        client.assert(response.status === 201 || response.status === 200, "Очікувався статус успіху створення");
+    });
+%}
+
+### 6. Щасливий сценарій: Менеджер оновлює дані книги
+PUT {{host}}/api/manager/books/1
+Content-Type: application/json
+
+{
+  "title": "Кобзар (Ювілейне видання)",
+  "author": "Тарас Шевченко",
+  "isbn": "978-966-03-7000-1",
+  "price": 400.00,
+  "stock": 30,
+  "genres": ["Класика", "Поезія"],
+  "description": "Оновлене ілюстроване видання"
+}
+
+> {%
+    client.test("Книгу успішно оновлено (200 OK)", function() {
+        client.assert(response.status === 200, "Очікувався статус 200");
+    });
+%}
+
+### ==============================================================================
+### Сценарії помилок (400, 401, 403, 404, 409)
+### ==============================================================================
+
+### Помилка 400 Bad Request: Невалідні параметри запиту (від'ємна ціна або пагінація)
+GET {{host}}/api/catalog/books?priceMin=-100&page=-1
+Accept: application/json
+
+> {%
+    client.test("Невалідні query-параметри повертають 400 Problem Details", function() {
+        client.assert(response.status === 400, "Очікувався статус 400");
+        client.assert(response.body.status === 400, "Problem Details status 400");
+    });
+%}
+
+### Помилка 401 Unauthorized: Анонімний запит до ендпоінту менеджера
+# Виходимо із сесії менеджера
+POST {{host}}/api/auth/logout
+
+###
+POST {{host}}/api/manager/books
+Content-Type: application/json
+
+{
+  "title": "Спроба без авторизації",
+  "author": "Невідомий",
+  "isbn": "978-000-00-0000-0",
+  "price": 100.00,
+  "stock": 5
+}
+
+> {%
+    client.test("Анонімний доступ до /api/manager/** повертає 401 Problem Details", function() {
+        client.assert(response.status === 401, "Очікувався статус 401");
+        client.assert(response.body.status === 401, "Problem Details status 401");
+    });
+%}
+
+### Помилка 403 Forbidden: Користувач з роллю USER намагається викликати API менеджера
+# Входимо під звичайним користувачем
+POST {{host}}/api/auth/login
+Content-Type: application/json
+
+{
+  "email": "{{userEmail}}",
+  "password": "{{userPassword}}"
+}
+
+###
+POST {{host}}/api/manager/books
+Content-Type: application/json
+
+{
+  "title": "Спроба від імені USER",
+  "author": "Автор",
+  "isbn": "978-111-11-1111-1",
+  "price": 200.00,
+  "stock": 10
+}
+
+> {%
+    client.test("Користувач USER отримує 403 Forbidden на /api/manager/**", function() {
+        client.assert(response.status === 403, "Очікувався статус 403");
+        client.assert(response.body.status === 403, "Problem Details status 403");
+    });
+%}
+
+### Помилка 404 Not Found: Запит книги за неіснуючим ідентифікатором
+GET {{host}}/api/catalog/books/99999999
+Accept: application/json
+
+> {%
+    client.test("Неіснуюча книга повертає 404 Problem Details", function() {
+        client.assert(response.status === 404, "Очікувався статус 404");
+        client.assert(response.body.status === 404, "Problem Details status 404");
+    });
+%}
+
+### Помилка 409 Conflict: Спроба створення книги з дублюванням ISBN
+# Входимо знову як менеджер
+POST {{host}}/api/auth/login
+Content-Type: application/json
+
+{
+  "email": "{{managerEmail}}",
+  "password": "{{managerPassword}}"
+}
+
+###
+POST {{host}}/api/manager/books
+Content-Type: application/json
+
+{
+  "title": "Книга з дублікатом ISBN",
+  "author": "Інший автор",
+  "isbn": "978-966-03-7000-1",
+  "price": 250.00,
+  "stock": 10
+}
+
+> {%
+    client.test("Дублювання ISBN повертає 409 Conflict Problem Details", function() {
+        client.assert(response.status === 409, "Очікувався статус 409");
+        client.assert(response.body.status === 409, "Problem Details status 409");
+    });
+%}
