@@ -6,13 +6,12 @@ import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.webmvc.test.autoconfigure.AutoConfigureMockMvc;
 import org.springframework.boot.test.context.SpringBootTest;
+import org.springframework.context.annotation.Import;
 import org.springframework.http.MediaType;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.security.test.context.support.WithMockUser;
-import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.test.web.servlet.MockMvc;
-
-import javax.sql.DataSource;
+import ua.readmania.TestcontainersConfiguration;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.hamcrest.Matchers.is;
@@ -25,6 +24,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 
 @SpringBootTest
 @AutoConfigureMockMvc
+@Import(TestcontainersConfiguration.class)
 class SecurityConfigTest {
 
     @Autowired
@@ -32,9 +32,6 @@ class SecurityConfigTest {
 
     @Autowired
     private PasswordEncoder passwordEncoder;
-
-    @MockitoBean
-    private DataSource dataSource;
 
     @Test
     @DisplayName("D3: PasswordEncoder is BCryptPasswordEncoder")

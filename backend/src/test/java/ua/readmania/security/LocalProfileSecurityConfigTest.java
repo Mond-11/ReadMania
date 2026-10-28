@@ -5,11 +5,10 @@ import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.webmvc.test.autoconfigure.AutoConfigureMockMvc;
 import org.springframework.boot.test.context.SpringBootTest;
+import org.springframework.context.annotation.Import;
 import org.springframework.test.context.ActiveProfiles;
-import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.test.web.servlet.MockMvc;
-
-import javax.sql.DataSource;
+import ua.readmania.TestcontainersConfiguration;
 
 import static org.hamcrest.Matchers.not;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
@@ -18,13 +17,11 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 @SpringBootTest
 @AutoConfigureMockMvc
 @ActiveProfiles("local")
+@Import(TestcontainersConfiguration.class)
 class LocalProfileSecurityConfigTest {
 
     @Autowired
     private MockMvc mockMvc;
-
-    @MockitoBean
-    private DataSource dataSource;
 
     @Test
     @DisplayName("Swagger endpoints are open when local profile is active")

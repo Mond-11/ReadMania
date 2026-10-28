@@ -18,7 +18,6 @@ import org.springframework.http.MediaType;
 import org.springframework.orm.ObjectOptimisticLockingFailureException;
 import org.springframework.security.access.AccessDeniedException;
 import org.springframework.security.test.context.support.WithMockUser;
-import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -28,8 +27,7 @@ import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
-
-import javax.sql.DataSource;
+import ua.readmania.TestcontainersConfiguration;
 
 import static org.hamcrest.Matchers.containsString;
 import static org.hamcrest.Matchers.hasSize;
@@ -44,14 +42,11 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 
 @SpringBootTest
 @AutoConfigureMockMvc
-@Import(GlobalExceptionHandlerTest.TestControllerConfig.class)
+@Import({TestcontainersConfiguration.class, GlobalExceptionHandlerTest.TestControllerConfig.class})
 class GlobalExceptionHandlerTest {
 
     @Autowired
     private MockMvc mockMvc;
-
-    @MockitoBean
-    private DataSource dataSource;
 
     // =========================================================================
     // Test DTOs and Controller

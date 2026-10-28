@@ -1,0 +1,18 @@
+# Test profile configuration
+# Used for test-specific overrides unrelated to database connection (handled by Testcontainers @ServiceConnection)
+spring:
+  jpa:
+    open-in-view: false
+    hibernate:
+      ddl-auto: validate
+  flyway:
+    enabled: true
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health
+  endpoint:
+    health:
+      show-details: never
