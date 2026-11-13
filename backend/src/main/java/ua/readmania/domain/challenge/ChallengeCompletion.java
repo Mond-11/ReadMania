@@ -36,8 +36,13 @@ public class ChallengeCompletion {
     }
 
     public ChallengeCompletion(User user, Challenge challenge) {
+        this(user, challenge, Instant.now());
+    }
+
+    public ChallengeCompletion(User user, Challenge challenge, Instant completedAt) {
         this.user = user;
         this.challenge = challenge;
+        this.completedAt = completedAt != null ? completedAt : Instant.now();
         if (user != null && user.getId() != null) {
             this.id.setUserId(user.getId());
         }
