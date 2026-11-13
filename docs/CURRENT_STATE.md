@@ -20,7 +20,7 @@
 │ Обробка помилок (RFC 9457)    │ ГОТОВО       │ 100% (Problem Details)  │
 │ Контракти API (.http)         │ ГОТОВО       │ 100% (Auth/Cat/Orders)  │
 │ Документація (ERD/Decisions)  │ ГОТОВО       │ 100% (ERD + Architectural)│
-│ JPA Сутності та Репозиторії   │ В ОЧІКУВАННІ │ Наступний етап розробки │
+│ JPA Сутності та Репозиторії   │ ГОТОВО       │ 100% (Entities + Spec)  │
 │ Бізнес-сервіси та Логіка      │ В ОЧІКУВАННІ │ Наступний етап розробки │
 │ REST-контролери               │ В ОЧІКУВАННІ │ Наступний етап розробки │
 │ Фронтенд (UI компоненти)      │ В ОЧІКУВАННІ │ Базова структура Vite   │
@@ -157,9 +157,41 @@
 
 ---
 
-### 2.6. Автоматизована верифікація та тести
-У проєкті налаштовано та успішно виконується повний набір із **36 автоматизованих тестів**:
-1. **`SchemaIT` (15 тестів на Testcontainers PostgreSQL 17):**
+### 2.6. Доменна модель (JPA Entities) та Репозиторії
+Повністю реалізовано 100% сумісність Java-класів зі схемою PostgreSQL 17 при активному `ddl-auto: validate`:
+1. **Користувачі та безпека (`ua.readmania.domain.user`):**
+   - `User`: статус (`ACTIVE`/`BLOCKED`), ролі (`USER`/`MANAGER`), захист від brute-force (`failedLoginAttempts`, `lockedUntil`), баланс бонусів, дати реєстрації та останнього входу.
+   - `PasswordResetToken`: одноразові токени з терміном дії 1 година.
+   - `UnblockRequest`: запити на розблокування зі статусами `PENDING`/`APPROVED`/`REJECTED`, обґрунтуванням та резолюцією менеджера.
+2. **Каталог (`ua.readmania.domain.catalog`):**
+   - `Genre`, `Author` та `Book`: нормалізація у 3НФ (`@ManyToMany Set<Author>`), оптимістичне блокування залишків на складі (`@Version`), автоматичне виключення видалених записів (`@SQLRestriction("deleted_at IS NULL")`).
+   - `BookCover`: виділена сутність для збереження бінарних даних обкладинки (`byte[]`) з `@MapsId` для запобігання зайвому навантаженню під час вибірки каталогу.
+   - `BookRepository` та `BookSpecifications`: динамічна фільтрація каталогу G1 (пошук за назвою чи автором, жанром, автором, діапазоном ціни, наявністю `stock > 0`) через `JpaSpecificationExecutor` та оптимізоване завантаження через `@EntityGraph(attributePaths = {"genre", "authors"})` без проблеми N+1.
+3. **Кошик та заклади (`ua.readmania.domain.cart`, `ua.readmania.domain.institution`):**
+   - `CartItem`: композитний первинний ключ `@EmbeddedId CartItemId` з прив'язкою до `User` та `Book`.
+   - `Institution`: верифіковані благодійні заклади з типізацією `InstitutionType` (`ORPHANAGE`, `BOARDING_SCHOOL`, `LIBRARY`).
+4. **Замовлення (`ua.readmania.domain.order`):**
+   - `Order`: розрахунки сум, знижок та бонусів, типи `REGULAR`/`GIFT`, способи оплати та доставки, версіонування `@Version`.
+   - `OrderItem`: незмінні знімки вартості та назви (`titleSnapshot`, `priceSnapshot`).
+   - `OrderStatusHistory`: аудит хронології зміни статусів замовлень.
+5. **Лояльність та благодійність (`ua.readmania.domain.loyalty`, `ua.readmania.domain.challenge`, `ua.readmania.domain.gift`):**
+   - `BonusTransaction`: типи операцій `ORDER_REWARD`, `RATING_REWARD`, `CHALLENGE_REWARD`, `SPENT`, `REFUND`.
+   - `Rating`: оцінки 1–5 зі зв'язками на книгу та замовлення.
+   - `Challenge`, `ChallengeCompletion`: читацькі виклики та фіксація їх виконання.
+   - `GiftLog`: журнал подарованих книг для звітності.
+
+---
+
+### 2.7. Автоматизована верифікація та тести
+У проєкті налаштовано та успішно виконується повний набір із **52 автоматизованих тестів**:
+1. **`DomainRepositoryIT` (6 тестів на Testcontainers PostgreSQL 17):**
+   - Збереження та вибірка користувачів, токенів та запитів розблокування.
+   - Робота каталогу, зв'язок 3НФ, оптимістичне блокування `@Version` та ізольовані обкладинки `BookCover`.
+   - Динамічна фільтрація `BookSpecifications` (пошук, жанр, автор, ціна, наявність) та м'яке видалення.
+   - Композитний ключ кошика `CartItem`.
+   - Замовлення, знімки позицій та аудит статусів.
+   - Програма лояльності, читацькі виклики та звітність `gift_log`.
+2. **`SchemaIT` (15 тестів на Testcontainers PostgreSQL 17):**
    - Перевірка валідності всіх міграцій Flyway (V1–V9) на чистій базі.
    - Регістронезалежність email (`test@example.com` vs `TEST@EXAMPLE.COM`).
    - Часткова унікальність ISBN для активних книг та дозвіл дублів для видалених.
@@ -174,10 +206,10 @@
    - Обмеження типів закладів: `ORPHANAGE`, `BOARDING_SCHOOL`, `LIBRARY` (M8, M12).
    - Збереження записів `gift_log` при повному видаленні архівного замовлення (M3, 7.2.2.7).
    - Автоматична перевірка наявності індексів на всіх FK-колонках схеми (D7).
-2. **`GlobalExceptionHandlerTest` (10 тестів):**
+3. **`GlobalExceptionHandlerTest` (10 тестів):**
    - Перевірка коректного мапінгу статусів 400, 401, 403, 404, 405, 409, 415, 500.
    - Валідація наявності `errorId` у 500 помилках та структури `errors` у 400 помилках.
-3. **`SecurityConfigTest` та `LocalProfileSecurityConfigTest` (11 тестів):**
+4. **`SecurityConfigTest` та `LocalProfileSecurityConfigTest` (11 тестів):**
    - Перевірка Default Deny (401 Problem Details на `/api/orders`).
    - Перевірка RBAC (403 Problem Details для `USER` на `/api/manager/books`).
    - Перевірка відкритих шляхів (`/api/catalog/books`, `/actuator/health`).
