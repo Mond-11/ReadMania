@@ -82,6 +82,14 @@ public class GlobalExceptionHandler extends ResponseEntityExceptionHandler {
         return problemDetail;
     }
 
+    @ExceptionHandler(AccountBlockedException.class)
+    public ProblemDetail handleAccountBlockedException(AccountBlockedException ex, HttpServletRequest request) {
+        ProblemDetail problemDetail = ProblemDetail.forStatusAndDetail(HttpStatus.FORBIDDEN, ex.getMessage());
+        problemDetail.setTitle("Forbidden");
+        problemDetail.setInstance(URI.create(request.getRequestURI()));
+        return problemDetail;
+    }
+
     // =========================================================================
     // Concurrency and Data Integrity conflicts (409)
     // =========================================================================

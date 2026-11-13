@@ -151,3 +151,68 @@ Content-Type: application/json
         client.assert(response.body.status === 409, "Problem Details status 409");
     });
 %}
+
+### ==============================================================================
+### Скидання пароля (G3)
+### ==============================================================================
+
+### Запит на скидання пароля
+POST {{host}}/api/auth/password-reset/request
+Content-Type: application/json
+
+{
+  "email": "{{userEmail}}"
+}
+
+> {%
+    client.test("Запит на скидання пароля успішний (200 OK)", function() {
+        client.assert(response.status === 200, "Очікувався статус 200");
+    });
+%}
+
+### ==============================================================================
+### Профіль користувача (C5)
+### ==============================================================================
+
+### Отримання даних профілю
+GET {{host}}/api/account
+Accept: application/json
+
+> {%
+    client.test("Отримання профілю успішне", function() {
+        client.assert(response.status === 200, "Очікувався статус 200");
+    });
+%}
+
+### Оновлення даних профілю
+PUT {{host}}/api/account
+Content-Type: application/json
+
+{
+  "fullName": "Іван Читач",
+  "phone": "+380501234567",
+  "deliveryAddress": "м. Київ, вул. Шевченка, 10, кв. 5"
+}
+
+> {%
+    client.test("Оновлення контактних даних успішне", function() {
+        client.assert(response.status === 200, "Очікувався статус 200");
+        client.assert(response.body.fullName === "Іван Читач", "Ім'я оновлено");
+    });
+%}
+
+### Зміна пароля з перевіркою поточного
+PUT {{host}}/api/account/password
+Content-Type: application/json
+
+{
+  "currentPassword": "{{userPassword}}",
+  "newPassword": "NewSecurePassword123!",
+  "confirmPassword": "NewSecurePassword123!"
+}
+
+> {%
+    client.test("Зміна пароля успішна", function() {
+        client.assert(response.status === 200, "Очікувався статус 200");
+    });
+%}
