@@ -124,7 +124,7 @@ ReadMania/
 
 ### 3. База даних та міграції
 - Використовується **PostgreSQL 17**.
-- Керування схемою здійснюється через **Flyway** (`db/migration/V1__init.sql`).
+- Керування схемою здійснюється через **Flyway** (`db/migration/V1__init.sql` ... `V9__srs_alignment.sql`).
 - Hibernate налаштовано у режимі валідації схеми (`ddl-auto: validate`).
 
 ---

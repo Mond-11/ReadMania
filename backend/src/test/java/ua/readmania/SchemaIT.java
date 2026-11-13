@@ -26,6 +26,8 @@ class SchemaIT extends BaseIntegrationTest {
     void cleanDatabase() {
         jdbcClient.sql("""
             TRUNCATE TABLE 
+                unblock_requests,
+                password_reset_tokens,
                 gift_log,
                 challenge_completions,
                 bonus_transactions,
@@ -293,6 +295,180 @@ class SchemaIT extends BaseIntegrationTest {
                 .single();
 
         assertThat(giftOrderId).isNotNull();
+    }
+
+    @Test
+    @DisplayName("G3/V9: Захист від brute-force — збереження кількості невдалих спроб входу та часу блокування")
+    void shouldSupportBruteForceTrackingFields() {
+        Long userId = insertUser("bruteforce_test@example.com");
+
+        int updated = jdbcClient.sql("""
+                    UPDATE users 
+                    SET failed_login_attempts = 5, locked_until = CURRENT_TIMESTAMP + INTERVAL '15 minutes'
+                    WHERE id = :id
+                """)
+                .param("id", userId)
+                .update();
+        assertThat(updated).isEqualTo(1);
+
+        var userRow = jdbcClient.sql("SELECT failed_login_attempts, locked_until FROM users WHERE id = :id")
+                .param("id", userId)
+                .query()
+                .singleRow();
+
+        assertThat(userRow.get("failed_login_attempts")).isEqualTo(5);
+        assertThat(userRow.get("locked_until")).isNotNull();
+    }
+
+    @Test
+    @DisplayName("G3/V9: Одноразові токени скидання пароля — унікальність, термін дії та каскадне видалення")
+    void shouldHandlePasswordResetTokensWithCascadeAndUniqueness() {
+        Long userId = insertUser("reset_test@example.com");
+
+        Long tokenId = jdbcClient.sql("""
+                    INSERT INTO password_reset_tokens (user_id, token, expires_at)
+                    VALUES (:userId, 'unique-token-12345', CURRENT_TIMESTAMP + INTERVAL '1 hour')
+                    RETURNING id
+                """)
+                .param("userId", userId)
+                .query(Long.class)
+                .single();
+        assertThat(tokenId).isNotNull();
+
+        // Повторне використання того самого токену відхиляється унікальним індексом
+        Long user2Id = insertUser("reset_test2@example.com");
+        assertThatThrownBy(() ->
+                jdbcClient.sql("""
+                    INSERT INTO password_reset_tokens (user_id, token, expires_at)
+                    VALUES (:userId, 'unique-token-12345', CURRENT_TIMESTAMP + INTERVAL '1 hour')
+                """)
+                        .param("userId", user2Id)
+                        .update()
+        ).isInstanceOf(DataIntegrityViolationException.class);
+
+        // Каскадне видалення токенів при видаленні користувача
+        jdbcClient.sql("DELETE FROM users WHERE id = :id").param("id", userId).update();
+        int tokenCount = jdbcClient.sql("SELECT count(*) FROM password_reset_tokens WHERE id = :id")
+                .param("id", tokenId)
+                .query(Integer.class)
+                .single();
+        assertThat(tokenCount).isZero();
+    }
+
+    @Test
+    @DisplayName("M7/V9: Запити на розблокування — статуси PENDING/APPROVED/REJECTED, менеджер та каскад")
+    void shouldHandleUnblockRequestsAndPreserveOnManagerDelete() {
+        Long userId = insertUser("blocked_user@example.com");
+        Long managerId = insertUser("manager_admin@example.com");
+
+        Long requestId = jdbcClient.sql("""
+                    INSERT INTO unblock_requests (user_id, reason, status)
+                    VALUES (:userId, 'Помилкове блокування, прошу розблокувати', 'PENDING')
+                    RETURNING id
+                """)
+                .param("userId", userId)
+                .query(Long.class)
+                .single();
+        assertThat(requestId).isNotNull();
+
+        // Спроба встановити невалідний статус відхиляється
+        assertThatThrownBy(() ->
+                jdbcClient.sql("UPDATE unblock_requests SET status = 'INVALID_STATUS' WHERE id = :id")
+                        .param("id", requestId)
+                        .update()
+        ).isInstanceOf(DataIntegrityViolationException.class);
+
+        // Менеджер погоджує запит
+        jdbcClient.sql("""
+                    UPDATE unblock_requests 
+                    SET status = 'APPROVED', resolved_by_user_id = :managerId, resolved_at = CURRENT_TIMESTAMP, manager_comment = 'Розблоковано'
+                    WHERE id = :id
+                """)
+                .param("managerId", managerId)
+                .param("id", requestId)
+                .update();
+
+        // При видаленні менеджера запит зберігається (resolved_by_user_id стає NULL завдяки ON DELETE SET NULL)
+        jdbcClient.sql("DELETE FROM users WHERE id = :id").param("id", managerId).update();
+        var req = jdbcClient.sql("SELECT status, resolved_by_user_id FROM unblock_requests WHERE id = :id")
+                .param("id", requestId)
+                .query()
+                .singleRow();
+        assertThat(req.get("status")).isEqualTo("APPROVED");
+        assertThat(req.get("resolved_by_user_id")).isNull();
+    }
+
+    @Test
+    @DisplayName("M8/M12/V9: Типи благодійних закладів — валідні значення ORPHANAGE, BOARDING_SCHOOL, LIBRARY")
+    void shouldEnforceInstitutionTypesAndAllowValidValues() {
+        // Успішне додавання з кожним валідним типом
+        for (String type : new String[]{"ORPHANAGE", "BOARDING_SCHOOL", "LIBRARY"}) {
+            Long instId = jdbcClient.sql("""
+                        INSERT INTO institutions (name, type, address, contact_person)
+                        VALUES (:name, :type, 'вул. Тестова, 1', 'Контактна особа')
+                        RETURNING id
+                    """)
+                    .param("name", "Заклад " + type)
+                    .param("type", type)
+                    .query(Long.class)
+                    .single();
+            assertThat(instId).isNotNull();
+        }
+
+        // Відхилення невалідного типу
+        assertThatThrownBy(() ->
+                jdbcClient.sql("""
+                    INSERT INTO institutions (name, type, address, contact_person)
+                    VALUES ('Невалідний заклад', 'HOSPITAL', 'вул. Лікарняна, 5', 'Лікар')
+                """).update()
+        ).isInstanceOf(DataIntegrityViolationException.class);
+    }
+
+    @Test
+    @DisplayName("M3/7.2.2.7/V9: Збереження записів gift_log при повному видаленні архівного замовлення")
+    void shouldPreserveGiftLogWhenOrderIsDeleted() {
+        Long userId = insertUser("donor@example.com");
+        Long instId = jdbcClient.sql("""
+                    INSERT INTO institutions (name, type, address, contact_person)
+                    VALUES ('Дитячий будинок №5', 'ORPHANAGE', 'вул. Дитяча, 10', 'Директор')
+                    RETURNING id
+                """)
+                .query(Long.class)
+                .single();
+
+        Long orderId = jdbcClient.sql("""
+                    INSERT INTO orders (user_id, type, status, payment_method, items_total, discount_amount, points_used, total_to_pay, institution_id, institution_name)
+                    VALUES (:userId, 'GIFT', 'DELIVERED', 'TRANSFER', 500.00, 0.00, 0, 500.00, :instId, 'Дитячий будинок №5')
+                    RETURNING id
+                """)
+                .param("userId", userId)
+                .param("instId", instId)
+                .query(Long.class)
+                .single();
+
+        Long logId = jdbcClient.sql("""
+                    INSERT INTO gift_log (order_id, institution_id, institution_name, book_title, quantity, delivered_date)
+                    VALUES (:orderId, :instId, 'Дитячий будинок №5', 'Кобзар', 5, CURRENT_DATE)
+                    RETURNING id
+                """)
+                .param("orderId", orderId)
+                .param("instId", instId)
+                .query(Long.class)
+                .single();
+        assertThat(logId).isNotNull();
+
+        // Повне видалення архівного замовлення (M3 / 7.2.2.7)
+        jdbcClient.sql("DELETE FROM orders WHERE id = :orderId").param("orderId", orderId).update();
+
+        // Запис у gift_log залишається цілісним, order_id оновлюється на NULL (ON DELETE SET NULL)
+        var logRow = jdbcClient.sql("SELECT id, order_id, institution_name, book_title FROM gift_log WHERE id = :logId")
+                .param("logId", logId)
+                .query()
+                .singleRow();
+        assertThat(logRow.get("id")).isEqualTo(logId);
+        assertThat(logRow.get("order_id")).isNull();
+        assertThat(logRow.get("institution_name")).isEqualTo("Дитячий будинок №5");
+        assertThat(logRow.get("book_title")).isEqualTo("Кобзар");
     }
 
     @Test
