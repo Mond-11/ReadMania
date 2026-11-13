@@ -135,20 +135,34 @@ ReadMania/
 - **Node.js:** v20+ та npm
 - **Docker:** встановлений та запущений Docker Daemon
 
-### 1. Запуск бази даних
+### 1. Запуск через Docker (БД + Бекенд одним скриптом)
 ```bash
-docker compose up -d
-```
-Створюється контейнер PostgreSQL 17 (`readmania-db`) на порту `5432`.
+# Запуск усього стеку (PostgreSQL 17 + Spring Boot Backend):
+./run-docker.sh up
 
-### 2. Запуск бекенду
+# Або напряму через Docker Compose:
+docker compose up -d --build
+```
+- **Backend API:** `http://localhost:8080`
+- **PostgreSQL 17:** `localhost:5432` (`readmania` / `readmania`)
+- **Статус / Логи / Зупинка:**
+  ```bash
+  ./run-docker.sh status   # перевірка стану контейнерів
+  ./run-docker.sh logs     # перегляд логів у реальному часі
+  ./run-docker.sh down     # зупинка контейнерів
+  ```
+
+### 2. Запуск бекенду локально (без Docker для бекенду)
 ```bash
+# Підняття лише бази даних у Docker:
+docker compose up -d db
+
 cd backend
 
 # Стандартний запуск:
 ./mvnw spring-boot:run
 
-# Запуск із профілем local (активує Swagger/OpenAPI):
+# Запуск із профілем local (активує тестові дані seed та Swagger/OpenAPI):
 ./mvnw spring-boot:run -Dspring-boot.run.profiles=local
 ```
 Сервер буде доступний за адресою `http://localhost:8080`.
