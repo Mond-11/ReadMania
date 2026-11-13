@@ -1,0 +1,40 @@
+package ua.readmania.dto.catalog;
+
+import ua.readmania.domain.catalog.Author;
+
+public class AuthorResponse {
+
+    private Long id;
+    private String name;
+
+    public AuthorResponse() {
+    }
+
+    public AuthorResponse(Long id, String name) {
+        this.id = id;
+        this.name = name;
+    }
+
+    public static AuthorResponse fromEntity(Author author) {
+        if (author == null) {
+            return null;
+        }
+        return new AuthorResponse(author.getId(), author.getName());
+    }
+
+    public Long getId() {
+        return id;
+    }
+
+    public void setId(Long id) {
+        this.id = id;
+    }
+
+    public String getName() {
+        return name;
+    }
+
+    public void setName(String name) {
+        this.name = name;
+    }
+}

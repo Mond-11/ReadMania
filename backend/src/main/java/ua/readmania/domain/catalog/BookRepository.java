@@ -37,6 +37,15 @@ public interface BookRepository extends JpaRepository<Book, Long>, JpaSpecificat
 
     boolean existsByIsbn(String isbn);
 
+    @Query(value = "SELECT COUNT(*) > 0 FROM books WHERE isbn = :isbn AND deleted_at IS NULL", nativeQuery = true)
+    boolean existsActiveByIsbn(@Param("isbn") String isbn);
+
+    @Query(value = "SELECT COUNT(*) > 0 FROM books WHERE isbn = :isbn AND id <> :id AND deleted_at IS NULL", nativeQuery = true)
+    boolean existsActiveByIsbnAndIdNot(@Param("isbn") String isbn, @Param("id") Long id);
+
+    @Query(value = "SELECT COUNT(*) > 0 FROM books WHERE genre_id = :genreId", nativeQuery = true)
+    boolean existsAnyByGenreIdIncludingDeleted(@Param("genreId") Long genreId);
+
     @Modifying
     @Query(value = "UPDATE books SET deleted_at = CURRENT_TIMESTAMP WHERE id = :id", nativeQuery = true)
     int softDeleteById(@Param("id") Long id);
