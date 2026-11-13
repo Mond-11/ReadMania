@@ -1,5 +1,7 @@
 package ua.readmania.domain.catalog;
 
+import java.math.BigDecimal;
+import java.util.Collection;
 import java.util.List;
 import java.util.Optional;
 import org.springframework.data.domain.Page;
@@ -34,6 +36,16 @@ public interface BookRepository extends JpaRepository<Book, Long>, JpaSpecificat
 
     @EntityGraph(attributePaths = {"genre", "authors"})
     Optional<Book> findByIsbn(String isbn);
+
+    @EntityGraph(attributePaths = {"genre", "authors"})
+    @Query("SELECT b FROM Book b WHERE b.genre.id IN :genreIds AND b.stock > 0")
+    List<Book> findAvailableByGenreIds(@Param("genreIds") Collection<Long> genreIds);
+
+    @EntityGraph(attributePaths = {"genre", "authors"})
+    @Query("SELECT b FROM Book b WHERE b.genre.id IN :genreIds AND b.stock > 0 AND b.id NOT IN :excludedIds AND b.price <= :maxPrice")
+    List<Book> findCandidatesForReplace(@Param("genreIds") Collection<Long> genreIds,
+                                        @Param("excludedIds") Collection<Long> excludedIds,
+                                        @Param("maxPrice") BigDecimal maxPrice);
 
     boolean existsByIsbn(String isbn);
 

@@ -28,6 +28,9 @@ public interface OrderRepository extends JpaRepository<Order, Long>, JpaSpecific
     @EntityGraph(attributePaths = {"user", "institution", "items"})
     Page<Order> findByStatusOrderByCreatedAtDesc(OrderStatus status, Pageable pageable);
 
+    @Query("SELECT o FROM Order o JOIN o.items oi WHERE o.user.id = :userId AND o.status = ua.readmania.domain.order.OrderStatus.DELIVERED AND oi.book.id = :bookId ORDER BY COALESCE(o.deliveredAt, o.statusChangedAt, o.createdAt) DESC")
+    List<Order> findDeliveredOrdersByUserIdAndBookId(@Param("userId") Long userId, @Param("bookId") Long bookId);
+
     @Query("SELECT o FROM Order o WHERE o.status = 'AWAITING_PAYMENT' AND o.createdAt < :before")
     List<Order> findUnpaidOrdersOlderThan(@Param("before") Instant before);
 

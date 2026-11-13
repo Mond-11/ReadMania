@@ -78,6 +78,9 @@ class CatalogIntegrationTest extends BaseIntegrationTest {
     @Autowired
     private OrderItemRepository orderItemRepository;
 
+    @Autowired
+    private org.springframework.jdbc.core.simple.JdbcClient jdbcClient;
+
     private Genre testGenre;
     private Author testAuthor;
     private Book testBook;
@@ -85,14 +88,7 @@ class CatalogIntegrationTest extends BaseIntegrationTest {
 
     @BeforeEach
     void setUp() {
-        orderItemRepository.deleteAll();
-        orderRepository.deleteAll();
-        ratingRepository.deleteAll();
-        bookCoverRepository.deleteAll();
-        bookRepository.deleteAll();
-        genreRepository.deleteAll();
-        authorRepository.deleteAll();
-        userRepository.deleteAll();
+        jdbcClient.sql("TRUNCATE TABLE bonus_transactions, ratings, challenge_completions, challenges, order_status_history, order_items, gift_log, orders, cart_items, book_authors, book_covers, books, authors, genres, password_reset_tokens, unblock_requests, users CASCADE").update();
 
         testGenre = genreRepository.save(new Genre("Фантастика"));
         testAuthor = authorRepository.save(new Author("Станіслав Лем"));

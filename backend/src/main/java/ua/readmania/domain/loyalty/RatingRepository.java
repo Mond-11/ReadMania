@@ -13,6 +13,10 @@ public interface RatingRepository extends JpaRepository<Rating, Long> {
 
     List<Rating> findByBookId(Long bookId);
 
+    List<Rating> findByBookIdOrderByCreatedAtDesc(Long bookId);
+
+    List<Rating> findByUserIdOrderByCreatedAtDesc(Long userId);
+
     Optional<Rating> findByUserIdAndBookId(Long userId, Long bookId);
 
     boolean existsByUserIdAndBookId(Long userId, Long bookId);

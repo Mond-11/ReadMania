@@ -390,6 +390,87 @@
 
 ---
 
+### 2.11. Оцінки та відгуки (`/api/ratings`)
+
+| Метод | Ендпоінт | Доступ | Опис та параметри | Коди відповідей |
+|---|---|---|---|---|
+| `POST` | `/api/ratings` | `USER` | **Оцінювання придбаного видання книги (C6)**<br>Тіло: `{ bookId, orderId?, value }` (оцінка 1–5).<br>Дозволено лише якщо користувач має замовлення у статусі `DELIVERED`, яке містить цю книгу. Нараховує **+1 бонусний бал** (`RATING_REWARD`). | `201 Created` (`RatingResponse`), `400`, `401`, `409 Conflict` (якщо вже оцінено) |
+| `GET` | `/api/ratings/me` | `USER` | **Перегляд списку власних оцінок поточного користувача** | `200 OK` (`List<RatingResponse>`), `401` |
+| `GET` | `/api/ratings/book/{bookId}` | Публічний | **Публічний перегляд оцінок конкретної книги** | `200 OK` (`List<RatingResponse>`) |
+
+#### Модель `RatingResponse`:
+```json
+{
+  "id": 1,
+  "bookId": 10,
+  "bookTitle": "Інтернат",
+  "orderId": 100,
+  "value": 5,
+  "userId": 42,
+  "userFullName": "Тарас Читач",
+  "createdAt": "2026-11-13T18:40:00Z"
+}
+```
+
+---
+
+### 2.12. Генератор подарункових наборів (`/api/gift-sets`)
+
+| Метод | Ендпоінт | Доступ | Опис та параметри | Коди відповідей |
+|---|---|---|---|---|
+| `POST` | `/api/gift-sets/generate` | Публічний | **Автоматичний підбір випадкового набору книг у наявності (C9)**<br>Тіло: `{ budget, genreIds: [...], bookCount? }`<br>Вимоги: бюджет кратний 50 грн, книги в наявності (`stock > 0`). При неможливості зібрати набір повертає одну з двох чітких бізнес-причин відмови. | `200 OK` (`GiftSetResponse`), `400 Bad Request` |
+| `POST` | `/api/gift-sets/replace` | Публічний | **Заміна книги в наборі на іншу альтернативну в межах залишкового бюджету (C9)**<br>Тіло: `{ currentBookIds: [...], bookIdToReplace, genreIds: [...], budget }` | `200 OK` (`GiftSetResponse`), `400 Bad Request`, `404` |
+| `POST` | `/api/gift-sets/replace-candidates` | Публічний | **Отримання переліку всіх доступних книг-кандидатів для заміни позиції** | `200 OK` (`ReplaceCandidatesResponse`), `400` |
+
+#### Модель `GiftSetResponse`:
+```json
+{
+  "items": [
+    {
+      "id": 1,
+      "title": "Інтернат",
+      "isbn": "978-617-679-456-1",
+      "genre": { "id": 1, "name": "Художня література" },
+      "authors": [{ "id": 1, "name": "Сергій Жадан" }],
+      "price": 250.00,
+      "stock": 10,
+      "coverUrl": "/api/catalog/books/1/cover"
+    },
+    {
+      "id": 2,
+      "title": "Ворошиловград",
+      "isbn": "978-617-679-456-2",
+      "genre": { "id": 1, "name": "Художня література" },
+      "authors": [{ "id": 1, "name": "Сергій Жадан" }],
+      "price": 300.00,
+      "stock": 15,
+      "coverUrl": "/api/catalog/books/2/cover"
+    }
+  ],
+  "totalPrice": 550.00,
+  "budget": 550.00,
+  "remainingBudget": 0.00,
+  "genres": [
+    { "id": 1, "name": "Художня література" }
+  ]
+}
+```
+
+---
+
+### 2.13. Менеджер: Читацькі виклики (`/api/manager/challenges`)
+
+Доступ до всіх ендпоінтів цього розділу вимагає ролі **`MANAGER`**.
+
+| Метод | Ендпоінт | Доступ | Опис та параметри | Коди відповідей |
+|---|---|---|---|---|
+| `GET` | `/api/manager/challenges` | `MANAGER` | **Перегляд усіх читацьких викликів (M4)**<br>Параметри: `status` (`ACTIVE`, `COMPLETED`, `EXPIRED`, `CANCELLED`). | `200 OK` (`List<ChallengeResponse>`), `403` |
+| `POST` | `/api/manager/challenges` | `MANAGER` | **Створення нового читацького виклику (M4.1)**<br>Тіло: `{ title, description, requiredBooks, genreId?, deadline, rewardPoints }` | `201 Created` (`ChallengeResponse`), `400`, `403` |
+| `PUT` | `/api/manager/challenges/{id}` | `MANAGER` | **Редагування активного виклику (M4.2)**<br>Тіло: `{ title, description, requiredBooks, genreId?, deadline, rewardPoints }`<br>При зміні умови прогрес користувачів автоматично динамічно перераховується. | `200 OK` (`ChallengeResponse`), `400`, `403`, `404` |
+| `POST` | `/api/manager/challenges/{id}/finish` | `MANAGER` | **Дострокове завершення виклику зі сповіщенням користувачів (M4.3)**<br>Переводить виклик у статус `CANCELLED`, фіксує `finished_at` та сповіщає користувачів із ненульовим прогресом. | `200 OK` (`FinishChallengeResponse`), `400`, `403`, `404` |
+
+---
+
 ## 3. Матриця переходів статусів замовлень (M3)
 
 Згідно з SRS (Таблиця 3), переходи статусів виконуються за такою логікою:
@@ -427,30 +508,19 @@
 
 Наступні ендпоінти узгоджені в SRS і будуть додані на відповідних етапах реалізації:
 
-### 4.1. Оцінки та відгуки (C6)
-- `POST /api/ratings` — оцінити книгу з поставленого замовлення `{ orderId, bookId, value }` (1–5 зірок).
-- `GET /api/ratings/me` — перегляд власних оцінок користувача.
-
-### 4.2. Подарункові набори (C9)
-- `POST /api/gift-sets/generate` — автогенерація набору книг `{ amount, genres[], count? }`.
-- `POST /api/gift-sets/replace-candidates` — пошук альтернативних книг для заміни однієї позиції в межах суми.
-
-### 4.3. Менеджер: Адміністрування акаунтів (M5, M6, M7)
+### 4.1. Менеджер: Адміністрування акаунтів (M5, M6, M7)
 - `GET /api/manager/users?email=` — пошук користувача за email.
 - `GET /api/manager/users/inactive` — вибірка акаунтів без входу понад 2 роки (M5).
 - `POST /api/manager/users/inactive/delete` — видалення неактивних записів із анонімізацією замовлень.
 - `POST /api/manager/users/{id}/block` — ручне блокування акаунта менеджером `{ reason }` (M6).
 - `POST /api/manager/users/{id}/unblock` — розблокування акаунта (M7).
 
-### 4.4. Менеджер: Читацькі виклики та заклади (M4, M8)
-- `POST /api/manager/challenges` — створення нового виклику.
-- `PUT /api/manager/challenges/{id}` — редагування активного виклику.
-- `POST /api/manager/challenges/{id}/finish` — дострокове завершення виклику.
+### 4.2. Менеджер: Заклади (M8)
 - `POST /api/manager/institutions` — створення нового закладу-одержувача.
 - `PUT /api/manager/institutions/{id}` — редагування закладу.
 - `DELETE /api/manager/institutions/{id}` — видалення закладу.
 
-### 4.5. Менеджер: Журнал дарунків та аналітика (M9, M10)
+### 4.3. Менеджер: Журнал дарунків та аналітика (M9, M10)
 - `GET /api/manager/gift-log?institutionId=&from=&to=` — журнал переданих книг.
 - `GET /api/manager/analytics/demand` — аналітика затребуваності книг і жанрів.
 - `GET /api/manager/analytics/stock` — аналітика залишків на складі.
