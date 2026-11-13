@@ -79,6 +79,17 @@ public class Book {
         this.stock = stock;
     }
 
+    public Book(String title, String isbn, BigDecimal price, int stock, Genre genre, Set<Author> authors) {
+        this.title = title;
+        this.isbn = isbn;
+        this.price = price;
+        this.stock = stock;
+        this.genre = genre;
+        if (authors != null) {
+            this.authors = authors;
+        }
+    }
+
     public Long getId() {
         return id;
     }
