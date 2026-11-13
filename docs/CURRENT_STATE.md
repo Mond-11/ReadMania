@@ -20,7 +20,7 @@
 │ Обробка помилок (RFC 9457)    │ ГОТОВО       │ 100% (Problem Details)  │
 │ Контракти API (.http)         │ ГОТОВО       │ 100% (Auth/Cat/Orders)  │
 │ Документація (ERD/Decisions)  │ ГОТОВО       │ 100% (ERD + Architectural)│
-│ JPA Сутності та Репозиторії   │ В ОЧІКУВАННІ │ Наступний етап розробки │
+│ JPA Сутності та Репозиторії   │ ГОТОВО       │ 100% (Entities + Spec)  │
 │ Бізнес-сервіси та Логіка      │ В ОЧІКУВАННІ │ Наступний етап розробки │
 │ REST-контролери               │ В ОЧІКУВАННІ │ Наступний етап розробки │
 │ Фронтенд (UI компоненти)      │ В ОЧІКУВАННІ │ Базова структура Vite   │
@@ -53,7 +53,7 @@
 ---
 
 ### 2.2. База даних та міграції (PostgreSQL 17 + Flyway)
-Реалізовано 8 послідовних версій міграцій та 1 скрипт локального наповнення:
+Реалізовано 9 послідовних версій міграцій та 1 скрипт локального наповнення:
 
 1. **`V1__init.sql`** — Базова ініціалізація схеми.
 2. **`V2__users.sql` (Користувачі та безпека):**
@@ -86,9 +86,15 @@
    - `challenge_completions`: фіксація завершення викликів користувачами. Прогрес розраховується динамічним SQL-запитом без збереження проміжних лічильників.
 8. **`V8__gift_log.sql` (Журнал благодійності):**
    - Плаский журнал `gift_log` з унікальністю `(order_id, book_title)` для звітності перед закладами.
-9. **`R__dev_seed.sql` (Тестові дані для `local`):**
-   - Заповнює тестові жанри, авторів, книги із залишками на складі, заклади та активні виклики.
-10. **Індексація зовнішніх ключів (FK):**
+9. **`V9__srs_alignment.sql` (Узгодження зі специфікацією SRS/UX):**
+   - Захист від brute-force: `users.failed_login_attempts` та `users.locked_until` на 15 хв після 5 спроб (G3).
+   - Відновлення пароля: таблиця `password_reset_tokens` з одноразовими токенами на 1 годину (G3).
+   - Розблокування облікових записів: таблиця `unblock_requests` з обґрунтуванням та модерацією менеджера (M6, M7).
+   - Типи закладів: `institutions.type` (`ORPHANAGE`, `BOARDING_SCHOOL`, `LIBRARY`) (M8, M12).
+   - Менеджерські вибірки та архівування: часткові індекси неоплачених (`idx_orders_unpaid_awaiting`) та архівних (`idx_orders_archived`) замовлень; зміна зв'язку `gift_log.order_id` на `ON DELETE SET NULL` для збереження журналу після повного видалення старих замовлень (M3, 7.2.2.6, 7.2.2.7).
+10. **`R__dev_seed.sql` (Тестові дані для `local`):**
+    - Заповнює тестові жанри, авторів, книги із залишками на складі, типізовані заклади та активні виклики.
+11. **Індексація зовнішніх ключів (FK):**
     - 100% колонок зовнішніх ключів покриті явними індексами (вимога D7), що підтверджено тестом системного каталогу `pg_indexes`.
 
 ---
@@ -151,10 +157,42 @@
 
 ---
 
-### 2.6. Автоматизована верифікація та тести
-У проєкті налаштовано та успішно виконується повний набір із **31 автоматизованого тесту**:
-1. **`SchemaIT` (10 тестів на Testcontainers PostgreSQL 17):**
-   - Перевірка валідності всіх міграцій Flyway на чистій базі.
+### 2.6. Доменна модель (JPA Entities) та Репозиторії
+Повністю реалізовано 100% сумісність Java-класів зі схемою PostgreSQL 17 при активному `ddl-auto: validate`:
+1. **Користувачі та безпека (`ua.readmania.domain.user`):**
+   - `User`: статус (`ACTIVE`/`BLOCKED`), ролі (`USER`/`MANAGER`), захист від brute-force (`failedLoginAttempts`, `lockedUntil`), баланс бонусів, дати реєстрації та останнього входу.
+   - `PasswordResetToken`: одноразові токени з терміном дії 1 година.
+   - `UnblockRequest`: запити на розблокування зі статусами `PENDING`/`APPROVED`/`REJECTED`, обґрунтуванням та резолюцією менеджера.
+2. **Каталог (`ua.readmania.domain.catalog`):**
+   - `Genre`, `Author` та `Book`: нормалізація у 3НФ (`@ManyToMany Set<Author>`), оптимістичне блокування залишків на складі (`@Version`), автоматичне виключення видалених записів (`@SQLRestriction("deleted_at IS NULL")`).
+   - `BookCover`: виділена сутність для збереження бінарних даних обкладинки (`byte[]`) з `@MapsId` для запобігання зайвому навантаженню під час вибірки каталогу.
+   - `BookRepository` та `BookSpecifications`: динамічна фільтрація каталогу G1 (пошук за назвою чи автором, жанром, автором, діапазоном ціни, наявністю `stock > 0`) через `JpaSpecificationExecutor` та оптимізоване завантаження через `@EntityGraph(attributePaths = {"genre", "authors"})` без проблеми N+1.
+3. **Кошик та заклади (`ua.readmania.domain.cart`, `ua.readmania.domain.institution`):**
+   - `CartItem`: композитний первинний ключ `@EmbeddedId CartItemId` з прив'язкою до `User` та `Book`.
+   - `Institution`: верифіковані благодійні заклади з типізацією `InstitutionType` (`ORPHANAGE`, `BOARDING_SCHOOL`, `LIBRARY`).
+4. **Замовлення (`ua.readmania.domain.order`):**
+   - `Order`: розрахунки сум, знижок та бонусів, типи `REGULAR`/`GIFT`, способи оплати та доставки, версіонування `@Version`.
+   - `OrderItem`: незмінні знімки вартості та назви (`titleSnapshot`, `priceSnapshot`).
+   - `OrderStatusHistory`: аудит хронології зміни статусів замовлень.
+5. **Лояльність та благодійність (`ua.readmania.domain.loyalty`, `ua.readmania.domain.challenge`, `ua.readmania.domain.gift`):**
+   - `BonusTransaction`: типи операцій `ORDER_REWARD`, `RATING_REWARD`, `CHALLENGE_REWARD`, `SPENT`, `REFUND`.
+   - `Rating`: оцінки 1–5 зі зв'язками на книгу та замовлення.
+   - `Challenge`, `ChallengeCompletion`: читацькі виклики та фіксація їх виконання.
+   - `GiftLog`: журнал подарованих книг для звітності.
+
+---
+
+### 2.7. Автоматизована верифікація та тести
+У проєкті налаштовано та успішно виконується повний набір із **52 автоматизованих тестів**:
+1. **`DomainRepositoryIT` (6 тестів на Testcontainers PostgreSQL 17):**
+   - Збереження та вибірка користувачів, токенів та запитів розблокування.
+   - Робота каталогу, зв'язок 3НФ, оптимістичне блокування `@Version` та ізольовані обкладинки `BookCover`.
+   - Динамічна фільтрація `BookSpecifications` (пошук, жанр, автор, ціна, наявність) та м'яке видалення.
+   - Композитний ключ кошика `CartItem`.
+   - Замовлення, знімки позицій та аудит статусів.
+   - Програма лояльності, читацькі виклики та звітність `gift_log`.
+2. **`SchemaIT` (15 тестів на Testcontainers PostgreSQL 17):**
+   - Перевірка валідності всіх міграцій Flyway (V1–V9) на чистій базі.
    - Регістронезалежність email (`test@example.com` vs `TEST@EXAMPLE.COM`).
    - Часткова унікальність ISBN для активних книг та дозвіл дублів для видалених.
    - Валідація діапазону оцінок (1–5).
@@ -162,11 +200,16 @@
    - Контроль обмеження знижки (не більше 30%).
    - Поведінка зв'язків: `RESTRICT` для жанрів з книгами, `SET NULL` для замовлень та позицій при видаленні користувача або книги.
    - Захист від повторного нарахування бонусів за одне й те саме замовлення.
-   - Автоматична перевірка наявності індексів на всіх FK-колонках схеми.
-2. **`GlobalExceptionHandlerTest` (10 тестів):**
+   - Захист від brute-force: лічильник спроб та тайм-аут блокування (G3).
+   - Одноразові токени скидання пароля на 1 годину з унікальністю та каскадом (G3).
+   - Запити на розблокування акаунтів (M6, M7) з модерацією менеджера.
+   - Обмеження типів закладів: `ORPHANAGE`, `BOARDING_SCHOOL`, `LIBRARY` (M8, M12).
+   - Збереження записів `gift_log` при повному видаленні архівного замовлення (M3, 7.2.2.7).
+   - Автоматична перевірка наявності індексів на всіх FK-колонках схеми (D7).
+3. **`GlobalExceptionHandlerTest` (10 тестів):**
    - Перевірка коректного мапінгу статусів 400, 401, 403, 404, 405, 409, 415, 500.
    - Валідація наявності `errorId` у 500 помилках та структури `errors` у 400 помилках.
-3. **`SecurityConfigTest` та `LocalProfileSecurityConfigTest` (11 тестів):**
+4. **`SecurityConfigTest` та `LocalProfileSecurityConfigTest` (11 тестів):**
    - Перевірка Default Deny (401 Problem Details на `/api/orders`).
    - Перевірка RBAC (403 Problem Details для `USER` на `/api/manager/books`).
    - Перевірка відкритих шляхів (`/api/catalog/books`, `/actuator/health`).
@@ -181,15 +224,18 @@
 |---|---|---|---|
 | **D2** | Захист від несанкціонованого доступу, HTTPS за проксі, захист від SQLi | **Повністю закрито** | `SecurityConfig`, `application-prod.yml`, JPA |
 | **D3** | Паролі лише через BCrypt, без збереження у відкритому вигляді | **Повністю закрито** | `SecurityConfig.passwordEncoder()`, `V2__users.sql` |
-| **D7** | Обов'язкова індексація всіх колонок зовнішніх ключів (FK) | **Повністю закрито** | Міграції `V2–V8`, тест `SchemaIT.shouldHaveIndexesOnAllForeignKeyColumns` |
+| **D7** | Обов'язкова індексація всіх колонок зовнішніх ключів (FK) | **Повністю закрито** | Міграції `V2–V9`, тест `SchemaIT.shouldHaveIndexesOnAllForeignKeyColumns` |
+| **G3** | Захист від brute-force (15 хв після 5 спроб) та токени скидання пароля (1 год) | **Схема готова** | `V9__srs_alignment.sql`, тести `SchemaIT` |
 | **U1** | Серверне розмежування доступу за ролями (/api/manager/**) | **Повністю закрито** | `SecurityConfig.filterChain()`, тести `SecurityConfigTest` |
 | **U2** | Серверна валідація DTO (@Valid) та єдина структура помилок | **Повністю закрито** | `GlobalExceptionHandler`, модель `ValidationError` |
 | **U3** | Формат помилок валідації `errors[{field, message}]` | **Повністю закрито** | `GlobalExceptionHandler.handleMethodArgumentNotValid` |
 | **R3** | Інформативні типізовані відповіді Problem Details (RFC 9457) | **Повністю закрито** | `GlobalExceptionHandler`, EntryPoint, AccessDeniedHandler |
 | **M1** | М'яке видалення книг (збереження історії замовлень і аналітики) | **Схема готова** | `V3__catalog.sql` (`deleted_at`), `V5__orders.sql` (`order_items` snapshot) |
+| **M3** | Фільтри замовлень менеджера (неоплачені > 7 дн., архів > 3 роки з видаленням) | **Схема готова** | `V9__srs_alignment.sql` (часткові індекси, SET NULL для `gift_log`) |
 | **M5** | Анонімізація неактивних акаунтів та замовлень | **Схема готова** | `V2__users.sql` (частковий індекс), `V5__orders.sql` (SET NULL) |
-| **M6** | Блокування акаунта діє під час відкритого сеансу | **Архітектура готова**| `AccountStatusFilter` у ланцюгу фільтрів Spring Security |
-| **C10**| Замовлення в дар для благодійних закладів (`GIFT`) | **Схема готова** | `V4__cart_institutions.sql`, `V5__orders.sql`, `V8__gift_log.sql` |
+| **M6/M7**| Блокування акаунта та розгляд запитів на розблокування менеджером | **Схема + Безпека** | `V9__srs_alignment.sql` (`unblock_requests`), `AccountStatusFilter` |
+| **M8/M12**| Типізовані благодійні заклади (дитячий будинок, інтернат, бібліотека) | **Схема готова** | `V9__srs_alignment.sql` (`institutions.type`), `R__dev_seed.sql` |
+| **C10**| Замовлення в дар для благодійних закладів (`GIFT`) | **Схема готова** | `V4__cart_institutions.sql`, `V5__orders.sql`, `V8__gift_log.sql`, `V9` |
 | **O2** | Діаграма сутностей і зв'язків (ERD) | **Повністю закрито** | `docs/ERD.md`, `docs/DATABASE_DECISIONS.md` |
 
 ---
@@ -199,12 +245,14 @@
 З точки зору максимізації віддачі та забезпечення швидкого переходу до робочого бізнес-функціоналу, наступні кроки розробки рекомендовано розділити на логічні етапи:
 
 ### Етап 1: Доменна модель (JPA Entities) та Репозиторії (Найвищий пріоритет)
-- Створити JPA-сутності згідно зі схемою V2–V8:
-  - `User` (`@Enumerated(STRING)`, `Role`, `UserStatus`).
+- Створити JPA-сутності згідно зі схемою V2–V9:
+  - `User` (`@Enumerated(STRING)`, `Role`, `UserStatus`, `failedLoginAttempts`, `lockedUntil`).
+  - `PasswordResetToken` (`token`, `expiresAt`, `usedAt`).
+  - `UnblockRequest` (`UnblockRequestStatus`, `reason`, `managerComment`).
   - `Genre`, `Author`, `Book` (`@Version` для оптимістичного блокування, `@SQLRestriction("deleted_at IS NULL")`).
   - `CartItem` (з композитним ключем `@EmbeddedId`).
   - `Order`, `OrderItem`, `OrderStatusHistory`.
-  - `BonusTransaction`, `Rating`, `Challenge`, `ChallengeCompletion`, `Institution`, `GiftLog`.
+  - `BonusTransaction`, `Rating`, `Challenge`, `ChallengeCompletion`, `Institution` (`InstitutionType`), `GiftLog`.
 - Створити `Spring Data JPA` репозиторії з оптимізованими запитами (використання `@EntityGraph` для уникнення N+1 проблеми між книгами, авторами та жанрами).
 
 ### Етап 2: Сервісний шар та бізнес-логіка

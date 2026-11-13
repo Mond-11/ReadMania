@@ -40,6 +40,15 @@ ReadMania/
 │       │   │   │   ├── ConflictException.java        # Доменний виняток для конфліктів стану (409)
 │       │   │   │   ├── BusinessRuleException.java    # Доменний виняток для порушення бізнес-правил (400/409)
 │       │   │   │   └── ValidationError.java          # Модель деталізації помилок валідації (field, message)
+│       │   │   ├── domain/            # Доменний шар (JPA-сутності та Spring Data репозиторії)
+│       │   │   │   ├── user/          # User, Role, UserStatus, PasswordResetToken, UnblockRequest
+│       │   │   │   ├── catalog/       # Book, Genre, Author, BookCover, BookSpecifications, BookRepository
+│       │   │   │   ├── cart/          # CartItem, CartItemId, CartItemRepository
+│       │   │   │   ├── institution/   # Institution, InstitutionType, InstitutionRepository
+│       │   │   │   ├── order/         # Order, OrderItem, OrderStatusHistory, OrderRepository
+│       │   │   │   ├── loyalty/       # BonusTransaction, Rating, BonusTransactionRepository, RatingRepository
+│       │   │   │   ├── challenge/     # Challenge, ChallengeCompletion, ChallengeRepository
+│       │   │   │   └── gift/          # GiftLog, GiftLogRepository
 │       │   │   └── security/          # Безпека та автентифікація
 │       │   │       ├── SecurityConfig.java           # Конфігурація Spring Security (RBAC, default deny, BCrypt)
 │       │   │       ├── ProblemDetailsAuthenticationEntryPoint.java  # Обробник 401 Unauthorized у форматі Problem Details
@@ -66,6 +75,8 @@ ReadMania/
 │           │   ├── TestcontainersConfiguration.java  # Singleton-контейнер PostgreSQL 17 (@ServiceConnection)
 │           │   ├── SchemaIT.java                     # Інтеграційні тести схеми БД, FK-індексів та бізнес-обмежень
 │           │   ├── ReadmaniaBackendApplicationTests.java # Тест завантаження контексту Spring Boot
+│           │   ├── domain/
+│           │   │   └── DomainRepositoryIT.java       # Інтеграційні тести JPA-сутностей, репозиторіїв та специфікацій G1
 │           │   ├── common/
 │           │   │   └── GlobalExceptionHandlerTest.java   # Тести типізованих відповідей та статусів помилок
 │           │   └── security/
@@ -124,7 +135,7 @@ ReadMania/
 
 ### 3. База даних та міграції
 - Використовується **PostgreSQL 17**.
-- Керування схемою здійснюється через **Flyway** (`db/migration/V1__init.sql`).
+- Керування схемою здійснюється через **Flyway** (`db/migration/V1__init.sql` ... `V9__srs_alignment.sql`).
 - Hibernate налаштовано у режимі валідації схеми (`ddl-auto: validate`).
 
 ---
