@@ -17,7 +17,6 @@ frontend/dist/
 
 # Секрети та локальні конфіги
 .env
-application-local.yml
 http-client.private.env.json
 **/http-client.private.env.json
 *.dump
