@@ -61,6 +61,15 @@ public class BonusTransaction {
         this.type = type;
     }
 
+    public BonusTransaction(User user, int points, BonusTransactionType type, Order order, Book book, Challenge challenge) {
+        this.user = user;
+        this.points = points;
+        this.type = type;
+        this.order = order;
+        this.book = book;
+        this.challenge = challenge;
+    }
+
     public Long getId() {
         return id;
     }

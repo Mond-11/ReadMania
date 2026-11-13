@@ -80,6 +80,14 @@ public class Challenge {
         this.title = title;
     }
 
+    public String getName() {
+        return title;
+    }
+
+    public void setName(String name) {
+        this.title = name;
+    }
+
     public String getDescription() {
         return description;
     }

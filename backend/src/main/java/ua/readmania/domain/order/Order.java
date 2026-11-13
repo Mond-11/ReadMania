@@ -97,6 +97,11 @@ public class Order {
     public Order() {
     }
 
+    public Order(User user, OrderType type, PaymentMethod paymentMethod, BigDecimal itemsTotal, BigDecimal discountAmount, int pointsUsed) {
+        this(user, type, paymentMethod, itemsTotal, discountAmount, pointsUsed,
+                itemsTotal != null && discountAmount != null ? itemsTotal.subtract(discountAmount) : BigDecimal.ZERO);
+    }
+
     public Order(User user, OrderType type, PaymentMethod paymentMethod, BigDecimal itemsTotal, BigDecimal discountAmount, int pointsUsed, BigDecimal totalToPay) {
         this.user = user;
         this.type = type != null ? type : OrderType.REGULAR;
@@ -105,6 +110,14 @@ public class Order {
         this.discountAmount = discountAmount;
         this.pointsUsed = pointsUsed;
         this.totalToPay = totalToPay;
+    }
+
+    public String getAddress() {
+        return deliveryAddress;
+    }
+
+    public void setAddress(String address) {
+        this.deliveryAddress = address;
     }
 
     public Long getId() {
