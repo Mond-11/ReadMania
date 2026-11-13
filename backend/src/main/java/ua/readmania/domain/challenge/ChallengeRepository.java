@@ -10,4 +10,8 @@ public interface ChallengeRepository extends JpaRepository<Challenge, Long> {
     List<Challenge> findByStatus(ChallengeStatus status);
 
     List<Challenge> findByStatusOrderByDeadlineAsc(ChallengeStatus status);
+
+    List<Challenge> findAllByOrderByCreatedAtDesc();
+
+    List<Challenge> findByStatusOrderByCreatedAtDesc(ChallengeStatus status);
 }

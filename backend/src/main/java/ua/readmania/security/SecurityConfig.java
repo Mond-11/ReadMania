@@ -98,7 +98,7 @@ public class SecurityConfig {
                     // Public endpoints
                     .requestMatchers("/api/auth/register", "/api/auth/login", "/api/auth/logout", "/api/auth/password-reset/**").permitAll()
                     .requestMatchers("/api/auth/me").authenticated()
-                    .requestMatchers("/api/catalog/**", "/api/institutions/**", "/api/challenges/**").permitAll()
+                    .requestMatchers("/api/catalog/**", "/api/institutions/**", "/api/challenges/**", "/api/gift-sets/**", "/api/ratings/book/**").permitAll()
                     // Actuator health check (without sensitive details)
                     .requestMatchers("/actuator/health").permitAll()
                     // U1: Manager endpoints restricted to MANAGER role

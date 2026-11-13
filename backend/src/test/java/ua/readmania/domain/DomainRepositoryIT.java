@@ -122,6 +122,14 @@ class DomainRepositoryIT extends BaseIntegrationTest {
     @Autowired
     private GiftLogRepository giftLogRepository;
 
+    @Autowired
+    private org.springframework.jdbc.core.simple.JdbcClient jdbcClient;
+
+    @org.junit.jupiter.api.BeforeEach
+    void setUp() {
+        jdbcClient.sql("TRUNCATE TABLE bonus_transactions, ratings, challenge_completions, challenges, order_status_history, order_items, gift_log, orders, cart_items, book_authors, book_covers, books, authors, genres, password_reset_tokens, unblock_requests, users CASCADE").update();
+    }
+
     @Test
     @DisplayName("User та пов'язані сутності (PasswordResetToken, UnblockRequest) зберігаються та коректно вибираються")
     void shouldSaveAndQueryUserWithTokensAndUnblockRequests() {
