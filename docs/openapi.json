@@ -1,0 +1,3112 @@
+{
+  "openapi" : "3.1.0",
+  "info" : {
+    "title" : "OpenAPI definition",
+    "version" : "v0"
+  },
+  "servers" : [ {
+    "url" : "http://localhost",
+    "description" : "Generated server url"
+  } ],
+  "paths" : {
+    "/api/manager/genres/{id}" : {
+      "put" : {
+        "tags" : [ "manager-catalog-controller" ],
+        "operationId" : "updateGenre",
+        "parameters" : [ {
+          "name" : "id",
+          "in" : "path",
+          "required" : true,
+          "schema" : {
+            "type" : "integer",
+            "format" : "int64"
+          }
+        } ],
+        "requestBody" : {
+          "content" : {
+            "application/json" : {
+              "schema" : {
+                "$ref" : "#/components/schemas/GenreRequest"
+              }
+            }
+          },
+          "required" : true
+        },
+        "responses" : {
+          "200" : {
+            "description" : "OK",
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/GenreResponse"
+                }
+              }
+            }
+          }
+        }
+      },
+      "delete" : {
+        "tags" : [ "manager-catalog-controller" ],
+        "operationId" : "deleteGenre",
+        "parameters" : [ {
+          "name" : "id",
+          "in" : "path",
+          "required" : true,
+          "schema" : {
+            "type" : "integer",
+            "format" : "int64"
+          }
+        } ],
+        "responses" : {
+          "200" : {
+            "description" : "OK"
+          }
+        }
+      }
+    },
+    "/api/manager/challenges/{id}" : {
+      "put" : {
+        "tags" : [ "manager-challenge-controller" ],
+        "operationId" : "updateChallenge",
+        "parameters" : [ {
+          "name" : "id",
+          "in" : "path",
+          "required" : true,
+          "schema" : {
+            "type" : "integer",
+            "format" : "int64"
+          }
+        } ],
+        "requestBody" : {
+          "content" : {
+            "application/json" : {
+              "schema" : {
+                "$ref" : "#/components/schemas/UpdateChallengeRequest"
+              }
+            }
+          },
+          "required" : true
+        },
+        "responses" : {
+          "200" : {
+            "description" : "OK",
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ChallengeResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/manager/books/{id}" : {
+      "put" : {
+        "tags" : [ "manager-catalog-controller" ],
+        "operationId" : "updateBook",
+        "parameters" : [ {
+          "name" : "id",
+          "in" : "path",
+          "required" : true,
+          "schema" : {
+            "type" : "integer",
+            "format" : "int64"
+          }
+        } ],
+        "requestBody" : {
+          "content" : {
+            "application/json" : {
+              "schema" : {
+                "$ref" : "#/components/schemas/UpdateBookRequest"
+              }
+            }
+          },
+          "required" : true
+        },
+        "responses" : {
+          "200" : {
+            "description" : "OK",
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/BookDetailsResponse"
+                }
+              }
+            }
+          }
+        }
+      },
+      "delete" : {
+        "tags" : [ "manager-catalog-controller" ],
+        "operationId" : "deleteBook",
+        "parameters" : [ {
+          "name" : "id",
+          "in" : "path",
+          "required" : true,
+          "schema" : {
+            "type" : "integer",
+            "format" : "int64"
+          }
+        } ],
+        "responses" : {
+          "200" : {
+            "description" : "OK"
+          }
+        }
+      }
+    },
+    "/api/cart/items/{bookId}" : {
+      "put" : {
+        "tags" : [ "cart-controller" ],
+        "operationId" : "updateCartItem",
+        "parameters" : [ {
+          "name" : "bookId",
+          "in" : "path",
+          "required" : true,
+          "schema" : {
+            "type" : "integer",
+            "format" : "int64"
+          }
+        } ],
+        "requestBody" : {
+          "content" : {
+            "application/json" : {
+              "schema" : {
+                "$ref" : "#/components/schemas/UpdateCartItemRequest"
+              }
+            }
+          },
+          "required" : true
+        },
+        "responses" : {
+          "200" : {
+            "description" : "OK",
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/CartResponse"
+                }
+              }
+            }
+          }
+        }
+      },
+      "delete" : {
+        "tags" : [ "cart-controller" ],
+        "operationId" : "removeFromCart",
+        "parameters" : [ {
+          "name" : "bookId",
+          "in" : "path",
+          "required" : true,
+          "schema" : {
+            "type" : "integer",
+            "format" : "int64"
+          }
+        } ],
+        "responses" : {
+          "200" : {
+            "description" : "OK",
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/CartResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/account/password" : {
+      "put" : {
+        "tags" : [ "profile-controller" ],
+        "operationId" : "changePassword",
+        "requestBody" : {
+          "content" : {
+            "application/json" : {
+              "schema" : {
+                "$ref" : "#/components/schemas/ChangePasswordRequest"
+              }
+            }
+          },
+          "required" : true
+        },
+        "responses" : {
+          "200" : {
+            "description" : "OK",
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/UserResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/profile/password" : {
+      "put" : {
+        "tags" : [ "profile-controller" ],
+        "operationId" : "changePassword_1",
+        "requestBody" : {
+          "content" : {
+            "application/json" : {
+              "schema" : {
+                "$ref" : "#/components/schemas/ChangePasswordRequest"
+              }
+            }
+          },
+          "required" : true
+        },
+        "responses" : {
+          "200" : {
+            "description" : "OK",
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/UserResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/profile" : {
+      "get" : {
+        "tags" : [ "profile-controller" ],
+        "operationId" : "getProfile",
+        "responses" : {
+          "200" : {
+            "description" : "OK",
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/UserResponse"
+                }
+              }
+            }
+          }
+        }
+      },
+      "put" : {
+        "tags" : [ "profile-controller" ],
+        "operationId" : "updateProfile",
+        "requestBody" : {
+          "content" : {
+            "application/json" : {
+              "schema" : {
+                "$ref" : "#/components/schemas/UpdateProfileRequest"
+              }
+            }
+          },
+          "required" : true
+        },
+        "responses" : {
+          "200" : {
+            "description" : "OK",
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/UserResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/account" : {
+      "get" : {
+        "tags" : [ "profile-controller" ],
+        "operationId" : "getProfile_1",
+        "responses" : {
+          "200" : {
+            "description" : "OK",
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/UserResponse"
+                }
+              }
+            }
+          }
+        }
+      },
+      "put" : {
+        "tags" : [ "profile-controller" ],
+        "operationId" : "updateProfile_1",
+        "requestBody" : {
+          "content" : {
+            "application/json" : {
+              "schema" : {
+                "$ref" : "#/components/schemas/UpdateProfileRequest"
+              }
+            }
+          },
+          "required" : true
+        },
+        "responses" : {
+          "200" : {
+            "description" : "OK",
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/UserResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/ratings" : {
+      "post" : {
+        "tags" : [ "rating-controller" ],
+        "operationId" : "addRating",
+        "requestBody" : {
+          "content" : {
+            "application/json" : {
+              "schema" : {
+                "$ref" : "#/components/schemas/CreateRatingRequest"
+              }
+            }
+          },
+          "required" : true
+        },
+        "responses" : {
+          "200" : {
+            "description" : "OK",
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/RatingResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/orders" : {
+      "get" : {
+        "tags" : [ "order-controller" ],
+        "operationId" : "getUserOrders",
+        "parameters" : [ {
+          "name" : "pageable",
+          "in" : "query",
+          "required" : true,
+          "schema" : {
+            "$ref" : "#/components/schemas/Pageable"
+          }
+        } ],
+        "responses" : {
+          "200" : {
+            "description" : "OK",
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/PagedModel"
+                }
+              }
+            }
+          }
+        }
+      },
+      "post" : {
+        "tags" : [ "order-controller" ],
+        "operationId" : "createRegularOrder",
+        "requestBody" : {
+          "content" : {
+            "application/json" : {
+              "schema" : {
+                "$ref" : "#/components/schemas/CreateOrderRequest"
+              }
+            }
+          },
+          "required" : true
+        },
+        "responses" : {
+          "200" : {
+            "description" : "OK",
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/OrderDetailsResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/orders/{id}/cancel" : {
+      "post" : {
+        "tags" : [ "order-controller" ],
+        "operationId" : "cancelOrder",
+        "parameters" : [ {
+          "name" : "id",
+          "in" : "path",
+          "required" : true,
+          "schema" : {
+            "type" : "integer",
+            "format" : "int64"
+          }
+        } ],
+        "responses" : {
+          "200" : {
+            "description" : "OK",
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/OrderDetailsResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/orders/preview" : {
+      "post" : {
+        "tags" : [ "order-controller" ],
+        "operationId" : "previewOrder",
+        "requestBody" : {
+          "content" : {
+            "application/json" : {
+              "schema" : {
+                "$ref" : "#/components/schemas/OrderPreviewRequest"
+              }
+            }
+          }
+        },
+        "responses" : {
+          "200" : {
+            "description" : "OK",
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/OrderPreviewResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/orders/gift" : {
+      "post" : {
+        "tags" : [ "order-controller" ],
+        "operationId" : "createGiftOrder",
+        "requestBody" : {
+          "content" : {
+            "application/json" : {
+              "schema" : {
+                "$ref" : "#/components/schemas/CreateGiftOrderRequest"
+              }
+            }
+          },
+          "required" : true
+        },
+        "responses" : {
+          "200" : {
+            "description" : "OK",
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/OrderDetailsResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/manager/orders/cancel-unpaid-overdue" : {
+      "post" : {
+        "tags" : [ "manager-order-controller" ],
+        "operationId" : "cancelUnpaidOverdueOrders",
+        "requestBody" : {
+          "content" : {
+            "application/json" : {
+              "schema" : {
+                "$ref" : "#/components/schemas/BatchOrderActionRequest"
+              }
+            }
+          },
+          "required" : true
+        },
+        "responses" : {
+          "200" : {
+            "description" : "OK",
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "type" : "object",
+                  "additionalProperties" : {
+                    "type" : "object"
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/manager/genres" : {
+      "post" : {
+        "tags" : [ "manager-catalog-controller" ],
+        "operationId" : "createGenre",
+        "requestBody" : {
+          "content" : {
+            "application/json" : {
+              "schema" : {
+                "$ref" : "#/components/schemas/GenreRequest"
+              }
+            }
+          },
+          "required" : true
+        },
+        "responses" : {
+          "200" : {
+            "description" : "OK",
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/GenreResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/manager/challenges" : {
+      "get" : {
+        "tags" : [ "manager-challenge-controller" ],
+        "operationId" : "getAllChallenges",
+        "parameters" : [ {
+          "name" : "status",
+          "in" : "query",
+          "required" : false,
+          "schema" : {
+            "type" : "string",
+            "enum" : [ "ACTIVE", "COMPLETED", "EXPIRED", "CANCELLED" ]
+          }
+        } ],
+        "responses" : {
+          "200" : {
+            "description" : "OK",
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "type" : "array",
+                  "items" : {
+                    "$ref" : "#/components/schemas/ChallengeResponse"
+                  }
+                }
+              }
+            }
+          }
+        }
+      },
+      "post" : {
+        "tags" : [ "manager-challenge-controller" ],
+        "operationId" : "createChallenge",
+        "requestBody" : {
+          "content" : {
+            "application/json" : {
+              "schema" : {
+                "$ref" : "#/components/schemas/CreateChallengeRequest"
+              }
+            }
+          },
+          "required" : true
+        },
+        "responses" : {
+          "200" : {
+            "description" : "OK",
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ChallengeResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/manager/challenges/{id}/finish" : {
+      "post" : {
+        "tags" : [ "manager-challenge-controller" ],
+        "operationId" : "finishChallengeEarly",
+        "parameters" : [ {
+          "name" : "id",
+          "in" : "path",
+          "required" : true,
+          "schema" : {
+            "type" : "integer",
+            "format" : "int64"
+          }
+        } ],
+        "responses" : {
+          "200" : {
+            "description" : "OK",
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/FinishChallengeResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/manager/books" : {
+      "post" : {
+        "tags" : [ "manager-catalog-controller" ],
+        "operationId" : "createBook",
+        "requestBody" : {
+          "content" : {
+            "application/json" : {
+              "schema" : {
+                "$ref" : "#/components/schemas/CreateBookRequest"
+              }
+            }
+          },
+          "required" : true
+        },
+        "responses" : {
+          "200" : {
+            "description" : "OK",
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/BookDetailsResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/manager/books/{id}/cover" : {
+      "post" : {
+        "tags" : [ "manager-catalog-controller" ],
+        "operationId" : "uploadBookCover",
+        "parameters" : [ {
+          "name" : "id",
+          "in" : "path",
+          "required" : true,
+          "schema" : {
+            "type" : "integer",
+            "format" : "int64"
+          }
+        } ],
+        "requestBody" : {
+          "content" : {
+            "multipart/form-data" : {
+              "schema" : {
+                "type" : "object",
+                "properties" : {
+                  "file" : {
+                    "type" : "string",
+                    "format" : "binary"
+                  }
+                },
+                "required" : [ "file" ]
+              }
+            }
+          }
+        },
+        "responses" : {
+          "200" : {
+            "description" : "OK"
+          }
+        }
+      }
+    },
+    "/api/manager/books/import-csv" : {
+      "post" : {
+        "tags" : [ "manager-catalog-controller" ],
+        "operationId" : "importBooksFromCsv",
+        "requestBody" : {
+          "content" : {
+            "multipart/form-data" : {
+              "schema" : {
+                "type" : "object",
+                "properties" : {
+                  "file" : {
+                    "type" : "string",
+                    "format" : "binary"
+                  }
+                },
+                "required" : [ "file" ]
+              }
+            }
+          }
+        },
+        "responses" : {
+          "200" : {
+            "description" : "OK",
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/CsvImportResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/manager/authors" : {
+      "post" : {
+        "tags" : [ "manager-catalog-controller" ],
+        "operationId" : "createAuthor",
+        "requestBody" : {
+          "content" : {
+            "application/json" : {
+              "schema" : {
+                "$ref" : "#/components/schemas/CreateAuthorRequest"
+              }
+            }
+          },
+          "required" : true
+        },
+        "responses" : {
+          "200" : {
+            "description" : "OK",
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/AuthorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/gift-sets/replace" : {
+      "post" : {
+        "tags" : [ "gift-set-controller" ],
+        "operationId" : "replaceBook",
+        "requestBody" : {
+          "content" : {
+            "application/json" : {
+              "schema" : {
+                "$ref" : "#/components/schemas/ReplaceGiftSetBookRequest"
+              }
+            }
+          },
+          "required" : true
+        },
+        "responses" : {
+          "200" : {
+            "description" : "OK",
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/GiftSetResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/gift-sets/replace-candidates" : {
+      "post" : {
+        "tags" : [ "gift-set-controller" ],
+        "operationId" : "getReplaceCandidates",
+        "requestBody" : {
+          "content" : {
+            "application/json" : {
+              "schema" : {
+                "$ref" : "#/components/schemas/ReplaceGiftSetBookRequest"
+              }
+            }
+          },
+          "required" : true
+        },
+        "responses" : {
+          "200" : {
+            "description" : "OK",
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ReplaceCandidatesResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/gift-sets/generate" : {
+      "post" : {
+        "tags" : [ "gift-set-controller" ],
+        "operationId" : "generateGiftSet",
+        "requestBody" : {
+          "content" : {
+            "application/json" : {
+              "schema" : {
+                "$ref" : "#/components/schemas/GenerateGiftSetRequest"
+              }
+            }
+          },
+          "required" : true
+        },
+        "responses" : {
+          "200" : {
+            "description" : "OK",
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/GiftSetResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/cart/items" : {
+      "post" : {
+        "tags" : [ "cart-controller" ],
+        "operationId" : "addToCart",
+        "requestBody" : {
+          "content" : {
+            "application/json" : {
+              "schema" : {
+                "$ref" : "#/components/schemas/AddToCartRequest"
+              }
+            }
+          },
+          "required" : true
+        },
+        "responses" : {
+          "200" : {
+            "description" : "OK",
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/CartResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/auth/unblock-request" : {
+      "post" : {
+        "tags" : [ "auth-controller" ],
+        "operationId" : "submitUnblockRequest",
+        "requestBody" : {
+          "content" : {
+            "application/json" : {
+              "schema" : {
+                "$ref" : "#/components/schemas/CreateUnblockRequest"
+              }
+            }
+          },
+          "required" : true
+        },
+        "responses" : {
+          "200" : {
+            "description" : "OK",
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "type" : "object",
+                  "additionalProperties" : {
+                    "type" : "string"
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/auth/register" : {
+      "post" : {
+        "tags" : [ "auth-controller" ],
+        "operationId" : "register",
+        "requestBody" : {
+          "content" : {
+            "application/json" : {
+              "schema" : {
+                "$ref" : "#/components/schemas/RegisterRequest"
+              }
+            }
+          },
+          "required" : true
+        },
+        "responses" : {
+          "200" : {
+            "description" : "OK",
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/UserResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/auth/password-reset/request" : {
+      "post" : {
+        "tags" : [ "auth-controller" ],
+        "operationId" : "requestPasswordReset",
+        "requestBody" : {
+          "content" : {
+            "application/json" : {
+              "schema" : {
+                "$ref" : "#/components/schemas/PasswordResetRequest"
+              }
+            }
+          },
+          "required" : true
+        },
+        "responses" : {
+          "200" : {
+            "description" : "OK",
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "type" : "object",
+                  "additionalProperties" : {
+                    "type" : "string"
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/auth/password-reset/confirm" : {
+      "post" : {
+        "tags" : [ "auth-controller" ],
+        "operationId" : "confirmPasswordReset",
+        "requestBody" : {
+          "content" : {
+            "application/json" : {
+              "schema" : {
+                "$ref" : "#/components/schemas/PasswordResetConfirmRequest"
+              }
+            }
+          },
+          "required" : true
+        },
+        "responses" : {
+          "200" : {
+            "description" : "OK",
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "type" : "object",
+                  "additionalProperties" : {
+                    "type" : "string"
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/auth/logout" : {
+      "post" : {
+        "tags" : [ "auth-controller" ],
+        "operationId" : "logout",
+        "responses" : {
+          "200" : {
+            "description" : "OK",
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "type" : "object",
+                  "additionalProperties" : {
+                    "type" : "string"
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/auth/login" : {
+      "post" : {
+        "tags" : [ "auth-controller" ],
+        "operationId" : "login",
+        "requestBody" : {
+          "content" : {
+            "application/json" : {
+              "schema" : {
+                "$ref" : "#/components/schemas/LoginRequest"
+              }
+            }
+          },
+          "required" : true
+        },
+        "responses" : {
+          "200" : {
+            "description" : "OK",
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/UserResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/manager/orders/{id}/status" : {
+      "patch" : {
+        "tags" : [ "manager-order-controller" ],
+        "operationId" : "updateOrderStatus",
+        "parameters" : [ {
+          "name" : "id",
+          "in" : "path",
+          "required" : true,
+          "schema" : {
+            "type" : "integer",
+            "format" : "int64"
+          }
+        } ],
+        "requestBody" : {
+          "content" : {
+            "application/json" : {
+              "schema" : {
+                "$ref" : "#/components/schemas/UpdateOrderStatusRequest"
+              }
+            }
+          },
+          "required" : true
+        },
+        "responses" : {
+          "200" : {
+            "description" : "OK",
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/OrderDetailsResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/ratings/me" : {
+      "get" : {
+        "tags" : [ "rating-controller" ],
+        "operationId" : "getMyRatings",
+        "responses" : {
+          "200" : {
+            "description" : "OK",
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "type" : "array",
+                  "items" : {
+                    "$ref" : "#/components/schemas/RatingResponse"
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/ratings/book/{bookId}" : {
+      "get" : {
+        "tags" : [ "rating-controller" ],
+        "operationId" : "getBookRatings",
+        "parameters" : [ {
+          "name" : "bookId",
+          "in" : "path",
+          "required" : true,
+          "schema" : {
+            "type" : "integer",
+            "format" : "int64"
+          }
+        } ],
+        "responses" : {
+          "200" : {
+            "description" : "OK",
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "type" : "array",
+                  "items" : {
+                    "$ref" : "#/components/schemas/PublicRatingResponse"
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/orders/{id}" : {
+      "get" : {
+        "tags" : [ "order-controller" ],
+        "operationId" : "getOrderById",
+        "parameters" : [ {
+          "name" : "id",
+          "in" : "path",
+          "required" : true,
+          "schema" : {
+            "type" : "integer",
+            "format" : "int64"
+          }
+        } ],
+        "responses" : {
+          "200" : {
+            "description" : "OK",
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/OrderDetailsResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/manager/orders" : {
+      "get" : {
+        "tags" : [ "manager-order-controller" ],
+        "operationId" : "getOrders",
+        "parameters" : [ {
+          "name" : "status",
+          "in" : "query",
+          "required" : false,
+          "schema" : {
+            "type" : "string",
+            "enum" : [ "AWAITING_PAYMENT", "PAID", "DELIVERED", "CANCELLED" ]
+          }
+        }, {
+          "name" : "unpaidOverdue",
+          "in" : "query",
+          "required" : false,
+          "schema" : {
+            "type" : "boolean"
+          }
+        }, {
+          "name" : "archived",
+          "in" : "query",
+          "required" : false,
+          "schema" : {
+            "type" : "boolean"
+          }
+        }, {
+          "name" : "pageable",
+          "in" : "query",
+          "required" : true,
+          "schema" : {
+            "$ref" : "#/components/schemas/Pageable"
+          }
+        } ],
+        "responses" : {
+          "200" : {
+            "description" : "OK",
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/PagedModel"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/manager/orders/{id}" : {
+      "get" : {
+        "tags" : [ "manager-order-controller" ],
+        "operationId" : "getOrderById_1",
+        "parameters" : [ {
+          "name" : "id",
+          "in" : "path",
+          "required" : true,
+          "schema" : {
+            "type" : "integer",
+            "format" : "int64"
+          }
+        } ],
+        "responses" : {
+          "200" : {
+            "description" : "OK",
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/OrderDetailsResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/loyalty/balance" : {
+      "get" : {
+        "tags" : [ "loyalty-controller" ],
+        "operationId" : "getLoyaltyBalance",
+        "responses" : {
+          "200" : {
+            "description" : "OK",
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/LoyaltyBalanceResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/loyalty/transactions" : {
+      "get" : {
+        "tags" : [ "loyalty-controller" ],
+        "operationId" : "getLoyaltyBalance_1",
+        "responses" : {
+          "200" : {
+            "description" : "OK",
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/LoyaltyBalanceResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/institutions" : {
+      "get" : {
+        "tags" : [ "institution-controller" ],
+        "operationId" : "getInstitutions",
+        "parameters" : [ {
+          "name" : "type",
+          "in" : "query",
+          "required" : false,
+          "schema" : {
+            "type" : "string",
+            "enum" : [ "ORPHANAGE", "BOARDING_SCHOOL", "LIBRARY" ]
+          }
+        }, {
+          "name" : "query",
+          "in" : "query",
+          "required" : false,
+          "schema" : {
+            "type" : "string"
+          }
+        } ],
+        "responses" : {
+          "200" : {
+            "description" : "OK",
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "type" : "array",
+                  "items" : {
+                    "$ref" : "#/components/schemas/InstitutionResponse"
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/institutions/{id}" : {
+      "get" : {
+        "tags" : [ "institution-controller" ],
+        "operationId" : "getInstitutionById",
+        "parameters" : [ {
+          "name" : "id",
+          "in" : "path",
+          "required" : true,
+          "schema" : {
+            "type" : "integer",
+            "format" : "int64"
+          }
+        } ],
+        "responses" : {
+          "200" : {
+            "description" : "OK",
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/InstitutionResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/challenges" : {
+      "get" : {
+        "tags" : [ "challenge-controller" ],
+        "operationId" : "getChallenges",
+        "responses" : {
+          "200" : {
+            "description" : "OK",
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "type" : "array",
+                  "items" : {
+                    "$ref" : "#/components/schemas/ChallengeResponse"
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/challenges/{id}" : {
+      "get" : {
+        "tags" : [ "challenge-controller" ],
+        "operationId" : "getChallengeById",
+        "parameters" : [ {
+          "name" : "id",
+          "in" : "path",
+          "required" : true,
+          "schema" : {
+            "type" : "integer",
+            "format" : "int64"
+          }
+        } ],
+        "responses" : {
+          "200" : {
+            "description" : "OK",
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ChallengeResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/catalog/genres" : {
+      "get" : {
+        "tags" : [ "catalog-controller" ],
+        "operationId" : "getGenres",
+        "responses" : {
+          "200" : {
+            "description" : "OK",
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "type" : "array",
+                  "items" : {
+                    "$ref" : "#/components/schemas/GenreResponse"
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/catalog/books" : {
+      "get" : {
+        "tags" : [ "catalog-controller" ],
+        "operationId" : "getBooks",
+        "parameters" : [ {
+          "name" : "query",
+          "in" : "query",
+          "required" : false,
+          "schema" : {
+            "type" : "string"
+          }
+        }, {
+          "name" : "q",
+          "in" : "query",
+          "required" : false,
+          "schema" : {
+            "type" : "string"
+          }
+        }, {
+          "name" : "genre",
+          "in" : "query",
+          "required" : false,
+          "schema" : {
+            "type" : "string"
+          }
+        }, {
+          "name" : "genreId",
+          "in" : "query",
+          "required" : false,
+          "schema" : {
+            "type" : "integer",
+            "format" : "int64"
+          }
+        }, {
+          "name" : "author",
+          "in" : "query",
+          "required" : false,
+          "schema" : {
+            "type" : "string"
+          }
+        }, {
+          "name" : "authorId",
+          "in" : "query",
+          "required" : false,
+          "schema" : {
+            "type" : "integer",
+            "format" : "int64"
+          }
+        }, {
+          "name" : "priceMin",
+          "in" : "query",
+          "required" : false,
+          "schema" : {
+            "type" : "number"
+          }
+        }, {
+          "name" : "priceMax",
+          "in" : "query",
+          "required" : false,
+          "schema" : {
+            "type" : "number"
+          }
+        }, {
+          "name" : "stockMin",
+          "in" : "query",
+          "required" : false,
+          "schema" : {
+            "type" : "integer",
+            "format" : "int32"
+          }
+        }, {
+          "name" : "stockMax",
+          "in" : "query",
+          "required" : false,
+          "schema" : {
+            "type" : "integer",
+            "format" : "int32"
+          }
+        }, {
+          "name" : "inStock",
+          "in" : "query",
+          "required" : false,
+          "schema" : {
+            "type" : "boolean"
+          }
+        }, {
+          "name" : "page",
+          "in" : "query",
+          "required" : false,
+          "schema" : {
+            "type" : "integer",
+            "format" : "int32",
+            "default" : 0
+          }
+        }, {
+          "name" : "size",
+          "in" : "query",
+          "required" : false,
+          "schema" : {
+            "type" : "integer",
+            "format" : "int32",
+            "default" : 10
+          }
+        }, {
+          "name" : "sort",
+          "in" : "query",
+          "required" : false,
+          "schema" : {
+            "type" : "string"
+          }
+        } ],
+        "responses" : {
+          "200" : {
+            "description" : "OK",
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/PagedModelBookSummaryResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/catalog/books/{id}" : {
+      "get" : {
+        "tags" : [ "catalog-controller" ],
+        "operationId" : "getBookById",
+        "parameters" : [ {
+          "name" : "id",
+          "in" : "path",
+          "required" : true,
+          "schema" : {
+            "type" : "integer",
+            "format" : "int64"
+          }
+        } ],
+        "responses" : {
+          "200" : {
+            "description" : "OK",
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/BookDetailsResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/catalog/books/{id}/cover" : {
+      "get" : {
+        "tags" : [ "catalog-controller" ],
+        "operationId" : "getBookCover",
+        "parameters" : [ {
+          "name" : "id",
+          "in" : "path",
+          "required" : true,
+          "schema" : {
+            "type" : "integer",
+            "format" : "int64"
+          }
+        } ],
+        "responses" : {
+          "200" : {
+            "description" : "OK",
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "type" : "string",
+                  "format" : "byte"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/catalog/authors" : {
+      "get" : {
+        "tags" : [ "catalog-controller" ],
+        "operationId" : "getAuthors",
+        "responses" : {
+          "200" : {
+            "description" : "OK",
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "type" : "array",
+                  "items" : {
+                    "$ref" : "#/components/schemas/AuthorResponse"
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/cart" : {
+      "get" : {
+        "tags" : [ "cart-controller" ],
+        "operationId" : "getCart",
+        "responses" : {
+          "200" : {
+            "description" : "OK",
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/CartResponse"
+                }
+              }
+            }
+          }
+        }
+      },
+      "delete" : {
+        "tags" : [ "cart-controller" ],
+        "operationId" : "clearCart",
+        "responses" : {
+          "200" : {
+            "description" : "OK"
+          }
+        }
+      }
+    },
+    "/api/auth/me" : {
+      "get" : {
+        "tags" : [ "auth-controller" ],
+        "operationId" : "getCurrentUser",
+        "responses" : {
+          "200" : {
+            "description" : "OK",
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/UserResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/manager/orders/archive" : {
+      "delete" : {
+        "tags" : [ "manager-order-controller" ],
+        "operationId" : "cleanupArchivedOrders",
+        "requestBody" : {
+          "content" : {
+            "application/json" : {
+              "schema" : {
+                "$ref" : "#/components/schemas/BatchOrderActionRequest"
+              }
+            }
+          },
+          "required" : true
+        },
+        "responses" : {
+          "200" : {
+            "description" : "OK",
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "type" : "object",
+                  "additionalProperties" : {
+                    "type" : "object"
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+  },
+  "components" : {
+    "schemas" : {
+      "GenreRequest" : {
+        "type" : "object",
+        "properties" : {
+          "name" : {
+            "type" : "string",
+            "maxLength" : 100,
+            "minLength" : 0
+          }
+        },
+        "required" : [ "name" ]
+      },
+      "GenreResponse" : {
+        "type" : "object",
+        "properties" : {
+          "id" : {
+            "type" : "integer",
+            "format" : "int64"
+          },
+          "name" : {
+            "type" : "string"
+          },
+          "booksCount" : {
+            "type" : "integer",
+            "format" : "int64"
+          }
+        }
+      },
+      "UpdateChallengeRequest" : {
+        "type" : "object",
+        "properties" : {
+          "title" : {
+            "type" : "string"
+          },
+          "description" : {
+            "type" : "string"
+          },
+          "requiredBooks" : {
+            "type" : "integer",
+            "format" : "int32",
+            "minimum" : 1
+          },
+          "genreId" : {
+            "type" : "integer",
+            "format" : "int64"
+          },
+          "deadline" : {
+            "type" : "string",
+            "format" : "date-time"
+          },
+          "rewardPoints" : {
+            "type" : "integer",
+            "format" : "int32",
+            "minimum" : 0
+          },
+          "name" : {
+            "type" : "string"
+          }
+        },
+        "required" : [ "deadline", "requiredBooks", "rewardPoints", "title" ]
+      },
+      "ChallengeResponse" : {
+        "type" : "object",
+        "properties" : {
+          "id" : {
+            "type" : "integer",
+            "format" : "int64"
+          },
+          "name" : {
+            "type" : "string"
+          },
+          "description" : {
+            "type" : "string"
+          },
+          "requiredBooks" : {
+            "type" : "integer",
+            "format" : "int32"
+          },
+          "genreId" : {
+            "type" : "integer",
+            "format" : "int64"
+          },
+          "genreName" : {
+            "type" : "string"
+          },
+          "deadline" : {
+            "type" : "string",
+            "format" : "date-time"
+          },
+          "rewardPoints" : {
+            "type" : "integer",
+            "format" : "int32"
+          },
+          "status" : {
+            "type" : "string",
+            "enum" : [ "ACTIVE", "COMPLETED", "EXPIRED", "CANCELLED" ]
+          },
+          "userProgress" : {
+            "type" : "integer",
+            "format" : "int32"
+          },
+          "completed" : {
+            "type" : "boolean"
+          },
+          "completedAt" : {
+            "type" : "string",
+            "format" : "date-time"
+          }
+        }
+      },
+      "UpdateBookRequest" : {
+        "type" : "object",
+        "properties" : {
+          "title" : {
+            "type" : "string",
+            "maxLength" : 255,
+            "minLength" : 0
+          },
+          "isbn" : {
+            "type" : "string",
+            "maxLength" : 20,
+            "minLength" : 0
+          },
+          "price" : {
+            "type" : "number",
+            "minimum" : 0.0
+          },
+          "stock" : {
+            "type" : "integer",
+            "format" : "int32",
+            "minimum" : 0
+          },
+          "publisher" : {
+            "type" : "string",
+            "maxLength" : 255,
+            "minLength" : 0
+          },
+          "publicationYear" : {
+            "type" : "integer",
+            "format" : "int32",
+            "maximum" : 2100,
+            "minimum" : 1450
+          },
+          "description" : {
+            "type" : "string"
+          },
+          "genreId" : {
+            "type" : "integer",
+            "format" : "int64"
+          },
+          "genre" : {
+            "type" : "string"
+          },
+          "author" : {
+            "type" : "string"
+          },
+          "authors" : {
+            "type" : "array",
+            "items" : {
+              "type" : "string"
+            }
+          },
+          "authorIds" : {
+            "type" : "array",
+            "items" : {
+              "type" : "integer",
+              "format" : "int64"
+            }
+          }
+        },
+        "required" : [ "isbn", "price", "publicationYear", "publisher", "title" ]
+      },
+      "AuthorResponse" : {
+        "type" : "object",
+        "properties" : {
+          "id" : {
+            "type" : "integer",
+            "format" : "int64"
+          },
+          "name" : {
+            "type" : "string"
+          }
+        }
+      },
+      "BookDetailsResponse" : {
+        "type" : "object",
+        "properties" : {
+          "id" : {
+            "type" : "integer",
+            "format" : "int64"
+          },
+          "title" : {
+            "type" : "string"
+          },
+          "description" : {
+            "type" : "string"
+          },
+          "isbn" : {
+            "type" : "string"
+          },
+          "genre" : {
+            "$ref" : "#/components/schemas/GenreResponse"
+          },
+          "authors" : {
+            "type" : "array",
+            "items" : {
+              "$ref" : "#/components/schemas/AuthorResponse"
+            }
+          },
+          "price" : {
+            "type" : "number"
+          },
+          "stock" : {
+            "type" : "integer",
+            "format" : "int32"
+          },
+          "publisher" : {
+            "type" : "string"
+          },
+          "publicationYear" : {
+            "type" : "integer",
+            "format" : "int32"
+          },
+          "canDelete" : {
+            "type" : "boolean"
+          },
+          "version" : {
+            "type" : "integer",
+            "format" : "int64"
+          },
+          "averageRating" : {
+            "type" : "number",
+            "format" : "double"
+          },
+          "ratingsCount" : {
+            "type" : "integer",
+            "format" : "int32"
+          },
+          "hasCover" : {
+            "type" : "boolean"
+          },
+          "coverUrl" : {
+            "type" : "string"
+          },
+          "createdAt" : {
+            "type" : "string",
+            "format" : "date-time"
+          },
+          "updatedAt" : {
+            "type" : "string",
+            "format" : "date-time"
+          }
+        }
+      },
+      "UpdateCartItemRequest" : {
+        "type" : "object",
+        "properties" : {
+          "quantity" : {
+            "type" : "integer",
+            "format" : "int32",
+            "minimum" : 1
+          }
+        }
+      },
+      "CartItemResponse" : {
+        "type" : "object",
+        "properties" : {
+          "bookId" : {
+            "type" : "integer",
+            "format" : "int64"
+          },
+          "title" : {
+            "type" : "string"
+          },
+          "isbn" : {
+            "type" : "string"
+          },
+          "price" : {
+            "type" : "number"
+          },
+          "quantity" : {
+            "type" : "integer",
+            "format" : "int32"
+          },
+          "available" : {
+            "type" : "boolean"
+          },
+          "stock" : {
+            "type" : "integer",
+            "format" : "int32"
+          },
+          "subtotal" : {
+            "type" : "number"
+          },
+          "hasCover" : {
+            "type" : "boolean"
+          },
+          "coverUrl" : {
+            "type" : "string"
+          }
+        }
+      },
+      "CartResponse" : {
+        "type" : "object",
+        "properties" : {
+          "items" : {
+            "type" : "array",
+            "items" : {
+              "$ref" : "#/components/schemas/CartItemResponse"
+            }
+          },
+          "totalItems" : {
+            "type" : "integer",
+            "format" : "int32"
+          },
+          "totalPrice" : {
+            "type" : "number"
+          },
+          "allAvailable" : {
+            "type" : "boolean"
+          }
+        }
+      },
+      "ChangePasswordRequest" : {
+        "type" : "object",
+        "properties" : {
+          "currentPassword" : {
+            "type" : "string"
+          },
+          "newPassword" : {
+            "type" : "string",
+            "maxLength" : 2147483647,
+            "minLength" : 6
+          },
+          "confirmPassword" : {
+            "type" : "string"
+          }
+        },
+        "required" : [ "confirmPassword", "currentPassword", "newPassword" ]
+      },
+      "UserResponse" : {
+        "type" : "object",
+        "properties" : {
+          "id" : {
+            "type" : "integer",
+            "format" : "int64"
+          },
+          "email" : {
+            "type" : "string"
+          },
+          "fullName" : {
+            "type" : "string"
+          },
+          "role" : {
+            "type" : "string",
+            "enum" : [ "USER", "MANAGER" ]
+          },
+          "status" : {
+            "type" : "string",
+            "enum" : [ "ACTIVE", "BLOCKED" ]
+          },
+          "phone" : {
+            "type" : "string"
+          },
+          "deliveryAddress" : {
+            "type" : "string"
+          },
+          "bonusBalance" : {
+            "type" : "integer",
+            "format" : "int32"
+          },
+          "createdAt" : {
+            "type" : "string",
+            "format" : "date-time"
+          },
+          "lastLoginAt" : {
+            "type" : "string",
+            "format" : "date-time"
+          },
+          "blockedAt" : {
+            "type" : "string",
+            "format" : "date-time"
+          },
+          "blockReason" : {
+            "type" : "string"
+          }
+        }
+      },
+      "UpdateProfileRequest" : {
+        "type" : "object",
+        "properties" : {
+          "fullName" : {
+            "type" : "string"
+          },
+          "phone" : {
+            "type" : "string"
+          },
+          "deliveryAddress" : {
+            "type" : "string"
+          },
+          "email" : {
+            "type" : "string"
+          },
+          "currentPassword" : {
+            "type" : "string"
+          }
+        },
+        "required" : [ "currentPassword" ]
+      },
+      "CreateRatingRequest" : {
+        "type" : "object",
+        "properties" : {
+          "bookId" : {
+            "type" : "integer",
+            "format" : "int64"
+          },
+          "orderId" : {
+            "type" : "integer",
+            "format" : "int64"
+          },
+          "value" : {
+            "type" : "integer",
+            "format" : "int32",
+            "maximum" : 5,
+            "minimum" : 1
+          }
+        },
+        "required" : [ "bookId", "value" ]
+      },
+      "RatingResponse" : {
+        "type" : "object",
+        "properties" : {
+          "id" : {
+            "type" : "integer",
+            "format" : "int64"
+          },
+          "bookId" : {
+            "type" : "integer",
+            "format" : "int64"
+          },
+          "bookTitle" : {
+            "type" : "string"
+          },
+          "orderId" : {
+            "type" : "integer",
+            "format" : "int64"
+          },
+          "value" : {
+            "type" : "integer",
+            "format" : "int32"
+          },
+          "userId" : {
+            "type" : "integer",
+            "format" : "int64"
+          },
+          "userFullName" : {
+            "type" : "string"
+          },
+          "createdAt" : {
+            "type" : "string",
+            "format" : "date-time"
+          }
+        }
+      },
+      "CreateOrderRequest" : {
+        "type" : "object",
+        "properties" : {
+          "items" : {
+            "type" : "array",
+            "items" : {
+              "$ref" : "#/components/schemas/OrderItemRequest"
+            }
+          },
+          "deliveryMethod" : {
+            "type" : "string",
+            "enum" : [ "COURIER", "POST_OFFICE" ]
+          },
+          "address" : {
+            "type" : "string"
+          },
+          "contacts" : {
+            "$ref" : "#/components/schemas/OrderContactDto"
+          },
+          "paymentMethod" : {
+            "type" : "string",
+            "enum" : [ "ON_DELIVERY", "TRANSFER" ]
+          },
+          "bonusPoints" : {
+            "type" : "integer",
+            "format" : "int32",
+            "minimum" : 0
+          }
+        },
+        "required" : [ "address", "contacts", "deliveryMethod", "paymentMethod" ]
+      },
+      "OrderContactDto" : {
+        "type" : "object",
+        "properties" : {
+          "recipientName" : {
+            "type" : "string"
+          },
+          "phone" : {
+            "type" : "string",
+            "pattern" : "^\\+?[0-9]{10,15}$"
+          }
+        },
+        "required" : [ "phone", "recipientName" ]
+      },
+      "OrderItemRequest" : {
+        "type" : "object",
+        "properties" : {
+          "bookId" : {
+            "type" : "integer",
+            "format" : "int64"
+          },
+          "quantity" : {
+            "type" : "integer",
+            "format" : "int32",
+            "minimum" : 1
+          }
+        },
+        "required" : [ "bookId" ]
+      },
+      "OrderDetailsResponse" : {
+        "type" : "object",
+        "properties" : {
+          "id" : {
+            "type" : "integer",
+            "format" : "int64"
+          },
+          "type" : {
+            "type" : "string",
+            "enum" : [ "REGULAR", "GIFT" ]
+          },
+          "status" : {
+            "type" : "string",
+            "enum" : [ "AWAITING_PAYMENT", "PAID", "DELIVERED", "CANCELLED" ]
+          },
+          "paymentMethod" : {
+            "type" : "string",
+            "enum" : [ "ON_DELIVERY", "TRANSFER" ]
+          },
+          "deliveryMethod" : {
+            "type" : "string",
+            "enum" : [ "COURIER", "POST_OFFICE" ]
+          },
+          "address" : {
+            "type" : "string"
+          },
+          "recipientName" : {
+            "type" : "string"
+          },
+          "recipientPhone" : {
+            "type" : "string"
+          },
+          "institutionId" : {
+            "type" : "integer",
+            "format" : "int64"
+          },
+          "institutionName" : {
+            "type" : "string"
+          },
+          "institutionContactPerson" : {
+            "type" : "string"
+          },
+          "itemsTotal" : {
+            "type" : "number"
+          },
+          "discountAmount" : {
+            "type" : "number"
+          },
+          "pointsUsed" : {
+            "type" : "integer",
+            "format" : "int32"
+          },
+          "totalToPay" : {
+            "type" : "number"
+          },
+          "version" : {
+            "type" : "integer",
+            "format" : "int64"
+          },
+          "createdAt" : {
+            "type" : "string",
+            "format" : "date-time"
+          },
+          "statusChangedAt" : {
+            "type" : "string",
+            "format" : "date-time"
+          },
+          "deliveredAt" : {
+            "type" : "string",
+            "format" : "date-time"
+          },
+          "items" : {
+            "type" : "array",
+            "items" : {
+              "$ref" : "#/components/schemas/OrderItemResponse"
+            }
+          },
+          "statusHistory" : {
+            "type" : "array",
+            "items" : {
+              "$ref" : "#/components/schemas/OrderStatusHistoryResponse"
+            }
+          }
+        }
+      },
+      "OrderItemResponse" : {
+        "type" : "object",
+        "properties" : {
+          "id" : {
+            "type" : "integer",
+            "format" : "int64"
+          },
+          "bookId" : {
+            "type" : "integer",
+            "format" : "int64"
+          },
+          "titleSnapshot" : {
+            "type" : "string"
+          },
+          "priceSnapshot" : {
+            "type" : "number"
+          },
+          "quantity" : {
+            "type" : "integer",
+            "format" : "int32"
+          },
+          "subtotal" : {
+            "type" : "number"
+          },
+          "userRating" : {
+            "type" : "integer",
+            "format" : "int32"
+          }
+        }
+      },
+      "OrderStatusHistoryResponse" : {
+        "type" : "object",
+        "properties" : {
+          "id" : {
+            "type" : "integer",
+            "format" : "int64"
+          },
+          "fromStatus" : {
+            "type" : "string",
+            "enum" : [ "AWAITING_PAYMENT", "PAID", "DELIVERED", "CANCELLED" ]
+          },
+          "toStatus" : {
+            "type" : "string",
+            "enum" : [ "AWAITING_PAYMENT", "PAID", "DELIVERED", "CANCELLED" ]
+          },
+          "changedAt" : {
+            "type" : "string",
+            "format" : "date-time"
+          },
+          "changedByUserName" : {
+            "type" : "string"
+          },
+          "comment" : {
+            "type" : "string"
+          }
+        }
+      },
+      "OrderPreviewRequest" : {
+        "type" : "object",
+        "properties" : {
+          "items" : {
+            "type" : "array",
+            "items" : {
+              "$ref" : "#/components/schemas/OrderItemRequest"
+            }
+          },
+          "bonusPoints" : {
+            "type" : "integer",
+            "format" : "int32",
+            "minimum" : 0
+          }
+        }
+      },
+      "OrderItemPreviewDto" : {
+        "type" : "object",
+        "properties" : {
+          "bookId" : {
+            "type" : "integer",
+            "format" : "int64"
+          },
+          "title" : {
+            "type" : "string"
+          },
+          "price" : {
+            "type" : "number"
+          },
+          "quantity" : {
+            "type" : "integer",
+            "format" : "int32"
+          },
+          "subtotal" : {
+            "type" : "number"
+          },
+          "available" : {
+            "type" : "boolean"
+          }
+        }
+      },
+      "OrderPreviewResponse" : {
+        "type" : "object",
+        "properties" : {
+          "itemsTotal" : {
+            "type" : "number"
+          },
+          "userBonusBalance" : {
+            "type" : "integer",
+            "format" : "int32"
+          },
+          "maxBonusPoints" : {
+            "type" : "integer",
+            "format" : "int32"
+          },
+          "pointsUsed" : {
+            "type" : "integer",
+            "format" : "int32"
+          },
+          "discountAmount" : {
+            "type" : "number"
+          },
+          "totalToPay" : {
+            "type" : "number"
+          },
+          "items" : {
+            "type" : "array",
+            "items" : {
+              "$ref" : "#/components/schemas/OrderItemPreviewDto"
+            }
+          }
+        }
+      },
+      "CreateGiftOrderRequest" : {
+        "type" : "object",
+        "properties" : {
+          "institutionId" : {
+            "type" : "integer",
+            "format" : "int64"
+          },
+          "items" : {
+            "type" : "array",
+            "items" : {
+              "$ref" : "#/components/schemas/OrderItemRequest"
+            }
+          },
+          "paymentMethod" : {
+            "type" : "string",
+            "enum" : [ "ON_DELIVERY", "TRANSFER" ]
+          },
+          "bonusPoints" : {
+            "type" : "integer",
+            "format" : "int32",
+            "minimum" : 0
+          }
+        },
+        "required" : [ "institutionId", "paymentMethod" ]
+      },
+      "BatchOrderActionRequest" : {
+        "type" : "object",
+        "properties" : {
+          "orderIds" : {
+            "type" : "array",
+            "items" : {
+              "type" : "integer",
+              "format" : "int64"
+            }
+          }
+        },
+        "required" : [ "orderIds" ]
+      },
+      "CreateChallengeRequest" : {
+        "type" : "object",
+        "properties" : {
+          "title" : {
+            "type" : "string"
+          },
+          "description" : {
+            "type" : "string"
+          },
+          "requiredBooks" : {
+            "type" : "integer",
+            "format" : "int32",
+            "minimum" : 1
+          },
+          "genreId" : {
+            "type" : "integer",
+            "format" : "int64"
+          },
+          "deadline" : {
+            "type" : "string",
+            "format" : "date-time"
+          },
+          "rewardPoints" : {
+            "type" : "integer",
+            "format" : "int32",
+            "minimum" : 0
+          },
+          "name" : {
+            "type" : "string"
+          }
+        },
+        "required" : [ "deadline", "requiredBooks", "rewardPoints", "title" ]
+      },
+      "FinishChallengeResponse" : {
+        "type" : "object",
+        "properties" : {
+          "id" : {
+            "type" : "integer",
+            "format" : "int64"
+          },
+          "title" : {
+            "type" : "string"
+          },
+          "status" : {
+            "type" : "string",
+            "enum" : [ "ACTIVE", "COMPLETED", "EXPIRED", "CANCELLED" ]
+          },
+          "finishedAt" : {
+            "type" : "string",
+            "format" : "date-time"
+          },
+          "notifiedUsersCount" : {
+            "type" : "integer",
+            "format" : "int32"
+          },
+          "message" : {
+            "type" : "string"
+          }
+        }
+      },
+      "CreateBookRequest" : {
+        "type" : "object",
+        "properties" : {
+          "title" : {
+            "type" : "string",
+            "maxLength" : 255,
+            "minLength" : 0
+          },
+          "isbn" : {
+            "type" : "string",
+            "maxLength" : 20,
+            "minLength" : 0
+          },
+          "price" : {
+            "type" : "number",
+            "minimum" : 0.0
+          },
+          "stock" : {
+            "type" : "integer",
+            "format" : "int32",
+            "minimum" : 0
+          },
+          "publisher" : {
+            "type" : "string",
+            "maxLength" : 255,
+            "minLength" : 0
+          },
+          "publicationYear" : {
+            "type" : "integer",
+            "format" : "int32",
+            "maximum" : 2100,
+            "minimum" : 1450
+          },
+          "description" : {
+            "type" : "string"
+          },
+          "genreId" : {
+            "type" : "integer",
+            "format" : "int64"
+          },
+          "genre" : {
+            "type" : "string"
+          },
+          "author" : {
+            "type" : "string"
+          },
+          "authors" : {
+            "type" : "array",
+            "items" : {
+              "type" : "string"
+            }
+          },
+          "authorIds" : {
+            "type" : "array",
+            "items" : {
+              "type" : "integer",
+              "format" : "int64"
+            }
+          }
+        },
+        "required" : [ "isbn", "price", "publicationYear", "publisher", "title" ]
+      },
+      "CsvImportResponse" : {
+        "type" : "object",
+        "properties" : {
+          "totalRows" : {
+            "type" : "integer",
+            "format" : "int32"
+          },
+          "addedCount" : {
+            "type" : "integer",
+            "format" : "int32"
+          },
+          "rejectedCount" : {
+            "type" : "integer",
+            "format" : "int32"
+          },
+          "rejectedRows" : {
+            "type" : "array",
+            "items" : {
+              "$ref" : "#/components/schemas/CsvRejectedRow"
+            }
+          }
+        }
+      },
+      "CsvRejectedRow" : {
+        "type" : "object",
+        "properties" : {
+          "rowNumber" : {
+            "type" : "integer",
+            "format" : "int32"
+          },
+          "isbn" : {
+            "type" : "string"
+          },
+          "title" : {
+            "type" : "string"
+          },
+          "reason" : {
+            "type" : "string"
+          }
+        }
+      },
+      "CreateAuthorRequest" : {
+        "type" : "object",
+        "properties" : {
+          "fullName" : {
+            "type" : "string",
+            "maxLength" : 255,
+            "minLength" : 0
+          }
+        },
+        "required" : [ "fullName" ]
+      },
+      "ReplaceGiftSetBookRequest" : {
+        "type" : "object",
+        "properties" : {
+          "currentBookIds" : {
+            "type" : "array",
+            "items" : {
+              "type" : "integer",
+              "format" : "int64"
+            }
+          },
+          "bookIdToReplace" : {
+            "type" : "integer",
+            "format" : "int64"
+          },
+          "genreIds" : {
+            "type" : "array",
+            "items" : {
+              "type" : "integer",
+              "format" : "int64"
+            }
+          },
+          "budget" : {
+            "type" : "number"
+          }
+        },
+        "required" : [ "bookIdToReplace", "budget", "currentBookIds", "genreIds" ]
+      },
+      "GiftSetBookItem" : {
+        "type" : "object",
+        "properties" : {
+          "id" : {
+            "type" : "integer",
+            "format" : "int64"
+          },
+          "title" : {
+            "type" : "string"
+          },
+          "isbn" : {
+            "type" : "string"
+          },
+          "genre" : {
+            "$ref" : "#/components/schemas/GenreResponse"
+          },
+          "authors" : {
+            "type" : "array",
+            "items" : {
+              "$ref" : "#/components/schemas/AuthorResponse"
+            }
+          },
+          "price" : {
+            "type" : "number"
+          },
+          "stock" : {
+            "type" : "integer",
+            "format" : "int32"
+          },
+          "coverUrl" : {
+            "type" : "string"
+          }
+        }
+      },
+      "GiftSetResponse" : {
+        "type" : "object",
+        "properties" : {
+          "items" : {
+            "type" : "array",
+            "items" : {
+              "$ref" : "#/components/schemas/GiftSetBookItem"
+            }
+          },
+          "totalPrice" : {
+            "type" : "number"
+          },
+          "budget" : {
+            "type" : "number"
+          },
+          "remainingBudget" : {
+            "type" : "number"
+          },
+          "genres" : {
+            "type" : "array",
+            "items" : {
+              "$ref" : "#/components/schemas/GenreResponse"
+            }
+          }
+        }
+      },
+      "ReplaceCandidatesResponse" : {
+        "type" : "object",
+        "properties" : {
+          "candidates" : {
+            "type" : "array",
+            "items" : {
+              "$ref" : "#/components/schemas/GiftSetBookItem"
+            }
+          },
+          "maxPriceAllowed" : {
+            "type" : "number"
+          }
+        }
+      },
+      "GenerateGiftSetRequest" : {
+        "type" : "object",
+        "properties" : {
+          "budget" : {
+            "type" : "number",
+            "minimum" : 50.0
+          },
+          "genreIds" : {
+            "type" : "array",
+            "items" : {
+              "type" : "integer",
+              "format" : "int64"
+            }
+          },
+          "bookCount" : {
+            "type" : "integer",
+            "format" : "int32",
+            "minimum" : 1
+          }
+        },
+        "required" : [ "budget", "genreIds" ]
+      },
+      "AddToCartRequest" : {
+        "type" : "object",
+        "properties" : {
+          "bookId" : {
+            "type" : "integer",
+            "format" : "int64"
+          },
+          "quantity" : {
+            "type" : "integer",
+            "format" : "int32",
+            "minimum" : 1
+          }
+        },
+        "required" : [ "bookId" ]
+      },
+      "CreateUnblockRequest" : {
+        "type" : "object",
+        "properties" : {
+          "email" : {
+            "type" : "string"
+          },
+          "password" : {
+            "type" : "string"
+          },
+          "reason" : {
+            "type" : "string",
+            "maxLength" : 1000,
+            "minLength" : 0
+          }
+        },
+        "required" : [ "email", "password", "reason" ]
+      },
+      "RegisterRequest" : {
+        "type" : "object",
+        "properties" : {
+          "email" : {
+            "type" : "string"
+          },
+          "password" : {
+            "type" : "string",
+            "maxLength" : 2147483647,
+            "minLength" : 6
+          },
+          "confirmPassword" : {
+            "type" : "string"
+          },
+          "fullName" : {
+            "type" : "string"
+          }
+        },
+        "required" : [ "confirmPassword", "email", "password" ]
+      },
+      "PasswordResetRequest" : {
+        "type" : "object",
+        "properties" : {
+          "email" : {
+            "type" : "string"
+          }
+        },
+        "required" : [ "email" ]
+      },
+      "PasswordResetConfirmRequest" : {
+        "type" : "object",
+        "properties" : {
+          "token" : {
+            "type" : "string"
+          },
+          "newPassword" : {
+            "type" : "string",
+            "maxLength" : 2147483647,
+            "minLength" : 6
+          },
+          "confirmPassword" : {
+            "type" : "string"
+          }
+        },
+        "required" : [ "confirmPassword", "newPassword", "token" ]
+      },
+      "LoginRequest" : {
+        "type" : "object",
+        "properties" : {
+          "email" : {
+            "type" : "string"
+          },
+          "password" : {
+            "type" : "string"
+          }
+        },
+        "required" : [ "email", "password" ]
+      },
+      "UpdateOrderStatusRequest" : {
+        "type" : "object",
+        "properties" : {
+          "expectedStatus" : {
+            "type" : "string",
+            "enum" : [ "AWAITING_PAYMENT", "PAID", "DELIVERED", "CANCELLED" ]
+          },
+          "status" : {
+            "type" : "string",
+            "enum" : [ "AWAITING_PAYMENT", "PAID", "DELIVERED", "CANCELLED" ]
+          },
+          "comment" : {
+            "type" : "string"
+          }
+        },
+        "required" : [ "status" ]
+      },
+      "PublicRatingResponse" : {
+        "type" : "object",
+        "properties" : {
+          "id" : {
+            "type" : "integer",
+            "format" : "int64"
+          },
+          "bookId" : {
+            "type" : "integer",
+            "format" : "int64"
+          },
+          "value" : {
+            "type" : "integer",
+            "format" : "int32"
+          },
+          "createdAt" : {
+            "type" : "string",
+            "format" : "date-time"
+          }
+        }
+      },
+      "Pageable" : {
+        "type" : "object",
+        "properties" : {
+          "page" : {
+            "type" : "integer",
+            "format" : "int32",
+            "minimum" : 0
+          },
+          "size" : {
+            "type" : "integer",
+            "format" : "int32",
+            "minimum" : 1
+          },
+          "sort" : {
+            "type" : "array",
+            "items" : {
+              "type" : "string"
+            }
+          }
+        }
+      },
+      "PageMetadata" : {
+        "type" : "object",
+        "properties" : {
+          "size" : {
+            "type" : "integer",
+            "format" : "int64"
+          },
+          "number" : {
+            "type" : "integer",
+            "format" : "int64"
+          },
+          "totalElements" : {
+            "type" : "integer",
+            "format" : "int64"
+          },
+          "totalPages" : {
+            "type" : "integer",
+            "format" : "int64"
+          }
+        }
+      },
+      "PagedModel" : {
+        "type" : "object",
+        "properties" : {
+          "content" : {
+            "type" : "array",
+            "items" : {
+              "type" : "object"
+            }
+          },
+          "page" : {
+            "$ref" : "#/components/schemas/PageMetadata"
+          }
+        }
+      },
+      "BonusTransactionResponse" : {
+        "type" : "object",
+        "properties" : {
+          "id" : {
+            "type" : "integer",
+            "format" : "int64"
+          },
+          "points" : {
+            "type" : "integer",
+            "format" : "int32"
+          },
+          "type" : {
+            "type" : "string",
+            "enum" : [ "ORDER_REWARD", "RATING_REWARD", "CHALLENGE_REWARD", "SPENT", "REFUND" ]
+          },
+          "orderId" : {
+            "type" : "integer",
+            "format" : "int64"
+          },
+          "challengeId" : {
+            "type" : "integer",
+            "format" : "int64"
+          },
+          "challengeName" : {
+            "type" : "string"
+          },
+          "createdAt" : {
+            "type" : "string",
+            "format" : "date-time"
+          }
+        }
+      },
+      "LoyaltyBalanceResponse" : {
+        "type" : "object",
+        "properties" : {
+          "bonusBalance" : {
+            "type" : "integer",
+            "format" : "int32"
+          },
+          "transactions" : {
+            "type" : "array",
+            "items" : {
+              "$ref" : "#/components/schemas/BonusTransactionResponse"
+            }
+          }
+        }
+      },
+      "InstitutionResponse" : {
+        "type" : "object",
+        "properties" : {
+          "id" : {
+            "type" : "integer",
+            "format" : "int64"
+          },
+          "name" : {
+            "type" : "string"
+          },
+          "address" : {
+            "type" : "string"
+          },
+          "contactPerson" : {
+            "type" : "string"
+          },
+          "type" : {
+            "type" : "string",
+            "enum" : [ "ORPHANAGE", "BOARDING_SCHOOL", "LIBRARY" ]
+          }
+        }
+      },
+      "BookSummaryResponse" : {
+        "type" : "object",
+        "properties" : {
+          "id" : {
+            "type" : "integer",
+            "format" : "int64"
+          },
+          "title" : {
+            "type" : "string"
+          },
+          "description" : {
+            "type" : "string"
+          },
+          "isbn" : {
+            "type" : "string"
+          },
+          "genre" : {
+            "$ref" : "#/components/schemas/GenreResponse"
+          },
+          "authors" : {
+            "type" : "array",
+            "items" : {
+              "$ref" : "#/components/schemas/AuthorResponse"
+            }
+          },
+          "price" : {
+            "type" : "number"
+          },
+          "stock" : {
+            "type" : "integer",
+            "format" : "int32"
+          },
+          "publisher" : {
+            "type" : "string"
+          },
+          "publicationYear" : {
+            "type" : "integer",
+            "format" : "int32"
+          },
+          "averageRating" : {
+            "type" : "number",
+            "format" : "double"
+          },
+          "ratingsCount" : {
+            "type" : "integer",
+            "format" : "int32"
+          },
+          "hasCover" : {
+            "type" : "boolean"
+          },
+          "coverUrl" : {
+            "type" : "string"
+          }
+        }
+      },
+      "PagedModelBookSummaryResponse" : {
+        "type" : "object",
+        "properties" : {
+          "content" : {
+            "type" : "array",
+            "items" : {
+              "$ref" : "#/components/schemas/BookSummaryResponse"
+            }
+          },
+          "page" : {
+            "$ref" : "#/components/schemas/PageMetadata"
+          }
+        }
+      }
+    }
+  }
+}

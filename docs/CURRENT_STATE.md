@@ -15,8 +15,12 @@
 │ Інфраструктура та Docker      │ ГОТОВО       │ 100% (DB + App + CI)    │
 │ Схема БД (Flyway V1–V9 + Seed)│ ГОТОВО       │ 100% (Schema + Indexes) │
 │ Безпека та Пошта (Security)   │ ГОТОВО       │ 100% (RBAC, Mail, 401/403)│
+│ CSRF-захист для SPA (Security)│ ГОТОВО       │ 100% (Cookie + Header)  │
+│ Планувальник (Scheduling/Cron)│ ГОТОВО       │ 100% (@Scheduled, Auto) │
+│ Ініціалізація Менеджера       │ ГОТОВО       │ 100% (Bootstrap Runner) │
 │ Обробка помилок (RFC 9457)    │ ГОТОВО       │ 100% (Problem Details)  │
 │ Контракти API (.http + Doc)   │ ГОТОВО       │ 100% (Auth/Cat/Orders)  │
+│ OpenAPI Схема (docs/openapi)  │ ГОТОВО       │ 100% (OpenAPI 3.1 JSON) │
 │ Документація (ERD/Decisions)  │ ГОТОВО       │ 100% (ERD + Architectural)│
 │ JPA Сутності та Репозиторії   │ ГОТОВО       │ 100% (Entities + Spec)  │
 │ Автентифікація, Сесії, Профіль│ ГОТОВО       │ 100% (Auth, M6, G2, G3) │
@@ -105,31 +109,39 @@
 
 ---
 
-### 2.3. Безпека та Поштовий сервіс (Spring Security + Mail)
+### 2.3. Безпека, CSRF та Поштовий сервіс (Spring Security + Mail)
 1. **Архітектура Default Deny:**
    - Будь-який ендпоінт під префіксом `/api/**` за замовчуванням вимагає авторизації, якщо він не відкритий явно.
 2. **Публічні ендпоінти:**
    - Дозволено без авторизації: `/api/auth/register`, `/api/auth/login`, `/api/auth/password-reset/**`, `/api/auth/unblock-request`, `/api/catalog/**`, `/api/institutions/**`, `/api/gift-sets/**`, `/api/challenges/**`, `/actuator/health`.
 3. **Серверне розмежування ролей (RBAC):**
-   - Усі маршрути `/api/manager/**` строго обмежені роллю `MANAGER`. Звичайні користувачі (`USER`) отримують відмову в доступі.
-4. **Типізовані відповіді Problem Details (RFC 9457):**
+   - Усі маршрути `/api/manager/**` строго обмежені роллю `MANAGER`. Звичайні користувачі (`USER`) отримують відмову в доступі (`403 Forbidden`).
+4. **CSRF-захист через Cookie для SPA:**
+   - Налаштовано `CookieCsrfTokenRepository.withHttpOnlyFalse()` та `SpaCsrfTokenRequestHandler` разом із `CsrfCookieFilter`.
+   - Захист вимагає передачу заголовка `X-XSRF-TOKEN` у запитах, що змінюють стан (`POST`, `PUT`, `PATCH`, `DELETE`).
+5. **Типізовані відповіді Problem Details (RFC 9457):**
    - `ProblemDetailsAuthenticationEntryPoint`: перехоплює неавторизований доступ і повертає `401 Unauthorized` з коректним JSON-тілом.
    - `ProblemDetailsAccessDeniedHandler`: перехоплює брак прав і повертає `403 Forbidden` з `type = urn:readmania:error:access-denied`.
    - `AccountStatusFilter` та `AuthService.login`: перевіряють статус `BLOCKED` і повертають `403 Forbidden` з `type = urn:readmania:error:account-blocked` та полями `blockReason` і `blockedAt`.
    - Захист від brute-force у `AuthService.login`: блокування на 15 хв після 5 спроб повертає `403 Forbidden` з `type = urn:readmania:error:login-rate-limited` та полем `retryAfter`.
-5. **Шифрування паролів та безпека профілю:**
+   - Конфлікт станів замовлення: `OrderStatusConflictException` повертає `409 Conflict` з `type = urn:readmania:error:order-status-conflict` та полем `currentStatus`.
+6. **Шифрування паролів та безпека профілю:**
    - Налаштовано бін `BCryptPasswordEncoder` для безпечного хешування паролів.
    - Ендпоінти оновлення даних користувача (`/api/account`, `/api/profile`) вимагають обов'язкової верифікації `currentPassword`, перевіряють унікальність `lower(newEmail)` (`409 Conflict`) та оновлюють сесію.
-6. **Поштовий сервіс (`NotificationService`):**
+7. **Поштовий сервіс (`NotificationService`):**
    - Підключено `spring-boot-starter-mail` та увімкнено `@EnableAsync`.
    - `SmtpNotificationService` (`@Profile("prod")`) на базі `JavaMailSender` для реальної відправки листів.
    - `LoggingNotificationService` (`@Profile({"local", "test", "default"})`) для логування та збереження повідомлень у пам'яті для верифікації в тестах.
    - Асинхронні сповіщення: нові замовлення менеджерам, зміна статусів замовлень, дострокове завершення викликів, одноразові посилання відновлення пароля (1 година), блокування/розблокування акаунтів.
-7. **Апеляція на розблокування (`POST /api/auth/unblock-request`):**
-   - Публічний ендпоінт, що перевіряє пароль заблокованого користувача і створює/оновлює запис у `unblock_requests`.
-8. **Сесійні cookie та мережевий захист:**
-   - `HttpOnly = true`, `SameSite = Lax`, `Secure = true` (у prod).
-   - Захист від SQL-ін'єкцій на рівні JPA та відсутність динамічної конкатенації рядків.
+8. **Ініціалізація першого менеджера при старті (`ManagerBootstrapInitializer`):**
+   - Компонент `ApplicationRunner`, що зчитує змінні `APP_INITIAL_MANAGER_EMAIL` та `APP_INITIAL_MANAGER_PASSWORD` (властивості `app.initial-manager.email`, `app.initial-manager.password`) та створює менеджера у разі його відсутності в БД.
+9. **Планувальник автоматичного завершення викликів (@EnableScheduling):**
+   - Щодванадцять секунд / щохвилини перевіряє активні читацькі виклики з простроченим дедлайном і переводить їх у стан `COMPLETED`.
+10. **Апеляція на розблокування (`POST /api/auth/unblock-request`):**
+    - Публічний ендпоінт, що перевіряє пароль заблокованого користувача і створює/оновлює запис у `unblock_requests`.
+11. **Сесійні cookie та мережевий захист:**
+    - `HttpOnly = true`, `SameSite = Lax`, `Secure = true` (у prod).
+    - Захист від SQL-ін'єкцій на рівні JPA та відсутність динамічної конкатенації рядків.
 
 ---
 
@@ -195,38 +207,40 @@
 ---
 
 ### 2.7. Автоматизована верифікація та тести
-У проєкті налаштовано та успішно виконується повний набір із **106 автоматизованих тестів**:
+У проєкті налаштовано та успішно виконується повний набір із **112 автоматизованих тестів**:
 1. **`AuthIntegrationTest` (17 тестів на Testcontainers PostgreSQL 17):**
    - Реєстрація, автентифікація, керування сесіями, захист від brute-force з `login-rate-limited`, миттєве блокування активних сесій (M6) з `account-blocked`.
    - Запит на відновлення пароля без витоку токена з відправкою листа через `NotificationService`.
    - Публічне подання апеляції на розблокування (`POST /api/auth/unblock-request`) з перевіркою пароля та збереженням у `unblock_requests`.
    - Редагування профілю (`PUT /api/account`, `PUT /api/profile`): обов'язкова перевірка `currentPassword`, зміна email із контролем унікальності (`409 Conflict`) та оновленням `SecurityContext`.
-2. **`OrderIntegrationTest` (9 тестів на Testcontainers PostgreSQL 17):**
+2. **`OrderIntegrationTest` (11 тестів на Testcontainers PostgreSQL 17):**
    - Керування кошиком (C1.1–C1.3): додавання, зміна кількості в межах залишку, контроль лімітів та прапорець `available`.
    - Попередній розрахунок замовлення (C8): перевірка `itemsTotal`, максимальної знижки бонусами до 30% та `totalToPay`.
    - Оформлення замовлення (C2, A.10): списання залишків на складі, списання бонусів (`SPENT`), фіксація фінансових знімків у `order_items`, очищення кошика, аудит статусів та збереження `institutionContactPerson`.
    - Благодійне замовлення (`GIFT` C10): валідація закладу й контактної особи, примусовий `TRANSFER` та відсутність способу доставки.
-   - Скасування покупцем (C3): відновлення залишків книг на складі та повернення бонусів (`REFUND`) для неоплачених замовлень.
+   - Скасування покупцем (C3): відновлення залишків книг на складі та повернення бонусів (`REFUND`) для неоплачених замовлень; 409 Conflict при неприпустимих статусах.
    - Машина станів менеджера (M3, Таблиця 3 SRS / A.1): валідація 4 статусів (`AWAITING_PAYMENT` -> `PAID`/`DELIVERED`/`CANCELLED`, `PAID` -> `DELIVERED`/`CANCELLED`) та захист від конкурентних змін через `expectedStatus` (409 Conflict).
    - Побічні дії при доставці (`DELIVERED`): нарахування бонусів (C8), динамічне зарахування читацьких викликів (C7) та записи у журнал благодійності `gift_log` (M9).
-   - Спеціальні дії менеджера: скасування неоплачених замовлень > 7 днів та очищення архіву > 3 років.
+   - Спеціальні масові дії менеджера за списком ID: скасування неоплачених замовлень > 7 днів та очищення архіву > 3 років із валідацією списку та 409 Conflict при невідповідності критеріїв.
+   - Збагачення `OrderItemResponse` полем `userRating`.
    - Багатопотокова конкуренція: одночасне замовлення останнього примірника двома користувачами (Optimistic Locking -> 409 Conflict).
-3. **`CatalogIntegrationTest` (16 тестів на Testcontainers PostgreSQL 17):**
-   - Публічний каталог (G1, A.4): пагінація, фільтри за жанром, автором, ціною, наявністю, сортування за роком видання `publicationYear`, пошук, кешування обкладинок.
+3. **`CatalogIntegrationTest` (18 тестів на Testcontainers PostgreSQL 17):**
+   - Публічний каталог (G1, A.4): пагінація, фільтри за жанром, автором, ціною, залишками (`stockMin`, `stockMax`), наявністю, сортування за роком видання `publicationYear`, пошук, кешування обкладинок.
    - Агрегація середніх оцінок та кількості відгуків у реальному часі.
-   - Керування виданнями (M1.1, M1.2, M1.3, A.4): створення й редагування з полями `publisher` та `publicationYear`, захист ролями (401/403), перевірка унікальності активного ISBN (409), оновлення та м'яке видалення.
-   - Керування жанрами: створення, оновлення, блокування видалення при наявності прив'язаних книг (RESTRICT 409).
+   - Керування виданнями (M1.1, M1.2, M1.3, A.4): створення й редагування з полями `publisher` та `publicationYear`, прапорець `canDelete`, захист ролями (401/403), перевірка унікальності активного ISBN (409), оновлення та м'яке видалення.
+   - Створення авторів `POST /api/manager/authors` та запобігання дублікатам (409 Conflict).
+   - Керування жанрами: створення, оновлення, лічильник книг `booksCount`, блокування видалення при наявності прив'язаних книг (RESTRICT 409).
    - Завантаження бінарних обкладинок через multipart/form-data.
    - CSV-імпорт (M2): покрокова валідація рядків (включаючи рік і видавництво), дублікати ISBN у файлі та базі, автоматичне створення сутностей та звіт.
 4. **`Slice4GamificationAndGiftSetIT` (12 тестів на Testcontainers PostgreSQL 17):**
-   - Оцінювання книг (C6), читацькі виклики менеджера (M4.1–M4.3) з достроковим завершенням та поштовими сповіщеннями, генератор подарункового набору (C9).
+   - Оцінювання книг (C6), захист приватності публічних оцінок (`PublicRatingResponse` без `userId`), читацькі виклики менеджера (M4.1–M4.3) з достроковим завершенням та поштовими сповіщеннями, генератор подарункового набору (C9).
 5. **`DomainRepositoryIT` (6 тестів на Testcontainers PostgreSQL 17):**
    - Збереження та вибірка користувачів, токенів та запитів розблокування.
    - Робота каталогу, зв'язок 3НФ, `publisher` та `publicationYear`, оптимістичне блокування `@Version` та ізольовані обкладинки `BookCover`.
    - Динамічна фільтрація `BookSpecifications`, композитний ключ кошика `CartItem`.
    - Замовлення з `institutionContactPerson`, знімки позицій та аудит статусів.
    - Програма лояльності, читацькі виклики та звітність `gift_log`.
-6. **`SchemaIT` (15 тестів на Testcontainers PostgreSQL 17):**
+6. **`SchemaIT` (18 тестів на Testcontainers PostgreSQL 17):**
    - Перевірка валідності всіх міграцій Flyway (V1–V9) на чистій базі.
    - Валідація CHECK-обмеження 4 статусів замовлень (A.1).
    - Валідація діапазону років видання (1450–2100) та наявності індексу `idx_books_publication_year` (A.4).
@@ -239,10 +253,12 @@
    - Захист від повторного нарахування бонусів.
    - Захист від brute-force, одноразові токени скидання пароля, запити розблокування, типи закладів, збереження `gift_log`.
    - Автоматична перевірка наявності індексів на всіх FK-колонках схеми (D7).
-7. **`GlobalExceptionHandlerTest` (10 тестів):**
-   - Перевірка коректного мапінгу статусів 400, 401, 403, 404, 405, 409, 415, 500, типізованих URN (`access-denied`, `account-blocked`, `login-rate-limited`), `errorId` та масиву `errors`.
+7. **`GlobalExceptionHandlerTest` (18 тестів):**
+   - Перевірка коректного мапінгу статусів 400, 401, 403, 404, 405, 409, 415, 500, типізованих URN (`access-denied`, `account-blocked`, `login-rate-limited`, `order-status-conflict`), `errorId` та масиву `errors`.
 8. **`SecurityConfigTest` та `LocalProfileSecurityConfigTest` (11 тестів):**
    - Перевірка Default Deny, RBAC, відкритих шляхів, BCrypt шифрування та профілів.
+9. **`OpenApiExportIT` (1 тест):**
+   - Перевірка генерації OpenAPI 3.1 специфікації за адресою `/v3/api-docs` та збереження відформатованого файлу у `docs/openapi.json`.
 
 ---
 
@@ -257,9 +273,9 @@
 | **U1** | Серверне розмежування доступу за ролями (/api/manager/**) | **Повністю закрито** | `SecurityConfig.filterChain()`, `SecurityConfigTest`, `ProblemDetailsAccessDeniedHandler` |
 | **U2** | Серверна валідація DTO (@Valid) та єдина структура помилок | **Повністю закрито** | `GlobalExceptionHandler`, модель `ValidationError` |
 | **U3** | Формат помилок валідації `errors[{field, message}]` | **Повністю закрито** | `GlobalExceptionHandler.handleMethodArgumentNotValid` |
-| **R3** | Інформативні типізовані відповіді Problem Details (RFC 9457) | **Повністю закрито** | `GlobalExceptionHandler`, `access-denied`, `account-blocked`, `login-rate-limited` |
-| **M1** | М'яке видалення книг (збереження історії замовлень і аналітики) | **Повністю закрито** | `V3__catalog.sql` (`deleted_at`), `V5__orders.sql`, `ManagerCatalogService` |
-| **M3** | Життєвий цикл замовлень (Таблиця 3 SRS), фільтри (неоплачені > 7 дн., архів > 3 роки) | **Повністю закрито** | `ManagerOrderService`, `V9`, `OrderIntegrationTest` |
+| **R3** | Інформативні типізовані відповіді Problem Details (RFC 9457) | **Повністю закрито** | `GlobalExceptionHandler`, `access-denied`, `account-blocked`, `login-rate-limited`, `order-status-conflict` |
+| **M1** | М'яке видалення книг (збереження історії замовлень і аналітики), автори, жанри | **Повністю закрито** | `V3__catalog.sql` (`deleted_at`), `V5__orders.sql`, `ManagerCatalogService`, `POST /api/manager/authors` |
+| **M3** | Життєвий цикл замовлень (Таблиця 3 SRS, 4 статуси), масові дії за списком ID | **Повністю закрито** | `ManagerOrderService`, `V9`, `OrderIntegrationTest` |
 | **M5** | Анонімізація неактивних акаунтів та замовлень | **Схема + Репозиторій** | `V2__users.sql` (частковий індекс), `V5__orders.sql` (SET NULL) |
 | **M6/M7**| Блокування акаунта (`account-blocked`) та розгляд апеляцій на розблокування (`POST /api/auth/unblock-request`) | **Повністю закрито** | `AccountStatusFilter`, `AuthService`, `unblock_requests`, `AuthIntegrationTest` |
 | **M8/M12**| Типізовані благодійні заклади (дитячий будинок, інтернат, бібліотека) | **Повністю закрито** | `V9`, `InstitutionService`, `R__dev_seed.sql` |
@@ -267,6 +283,10 @@
 | **A.1** | Зведення статусів замовлень до 4 значень (`AWAITING_PAYMENT`, `PAID`, `DELIVERED`, `CANCELLED`) | **Повністю закрито** | `V9__schema_fixes.sql`, `OrderStatus`, `OrderService`, `ManagerOrderService` |
 | **A.4** | Видавництво та рік видання книги з індексом сортування `idx_books_publication_year` | **Повністю закрито** | `V9__schema_fixes.sql`, `Book`, `CatalogService`, `CatalogIntegrationTest` |
 | **A.10**| Знімок контактної особи закладу (`institutionContactPerson`) у замовленні | **Повністю закрито** | `V9__schema_fixes.sql`, `Order`, `OrderService`, `OrderIntegrationTest` |
+| **CSRF**| CSRF-захист cookie/header для SPA (`CookieCsrfTokenRepository` + `SpaCsrfTokenRequestHandler`) | **Повністю закрито** | `SecurityConfig`, `CsrfCookieFilter`, `SpaCsrfTokenRequestHandler` |
+| **Cron**| Автоматичне завершення прострочених читацьких викликів | **Повністю закрито** | `ReadmaniaBackendApplication` (@EnableScheduling), `ChallengeService` (@Scheduled) |
+| **Boot**| Ініціалізація початкового менеджера через змінні середовища | **Повністю закрито** | `ManagerBootstrapInitializer` (`app.initial-manager.*`) |
+| **OpenAPI**| Експорт актуальної схеми OpenAPI у `docs/openapi.json` | **Повністю закрито** | `springdoc-openapi`, `OpenApiExportIT`, `docs/openapi.json` |
 | **Mail**| Поштовий сервіс сповіщень (`NotificationService`: SMTP / Logging) | **Повністю закрито** | `SmtpNotificationService`, `LoggingNotificationService`, `@EnableAsync` |
 | **O2** | Діаграма сутностей і зв'язків (ERD) | **Повністю закрито** | `docs/ERD.md`, `docs/DATABASE_DECISIONS.md` |
 
@@ -274,34 +294,28 @@
 
 ## 4. Аналіз та рекомендації для подальшої розробки
 
-З точки зору максимізації віддачі та забезпечення швидкого переходу до робочого бізнес-функціоналу, поточний стан розробки та наступні пріоритети структуровано за етапами:
+З точки зору максимізації віддачі та забезпечення швидкого переходу до робочого бізнес-функціоналу, поточний стан розробки та наступні пріоритети структуровано за зрізами:
 
-### Етап 1: Доменна модель (JPA Entities) та Репозиторії — ЗАВЕРШЕНО (100%)
-- Повністю створено та верифіковано всі JPA-сутності (`User`, `Book`, `Genre`, `Author`, `Order`, `CartItem`, `BonusTransaction`, `Rating`, `Challenge`, `Institution`, `GiftLog`, `UnblockRequest`, `PasswordResetToken`).
-- Додано поля Патчу 1: `publisher`, `publicationYear`, `institutionContactPerson`, 4 значення `OrderStatus`.
-- Налаштовано Spring Data JPA репозиторії з `@EntityGraph` та `JpaSpecificationExecutor`.
+### Зрізи 1–4: Повний бекенд-функціонал — ЗАВЕРШЕНО (100%)
+1. **Зріз 1 (Автентифікація, безпека, профіль, пошта):**
+   - Повністю реалізовано: `User`, `PasswordResetToken`, `UnblockRequest`, `AuthService`, `UserService`, `NotificationService`, `AuthController`, `ProfileController`.
+   - Захист від brute-force, типізовані Problem Details, безпечне відновлення пароля через email, подання апеляцій на розблокування, перевірка поточного пароля при зміні даних.
+2. **Зріз 2 (Каталог, жанри, автори, обкладинки, CSV-імпорт):**
+   - Повністю реалізовано: `Book`, `Genre`, `Author`, `BookCover`, `CatalogService`, `ManagerCatalogService`, `CsvImportService`, `CatalogController`, `ManagerCatalogController`.
+   - Поля `publisher` та `publicationYear`, сортування, фільтрація за залишками `stockMin`/`stockMax`, динамічний прапорець `canDelete`, створення авторів, лічильник книг у жанрах `booksCount`, парсер CSV, бінарні обкладинки.
+3. **Зріз 3 (Кошик, розрахунки, оформлення, життєвий цикл замовлень):**
+   - Повністю реалізовано: `CartItem`, `Order`, `OrderItem`, `OrderStatusHistory`, `Institution`, `OrderService`, `ManagerOrderService`, `OrderController`, `ManagerOrderController`.
+   - Знижки до 30%, FSM з 4 статусами (`AWAITING_PAYMENT`, `PAID`, `DELIVERED`, `CANCELLED`), конфлікти статусів (409 Conflict з `currentStatus`), замовлення `GIFT` з `institutionContactPerson`, масові операції за списком ID (`BatchOrderActionRequest`), оцінки в позиціях замовлень `userRating`.
+4. **Зріз 4 (Гейміфікація, лояльність, виклики, набори):**
+   - Повністю реалізовано: `BonusTransaction`, `Rating`, `Challenge`, `ChallengeCompletion`, `GiftLog`, `LoyaltyService`, `ChallengeService`, `RatingService`, `GiftSetService`, `ChallengeController`, `ManagerChallengeController`, `RatingController`, `GiftSetController`, `InstitutionController`.
+   - Нарахування балів, приватність оцінок (`PublicRatingResponse`), автоматичне завершення викликів планувальником (`@Scheduled`), генератор наборів.
 
-### Етап 2: Сервісний шар, бізнес-логіка та поштовий сервіс — ЗАВЕРШЕНО (100%)
-1. **Автентифікація, безпека та пошта (`AuthService`, `NotificationService`):**
-   - Реєстрація, логін, захист від brute-force (`login-rate-limited`), блокування сесій (`account-blocked`).
-   - Відновлення пароля поштою (без витоку токена), апеляція розблокування (`POST /api/auth/unblock-request`).
-   - Профіль (`UserService`): обов'язкова перевірка `currentPassword`, унікальність email та оновлення сесії.
-2. **Каталог книг (`CatalogService`, `ManagerCatalogService`, `CsvImportService`):**
-   - Пошук, фільтрація, сортування за роком видання `publicationYear`, м'яке видалення, бінарні обкладинки, CSV-імпорт.
-3. **Кошик та замовлення (`OrderService`, `ManagerOrderService`):**
-   - Кошик, попередній розрахунок (знижка до 30%), створення замовлення (звичайне та `GIFT` з `institutionContactPerson`), захист від оверселінгу через `@Version`.
-   - FSM з 4 статусами (`AWAITING_PAYMENT`, `PAID`, `DELIVERED`, `CANCELLED`), скасування замовлень, побічні дії при доставці, сповіщення покупця й менеджерів.
-4. **Програма лояльності, гейміфікація та подарунки (`LoyaltyService`, `ChallengeService`, `RatingService`, `GiftSetService`):**
-   - Нарахування балів, оцінювання книг (+1 бал), читацькі виклики, генератор подарункових наборів.
-
-### Етап 3: REST API Контролери та DTO — ЗАВЕРШЕНО (100%)
-- Реалізовано контролери: `AuthController`, `ProfileController`, `CatalogController`, `ManagerCatalogController`, `OrderController`, `ManagerOrderController`, `LoyaltyController`, `ChallengeController`, `ManagerChallengeController`, `RatingController`, `GiftSetController`, `InstitutionController`.
-- Валідація вхідних даних через Jakarta Validation з повідомленнями українською мовою.
-- Повний набір із 106 інтеграційних тестів на Testcontainers (PostgreSQL 17) підтверджує 100% працездатність.
-
-### Етап 4: Інтеграція з клієнтським додатком (Frontend) — ПОТОЧНИЙ ПРІОРИТЕТ
-- Розробка UI сторінок SPA (каталог з фільтром за роком видання, кошик, оформлення замовлення з дарунками, кабінет користувача, зміна контактів з паролем, апеляція на розблокування, панель менеджера з 4 статусами).
-- Підключення клієнтських запитів до бекенду через Vite proxy на `/api` з обробкою типізованих відповідей RFC 9457 Problem Details.
+### Зріз 5: Адміністрування M5–M12 та розширена аналітика — ЗАПЛАНОВАНО (Roadmap)
+- `M5`: Періодична анонімізація неактивних акаунтів (понад 2 роки) із збереженням знеособленої історії замовлень.
+- `M6/M7`: Панель менеджера для перегляду та модерації поданих запитів розблокування (`unblock_requests`) та ручного блокування.
+- `M8`: CRUD-керування закладами-одержувачами для благодійних замовлень менеджером.
+- `M9`: Звітність та журнал благодійних передач (`gift_log`).
+- `M10`: Аналітичні звіти затребуваності книг/жанрів, залишків та рейтингів.
 
 ---
 

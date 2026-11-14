@@ -8,8 +8,9 @@
 
 - **Базовий шлях:** `/api`
 - **Формат обміну даними:** `application/json; charset=UTF-8` (крім файлових операцій multipart та віддачі бінарних зображень).
-- **Автентифікація та сесії:**
+- **Автентифікація, сесії та CSRF:**
   - Сесійна cookie `JSESSIONID` (`HttpOnly`, `SameSite=Lax`, `Secure` у профілі `prod`).
+  - CSRF-захист через cookie для SPA: `CookieCsrfTokenRepository` (`XSRF-TOKEN`, `HttpOnly=false`) та `SpaCsrfTokenRequestHandler`. Клієнт зобов'язаний передавати заголовок `X-XSRF-TOKEN` у запитах, що змінюють стан (`POST`, `PUT`, `PATCH`, `DELETE`).
   - Фронтенд-клієнт зобов'язаний надсилати всі запити з налаштуванням `credentials: 'include'`.
 - **Ролі користувачів (RBAC):**
   - `GUEST` — неавторизований користувач (доступ до публічного каталогу, реєстрації, входу, списку закладів та перегляду викликів).
@@ -32,10 +33,11 @@
     ]
   }
   ```
-  Спеціалізовані типи помилок безпеки (`type` URI):
+  Спеціалізовані типи помилок безпеки та бізнес-правил (`type` URI):
   - `urn:readmania:error:access-denied` — спроба доступу до ресурсу без відповідної ролі (`403 Forbidden`).
   - `urn:readmania:error:account-blocked` — доступ або спроба входу заблокованого користувача (`403 Forbidden`); додатково містить поля `blockReason` та `blockedAt`.
   - `urn:readmania:error:login-rate-limited` — блокування входу на 15 хв після 5 невдалих спроб (`403 Forbidden`); містить поле `retryAfter`.
+  - `urn:readmania:error:order-status-conflict` — конфлікт зміни статусу замовлення або невідповідність `expectedStatus` / оптимістичного блокування (`409 Conflict`); містить поле `currentStatus`.
   
   Для внутрішніх помилок сервера (`500 Internal Server Error`) додатково повертається безпечний `errorId` для пошуку інциденту в логах:
   ```json
@@ -135,10 +137,10 @@
 
 | Метод | Ендпоінт | Доступ | Опис та параметри | Коди відповідей |
 |---|---|---|---|---|
-| `GET` | `/api/catalog/books` | Публічний | **Пошук та фільтрація книг (G1, A.4)**<br>Параметри запиту:<br>- `query` або `q`: пошуковий рядок за назвою/автором<br>- `genre` / `genreId`: назва або ID жанру<br>- `author` / `authorId`: ім'я або ID автора<br>- `priceMin`, `priceMax`: діапазон цін<br>- `inStock`: тільки наявні (`true`/`false`)<br>- `page`, `size`, `sort` (`publicationYear,desc`, `publicationYear,asc`, `price,asc`, `price,desc`, `title,asc`, `stock,desc`, `createdAt,desc`) | `200 OK` (`Page<BookSummaryResponse>`) |
-| `GET` | `/api/catalog/books/{id}` | Публічний | **Детальна сторінка книги (G1, A.4)**<br>Включає видавництво, рік видання, анотацію, авторів, жанр, залишок, середню оцінку та кількість відгуків. | `200 OK` (`BookDetailsResponse`), `404` |
+| `GET` | `/api/catalog/books` | Публічний | **Пошук та фільтрація книг (G1, A.4)**<br>Параметри запиту:<br>- `query` або `q`: пошуковий рядок за назвою/автором<br>- `genre` / `genreId`: назва або ID жанру<br>- `author` / `authorId`: ім'я або ID автора<br>- `priceMin`, `priceMax`: діапазон цін<br>- `stockMin`, `stockMax`: діапазон кількості на складі (`400 Bad Request`, якщо `stockMin > stockMax`)<br>- `inStock`: тільки наявні (`true`/`false`)<br>- `page`, `size`, `sort` (`publicationYear,desc`, `publicationYear,asc`, `price,asc`, `price,desc`, `title,asc`, `stock,desc`, `createdAt,desc`) | `200 OK` (`Page<BookSummaryResponse>`), `400` |
+| `GET` | `/api/catalog/books/{id}` | Публічний | **Детальна сторінка книги (G1, A.4)**<br>Включає видавництво, рік видання, анотацію, авторів, жанр, залишок, динамічний прапорець `canDelete`, середню оцінку та кількість відгуків. | `200 OK` (`BookDetailsResponse`), `404` |
 | `GET` | `/api/catalog/books/{id}/cover` | Публічний | **Отримання бінарного зображення обкладинки**<br>Повертає `image/jpeg` або `image/png` із заголовком кешування `Cache-Control: max-age=86400, public`. | `200 OK` (binary), `404` |
-| `GET` | `/api/catalog/genres` | Публічний | **Список усіх доступних жанрів** | `200 OK` (`List<GenreResponse>`) |
+| `GET` | `/api/catalog/genres` | Публічний | **Список усіх доступних жанрів**<br>Включає кількість активних книг `booksCount` для блокування видалення непорожнього жанру на фронтенді. | `200 OK` (`List<GenreResponse>`) |
 | `GET` | `/api/catalog/authors` | Публічний | **Список усіх авторів каталогу** | `200 OK` (`List<AuthorResponse>`) |
 
 #### Модель `BookSummaryResponse`:
@@ -151,12 +153,52 @@
   "isbn": "978-966-00-1234-5",
   "price": 350.00,
   "stock": 15,
-  "genre": { "id": 1, "name": "Поезія", "description": "Поетичні твори" },
+  "genre": { "id": 1, "name": "Поезія", "description": "Поетичні твори", "booksCount": 12 },
   "authors": [{ "id": 1, "name": "Тарас Шевченко" }],
   "averageRating": 4.9,
   "ratingsCount": 28,
   "hasCover": true,
   "coverUrl": "/api/catalog/books/1/cover"
+}
+```
+
+#### Модель `BookDetailsResponse`:
+```json
+{
+  "id": 1,
+  "title": "Кобзар",
+  "publisher": "А-БА-БА-ГА-ЛА-МА-ГА",
+  "publicationYear": 2024,
+  "isbn": "978-966-00-1234-5",
+  "description": "Повне зібрання поетичних творів",
+  "price": 350.00,
+  "stock": 15,
+  "canDelete": false,
+  "genre": { "id": 1, "name": "Поезія", "description": "Поетичні твори", "booksCount": 12 },
+  "authors": [{ "id": 1, "name": "Тарас Шевченко" }],
+  "averageRating": 4.9,
+  "ratingsCount": 28,
+  "hasCover": true,
+  "coverUrl": "/api/catalog/books/1/cover",
+  "createdAt": "2026-11-01T10:00:00Z"
+}
+```
+
+#### Модель `GenreResponse`:
+```json
+{
+  "id": 1,
+  "name": "Поезія",
+  "description": "Поетичні твори",
+  "booksCount": 12
+}
+```
+
+#### Модель `AuthorResponse`:
+```json
+{
+  "id": 1,
+  "fullName": "Тарас Шевченко"
 }
 ```
 
@@ -258,10 +300,34 @@
       "titleSnapshot": "Кобзар",
       "priceSnapshot": 350.00,
       "quantity": 2,
-      "subtotal": 700.00
+      "subtotal": 700.00,
+      "userRating": 5
     }
   ],
   "allowedNextStatuses": ["CANCELLED"]
+}
+```
+
+#### Модель `OrderSummaryResponse`:
+```json
+{
+  "id": 101,
+  "userId": 1,
+  "type": "REGULAR",
+  "status": "AWAITING_PAYMENT",
+  "deliveryMethod": "COURIER",
+  "paymentMethod": "TRANSFER",
+  "recipientName": "Тарас Шевченко",
+  "recipientPhone": "+380501234567",
+  "institutionName": null,
+  "institutionContactPerson": null,
+  "itemsTotal": 700.00,
+  "discountAmount": 100.00,
+  "pointsUsed": 10,
+  "totalToPay": 600.00,
+  "totalItems": 2,
+  "createdAt": "2026-11-13T14:30:00Z",
+  "deliveredAt": null
 }
 ```
 
@@ -361,6 +427,7 @@
 | `POST` | `/api/manager/genres` | `MANAGER` | **Створення нового жанру (M1)**<br>Тіло: `{ name, description }` | `201 Created` (`GenreResponse`), `400`, `403`, `409 Conflict` |
 | `PUT` | `/api/manager/genres/{id}` | `MANAGER` | **Редагування жанру (M1)**<br>Тіло: `{ name, description }` | `200 OK` (`GenreResponse`), `400`, `403`, `404` |
 | `DELETE` | `/api/manager/genres/{id}` | `MANAGER` | **Видалення жанру (M1)**<br>Дозволено лише якщо до жанру не прив'язана жодна книга (`RESTRICT`). | `204 No Content`, `400`, `403`, `404`, `409 Conflict` |
+| `POST` | `/api/manager/authors` | `MANAGER` | **Створення нового автора (M1)**<br>Тіло: `{ fullName }`<br>Створює запис автора або повертає 409 Conflict, якщо автор з таким ім'ям уже існує. | `201 Created` (`AuthorResponse`), `400`, `403`, `409 Conflict` |
 | `POST` | `/api/manager/books/import-csv` | `MANAGER` | **Пакетний імпорт книг із CSV-файлу (M2)**<br>Формат: `multipart/form-data`, поле `file`. Підтримує автовизначення роздільників (`,`, `;`, `\t`), валідує поля (включаючи `publisher` та `publication_year`), завантажує обкладинки за URL, створює відсутні жанри й авторів. | `200 OK` (`CsvImportResponse`), `400`, `403` |
 
 #### Модель `CsvImportResponse`:
@@ -394,9 +461,9 @@
 |---|---|---|---|---|
 | `GET` | `/api/manager/orders` | `MANAGER` | **Перегляд списку замовлень (M3)**<br>Фільтри:<br>- `status`: конкретний статус замовлення (`AWAITING_PAYMENT`, `PAID`, `DELIVERED`, `CANCELLED`)<br>- `unpaidOverdue`: `true` (не оплачено понад 7 днів — п. 7.2.2.6)<br>- `archived`: `true` (поставлені або скасовані понад 3 роки тому — п. 7.2.2.7)<br>- Пагінація: `page`, `size`, `sort` | `200 OK` (`Page<OrderSummaryResponse>`), `403` |
 | `GET` | `/api/manager/orders/{id}` | `MANAGER` | **Повна картка замовлення з переліком дозволених переходів статусів (M3)** | `200 OK` (`OrderDetailsResponse`), `403`, `404` |
-| `PATCH` | `/api/manager/orders/{id}/status` | `MANAGER` | **Зміна статусу замовлення (M3, Таблиця 3 SRS, A.1)**<br>Тіло: `{ status, expectedStatus }`<br>Суворо контролює допустимі переходи:<br>- з `AWAITING_PAYMENT` дозволено в `PAID`, `DELIVERED` (лише при `ON_DELIVERY`, п. 7.2.2.3), `CANCELLED`<br>- з `PAID` дозволено в `DELIVERED`, `CANCELLED` (п. 7.2.2.10 — неможливість доставки з поверненням залишків та бонусів).<br>При розбіжності з `expectedStatus` (конкурентна зміна двома менеджерами) повертає `409 Conflict`.<br>При зміні статусу надсилає сповіщення покупцю через `NotificationService`.<br>При переході в `DELIVERED` нараховує бали ($\lfloor \text{total}/100 \rfloor$), зараховує читацькі виклики та записує у `gift_log`. | `200 OK` (`OrderDetailsResponse`), `400`, `403`, `404`, `409 Conflict` |
-| `POST` | `/api/manager/orders/cancel-unpaid-overdue` | `MANAGER` | **Групове скасування прострочених замовлень (п. 7.2.2.6)**<br>Скасовує замовлення зі статусом `AWAITING_PAYMENT`, створені понад 7 днів тому, із поверненням залишків книг на склад. | `200 OK` `{ message, cancelledCount }`, `403` |
-| `DELETE` | `/api/manager/orders/archive` | `MANAGER` | **Очищення архівних замовлень (п. 7.2.2.7)**<br>Видаляє замовлення в статусі `DELIVERED`/`CANCELLED` старші за 3 роки, зберігаючи записи оцінок та `gift_log`. | `200 OK` `{ message, deletedCount }`, `403` |
+| `PATCH` | `/api/manager/orders/{id}/status` | `MANAGER` | **Зміна статусу замовлення (M3, Таблиця 3 SRS, A.1)**<br>Тіло: `{ status, expectedStatus }`<br>Суворо контролює допустимі переходи:<br>- з `AWAITING_PAYMENT` дозволено в `PAID`, `DELIVERED` (лише при `ON_DELIVERY`, п. 7.2.2.3), `CANCELLED`<br>- з `PAID` дозволено в `DELIVERED`, `CANCELLED` (п. 7.2.2.10 — неможливість доставки з поверненням залишків та бонусів).<br>При розбіжності з `expectedStatus` або конфлікті стану повертає `409 Conflict` з полем `currentStatus`.<br>При зміні статусу надсилає сповіщення покупцю через `NotificationService`.<br>При переході в `DELIVERED` нараховує бали ($\lfloor \text{total}/100 \rfloor$), зараховує читацькі виклики та записує у `gift_log`. | `200 OK` (`OrderDetailsResponse`), `400`, `403`, `404`, `409 Conflict` |
+| `POST` | `/api/manager/orders/cancel-unpaid-overdue` | `MANAGER` | **Групове скасування прострочених замовлень за списком ID (п. 7.2.2.6)**<br>Тіло: `{"orderIds": [1, 2, ...]}` (@NotEmpty).<br>Перевіряє для кожного ID: статус `AWAITING_PAYMENT`, метод оплати `TRANSFER` та вік > 7 днів. Якщо хоча б одне не відповідає — відкочує транзакцію та повертає `409 Conflict`. | `200 OK` `{ message, cancelledCount }`, `400`, `403`, `409 Conflict` |
+| `DELETE` | `/api/manager/orders/archive` | `MANAGER` | **Очищення архівних замовлень за списком ID (п. 7.2.2.7)**<br>Тіло: `{"orderIds": [1, 2, ...]}` (@NotEmpty).<br>Перевіряє для кожного ID: статус `DELIVERED` або `CANCELLED` та вік > 3 років. Якщо хоча б одне не відповідає — повертає `409 Conflict`. Видаляє замовлення, зберігаючи оцінки та `gift_log`. | `200 OK` `{ message, deletedCount }`, `400`, `403`, `409 Conflict` |
 
 ---
 

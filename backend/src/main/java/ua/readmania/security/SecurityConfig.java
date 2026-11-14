@@ -12,9 +12,11 @@ import org.springframework.security.config.annotation.web.configurers.AbstractHt
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.security.web.SecurityFilterChain;
+import org.springframework.security.web.authentication.www.BasicAuthenticationFilter;
 import org.springframework.security.web.context.HttpSessionSecurityContextRepository;
 import org.springframework.security.web.context.SecurityContextHolderFilter;
 import org.springframework.security.web.context.SecurityContextRepository;
+import org.springframework.security.web.csrf.CookieCsrfTokenRepository;
 
 /**
  * Spring Security configuration for ReadMania.
@@ -69,9 +71,11 @@ public class SecurityConfig {
 
     @Bean
     public SecurityFilterChain securityFilterChain(HttpSecurity http) throws Exception {
-        // TODO: Stage 0: CSRF is disabled temporarily.
-        // Implement CookieCsrfTokenRepository (cookie XSRF-TOKEN + header X-XSRF-TOKEN) before acceptance testing (separate issue).
-        http.csrf(AbstractHttpConfigurer::disable);
+        // CSRF protection for SPA using CookieCsrfTokenRepository and SpaCsrfTokenRequestHandler
+        http.csrf(csrf -> csrf
+                .csrfTokenRepository(CookieCsrfTokenRepository.withHttpOnlyFalse())
+                .csrfTokenRequestHandler(new SpaCsrfTokenRequestHandler())
+        );
 
         // CORS is not enabled. The frontend works via reverse proxy or from the same origin.
         http.cors(AbstractHttpConfigurer::disable);
@@ -112,6 +116,7 @@ public class SecurityConfig {
 
         // M6: Architecture hook to check account block status on each request during active session
         http.addFilterAfter(accountStatusFilter, SecurityContextHolderFilter.class);
+        http.addFilterAfter(new CsrfCookieFilter(), BasicAuthenticationFilter.class);
 
         return http.build();
     }
