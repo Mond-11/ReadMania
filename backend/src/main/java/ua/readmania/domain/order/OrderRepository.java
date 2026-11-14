@@ -42,4 +42,7 @@ public interface OrderRepository extends JpaRepository<Order, Long>, JpaSpecific
 
     @Query("SELECT o FROM Order o WHERE o.status IN ('DELIVERED', 'CANCELLED') AND COALESCE(o.statusChangedAt, o.createdAt) < :before ORDER BY o.createdAt DESC")
     Page<Order> findArchivedOrdersOlderThanPaged(@Param("before") Instant before, Pageable pageable);
+
+    @Query("SELECT o.status, COUNT(o) FROM Order o WHERE o.user.id = :userId GROUP BY o.status")
+    List<Object[]> countOrdersByStatusForUser(@Param("userId") Long userId);
 }

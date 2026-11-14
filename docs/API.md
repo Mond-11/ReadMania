@@ -548,6 +548,65 @@
 
 ---
 
+### 2.14. Менеджер: Керування обліковими записами (`/api/manager/users`)
+
+Доступ до всіх ендпоінтів цього розділу вимагає ролі **`MANAGER`** (`403 Forbidden` для інших користувачів).
+
+| Метод | Ендпоінт | Доступ | Опис та параметри | Коди відповідей |
+|---|---|---|---|---|
+| `GET` | `/api/manager/users` | `MANAGER` | **Пошук і перегляд списку користувачів (M6)**<br>Показує лише акаунти з роллю `USER`.<br>Параметри: `email` (підрядок, регістронезалежний), `status` (`ACTIVE`, `BLOCKED`), пагінація та сортування (`createdAt`, `lastLoginAt`). | `200 OK` (`Page<ManagerUserSummaryResponse>`), `403` |
+| `GET` | `/api/manager/users/{id}` | `MANAGER` | **Детальна картка облікового запису**<br>Містить агреговану кількість замовлень за 4 статусами (`ordersByStatus`), `totalOrders`, баланс балів, причину та дату блокування. | `200 OK` (`ManagerUserDetailsResponse`), `403`, `404` |
+| `POST` | `/api/manager/users/{id}/block` | `MANAGER` | **Блокування облікового запису (M6)**<br>Тіло: `{"reason": "Причина блокування"}` (@NotBlank, до 500 символів).<br>Встановлює `status = BLOCKED`, фіксує `blockedAt` та `blockReason`, надсилає email через `NotificationService`. Повертає 409 Conflict, якщо акаунт уже заблоковано або це менеджер. | `200 OK` (`ManagerUserDetailsResponse`), `400`, `403`, `404`, `409 Conflict` |
+| `GET` | `/api/manager/users/unblock-requests` | `MANAGER` | **Перегляд списку поданих апеляцій на розблокування (M6, M7)**<br>Повертає перелік запитів із даними користувача та обґрунтуванням (`justification`). | `200 OK` (`List<ManagerUnblockRequestResponse>`), `403` |
+| `POST` | `/api/manager/users/unblock` | `MANAGER` | **Масове розблокування облікових записів (M7)**<br>Тіло: `{"userIds": [1, 2, ...]}` (@NotEmpty).<br>Перевіряє для кожного користувача стан `BLOCKED`, змінює статус на `ACTIVE`, скидає причину, лічильник невдалих спроб, видаляє запис із `unblock_requests` та надсилає сповіщення. | `200 OK` `{"message": "Облікові записи успішно розблоковано"}`, `400`, `403`, `404`, `409 Conflict` |
+
+#### Модель `ManagerUserSummaryResponse`:
+```json
+{
+  "id": 1,
+  "email": "ivan.petrenko@example.com",
+  "status": "ACTIVE",
+  "createdAt": "2026-11-10T12:00:00Z",
+  "lastLoginAt": "2026-11-14T10:30:00Z"
+}
+```
+
+#### Модель `ManagerUserDetailsResponse`:
+```json
+{
+  "id": 1,
+  "email": "ivan.petrenko@example.com",
+  "status": "ACTIVE",
+  "createdAt": "2026-11-10T12:00:00Z",
+  "lastLoginAt": "2026-11-14T10:30:00Z",
+  "bonusBalance": 50,
+  "totalOrders": 4,
+  "ordersByStatus": {
+    "AWAITING_PAYMENT": 0,
+    "PAID": 1,
+    "DELIVERED": 2,
+    "CANCELLED": 1
+  },
+  "blockedAt": null,
+  "blockReason": null
+}
+```
+
+#### Модель `ManagerUnblockRequestResponse`:
+```json
+{
+  "requestId": 10,
+  "userId": 5,
+  "email": "blocked.user@example.com",
+  "blockedAt": "2026-11-14T08:00:00Z",
+  "blockReason": "Порушення правил замовлень",
+  "justification": "Прошу вибачення, надалі своєчасно оплачуватиму замовлення",
+  "createdAt": "2026-11-14T09:15:00Z"
+}
+```
+
+---
+
 ## 3. Матриця переходів статусів замовлень (M3, A.1)
 
 Згідно з Таблицею 3 SRS (зведення до 4 значень відповідно до А.1), переходи статусів виконуються за такою логікою:
@@ -582,12 +641,9 @@
 
 Наступні ендпоінти узгоджені в SRS і будуть додані на відповідних етапах реалізації:
 
-### 4.1. Менеджер: Адміністрування акаунтів (M5, M6, M7)
-- `GET /api/manager/users?email=` — пошук користувача за email.
+### 4.1. Менеджер: Анонімізація неактивних акаунтів (M5)
 - `GET /api/manager/users/inactive` — вибірка акаунтів без входу понад 2 роки (M5).
 - `POST /api/manager/users/inactive/delete` — видалення неактивних записів із анонімізацією замовлень.
-- `POST /api/manager/users/{id}/block` — ручне блокування акаунта менеджером `{ reason }` (M6).
-- `POST /api/manager/users/{id}/unblock` — розблокування акаунта (M7).
 
 ### 4.2. Менеджер: Заклади (M8)
 - `POST /api/manager/institutions` — створення нового закладу-одержувача.
