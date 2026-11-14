@@ -85,6 +85,16 @@ public class Book {
         this.stock = stock;
     }
 
+    public Book(String title, String isbn, Genre genre, BigDecimal price, int stock, String publisher, Integer publicationYear) {
+        this.title = title;
+        this.isbn = isbn;
+        this.genre = genre;
+        this.price = price;
+        this.stock = stock;
+        this.publisher = publisher;
+        this.publicationYear = publicationYear;
+    }
+
     public Book(String title, String isbn, BigDecimal price, int stock, Genre genre, Set<Author> authors) {
         this.title = title;
         this.isbn = isbn;

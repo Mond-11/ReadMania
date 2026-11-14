@@ -41,6 +41,13 @@ public class Institution {
     public Institution() {
     }
 
+    public Institution(String name, InstitutionType type, String address, String contactPerson) {
+        this.name = name;
+        this.type = type;
+        this.address = address;
+        this.contactPerson = contactPerson;
+    }
+
     public Institution(String name, InstitutionType type, String address, String contactPerson, String phone) {
         this.name = name;
         this.type = type != null ? type : InstitutionType.ORPHANAGE;

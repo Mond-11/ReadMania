@@ -20,5 +20,7 @@ public interface UnblockRequestRepository extends JpaRepository<UnblockRequest, 
 
     java.util.Optional<UnblockRequest> findTopByUserIdOrderByCreatedAtDesc(Long userId);
 
-    void deleteByUserId(Long userId);
+    @org.springframework.data.jpa.repository.Modifying
+    @org.springframework.data.jpa.repository.Query("DELETE FROM UnblockRequest ur WHERE ur.user.id = :userId")
+    void deleteByUserId(@org.springframework.data.repository.query.Param("userId") Long userId);
 }

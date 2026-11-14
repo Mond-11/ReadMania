@@ -71,11 +71,16 @@ public class SecurityConfig {
 
     @Bean
     public SecurityFilterChain securityFilterChain(HttpSecurity http) throws Exception {
-        // CSRF protection for SPA using CookieCsrfTokenRepository and SpaCsrfTokenRequestHandler
-        http.csrf(csrf -> csrf
-                .csrfTokenRepository(CookieCsrfTokenRepository.withHttpOnlyFalse())
-                .csrfTokenRequestHandler(new SpaCsrfTokenRequestHandler())
-        );
+        // CSRF protection for SPA using CookieCsrfTokenRepository and SpaCsrfTokenRequestHandler (disabled in test profile)
+        if (environment.matchesProfiles("test")) {
+            http.csrf(AbstractHttpConfigurer::disable);
+        } else {
+            http.csrf(csrf -> csrf
+                    .csrfTokenRepository(CookieCsrfTokenRepository.withHttpOnlyFalse())
+                    .csrfTokenRequestHandler(new SpaCsrfTokenRequestHandler())
+                    .ignoringRequestMatchers("/api/auth/login", "/api/auth/register", "/api/auth/password-reset/**", "/api/auth/unblock-request", "/api/auth/logout")
+            );
+        }
 
         // CORS is not enabled. The frontend works via reverse proxy or from the same origin.
         http.cors(AbstractHttpConfigurer::disable);

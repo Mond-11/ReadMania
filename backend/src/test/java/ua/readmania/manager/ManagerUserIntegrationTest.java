@@ -169,9 +169,10 @@ class ManagerUserIntegrationTest extends BaseIntegrationTest {
     void shouldReturnUserDetailsWithOrderAggregation() throws Exception {
         MockHttpSession managerSession = loginAs("manager@readmania.ua", "ManagerPass123!");
 
-        Genre genre = genreRepository.save(new Genre("Фантастика"));
-        Book book = new Book("Тестова Книга", "9786171234567", genre, BigDecimal.valueOf(300), 10);
-        book = bookRepository.save(book);
+        Genre genre = genreRepository.findByNameIgnoreCase("Фантастика")
+                .orElseGet(() -> genreRepository.save(new Genre("Фантастика")));
+        Book book = bookRepository.findByIsbn("9786171234567")
+                .orElseGet(() -> bookRepository.save(new Book("Тестова Книга", "9786171234567", genre, BigDecimal.valueOf(300), 10)));
 
         // Create orders for regularUser1: 1 PAID, 2 DELIVERED, 1 CANCELLED
         createTestOrder(regularUser1, book, OrderStatus.PAID);

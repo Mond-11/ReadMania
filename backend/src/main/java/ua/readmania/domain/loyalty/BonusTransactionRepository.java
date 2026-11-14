@@ -17,4 +17,8 @@ public interface BonusTransactionRepository extends JpaRepository<BonusTransacti
     Optional<BonusTransaction> findByOrderIdAndType(Long orderId, BonusTransactionType type);
 
     Optional<BonusTransaction> findByUserIdAndChallengeIdAndType(Long userId, Long challengeId, BonusTransactionType type);
+
+    @org.springframework.data.jpa.repository.Modifying
+    @org.springframework.data.jpa.repository.Query("DELETE FROM BonusTransaction bt WHERE bt.user.id = :userId")
+    void deleteByUserId(@org.springframework.data.repository.query.Param("userId") Long userId);
 }

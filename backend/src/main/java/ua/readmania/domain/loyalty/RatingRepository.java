@@ -31,4 +31,8 @@ public interface RatingRepository extends JpaRepository<Rating, Long> {
 
     @Query("SELECT r.book.id, AVG(r.value), COUNT(r) FROM Rating r WHERE r.book.id IN :bookIds GROUP BY r.book.id")
     List<Object[]> findAverageRatingsByBookIds(@Param("bookIds") Collection<Long> bookIds);
+
+    @org.springframework.data.jpa.repository.Modifying
+    @Query("UPDATE Rating r SET r.user = null WHERE r.user.id IN :userIds")
+    int anonymizeRatingsForUsers(@Param("userIds") Collection<Long> userIds);
 }

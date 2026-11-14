@@ -8,6 +8,7 @@ import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.Sort;
 import org.springframework.data.web.PageableDefault;
 import org.springframework.http.ResponseEntity;
+import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
@@ -17,10 +18,13 @@ import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 import ua.readmania.domain.user.UserStatus;
 import ua.readmania.dto.manager.user.BlockUserRequest;
+import ua.readmania.dto.manager.user.DeleteInactiveUsersRequest;
+import ua.readmania.dto.manager.user.InactiveUserResponse;
 import ua.readmania.dto.manager.user.ManagerUserDetailsResponse;
 import ua.readmania.dto.manager.user.ManagerUnblockRequestResponse;
 import ua.readmania.dto.manager.user.ManagerUserSummaryResponse;
 import ua.readmania.dto.manager.user.UnblockUsersRequest;
+import ua.readmania.service.ManagerInactiveUserService;
 import ua.readmania.service.ManagerUserService;
 
 @RestController
@@ -28,9 +32,12 @@ import ua.readmania.service.ManagerUserService;
 public class ManagerUserController {
 
     private final ManagerUserService managerUserService;
+    private final ManagerInactiveUserService managerInactiveUserService;
 
-    public ManagerUserController(ManagerUserService managerUserService) {
+    public ManagerUserController(ManagerUserService managerUserService,
+                                 ManagerInactiveUserService managerInactiveUserService) {
         this.managerUserService = managerUserService;
+        this.managerInactiveUserService = managerInactiveUserService;
     }
 
     @GetMapping
@@ -67,5 +74,18 @@ public class ManagerUserController {
             @Valid @RequestBody UnblockUsersRequest request) {
         managerUserService.unblockUsers(request);
         return ResponseEntity.ok(Map.of("message", "Облікові записи успішно розблоковано"));
+    }
+
+    @GetMapping("/inactive")
+    public ResponseEntity<List<InactiveUserResponse>> getInactiveUsers() {
+        List<InactiveUserResponse> response = managerInactiveUserService.getInactiveUsers();
+        return ResponseEntity.ok(response);
+    }
+
+    @DeleteMapping("/inactive")
+    public ResponseEntity<Map<String, String>> deleteInactiveUsers(
+            @Valid @RequestBody DeleteInactiveUsersRequest request) {
+        managerInactiveUserService.deleteInactiveUsers(request);
+        return ResponseEntity.ok(Map.of("message", "Неактивні облікові записи успішно видалено"));
     }
 }

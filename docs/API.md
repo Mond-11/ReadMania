@@ -559,6 +559,8 @@
 | `POST` | `/api/manager/users/{id}/block` | `MANAGER` | **Блокування облікового запису (M6)**<br>Тіло: `{"reason": "Причина блокування"}` (@NotBlank, до 500 символів).<br>Встановлює `status = BLOCKED`, фіксує `blockedAt` та `blockReason`, надсилає email через `NotificationService`. Повертає 409 Conflict, якщо акаунт уже заблоковано або це менеджер. | `200 OK` (`ManagerUserDetailsResponse`), `400`, `403`, `404`, `409 Conflict` |
 | `GET` | `/api/manager/users/unblock-requests` | `MANAGER` | **Перегляд списку поданих апеляцій на розблокування (M6, M7)**<br>Повертає перелік запитів із даними користувача та обґрунтуванням (`justification`). | `200 OK` (`List<ManagerUnblockRequestResponse>`), `403` |
 | `POST` | `/api/manager/users/unblock` | `MANAGER` | **Масове розблокування облікових записів (M7)**<br>Тіло: `{"userIds": [1, 2, ...]}` (@NotEmpty).<br>Перевіряє для кожного користувача стан `BLOCKED`, змінює статус на `ACTIVE`, скидає причину, лічильник невдалих спроб, видаляє запис із `unblock_requests` та надсилає сповіщення. | `200 OK` `{"message": "Облікові записи успішно розблоковано"}`, `400`, `403`, `404`, `409 Conflict` |
+| `GET` | `/api/manager/users/inactive` | `MANAGER` | **Перелік облікових записів, що підлягають видаленню (M5)**<br>Повертає користувачів ролі `USER`, які не входили понад 2 роки (`COALESCE(last_login_at, created_at) < cutoff`) або заблоковані понад 2 роки (`blocked_at < cutoff`). | `200 OK` (`List<InactiveUserResponse>`), `403` |
+| `DELETE` | `/api/manager/users/inactive` | `MANAGER` | **Пакетне видалення неактивних акаунтів з анонімізацією історії (M5)**<br>Тіло: `{"userIds": [1, 2, ...]}` (@NotEmpty).<br>Перевіряє відповідність критерію неактивності > 2 роки (інакше `409 Conflict`), очищує персональні дані в `orders` (залишаючи склад і суми для звітності), відв'язує `ratings` (`user_id = NULL`), каскадно видаляє `cart_items`, `bonus_transactions`, `unblock_requests` та запис із `users`. | `200 OK` `{"message": "Неактивні облікові записи успішно видалено"}`, `400`, `403`, `409 Conflict` |
 
 #### Модель `ManagerUserSummaryResponse`:
 ```json
@@ -605,6 +607,43 @@
 }
 ```
 
+#### Модель `InactiveUserResponse`:
+```json
+{
+  "id": 3,
+  "email": "old.inactive@example.com",
+  "status": "ACTIVE",
+  "referenceDate": "2024-05-10T11:00:00Z"
+}
+```
+
+---
+
+### 2.15. Менеджер: Керування закладами-одержувачами (`/api/manager/institutions`)
+
+Доступ до всіх ендпоінтів цього розділу вимагає ролі **`MANAGER`** (`403 Forbidden` для інших користувачів).
+
+| Метод | Ендпоінт | Доступ | Опис та параметри | Коди відповідей |
+|---|---|---|---|---|
+| `GET` | `/api/manager/institutions` | `MANAGER` | **Пошук і перегляд списку закладів (M8)**<br>Фільтри: `query` (пошук підрядка за назвою або адресою), `type` (`ORPHANAGE`, `BOARDING_SCHOOL`, `LIBRARY`). | `200 OK` (`List<InstitutionDetailsResponse>`), `403` |
+| `GET` | `/api/manager/institutions/{id}` | `MANAGER` | **Детальна сторінка закладу**<br>Повертає дані закладу, кількість благодійних замовлень `giftOrdersCount` та обчислюваний прапорець `canDelete` (true, якщо немає активних замовлень `AWAITING_PAYMENT` / `PAID`). | `200 OK` (`InstitutionDetailsResponse`), `403`, `404` |
+| `POST` | `/api/manager/institutions` | `MANAGER` | **Додавання нового закладу (M8)**<br>Тіло: `{ name, type, address, contactPerson }` | `200 OK` (`InstitutionDetailsResponse`), `400`, `403` |
+| `PUT` | `/api/manager/institutions/{id}` | `MANAGER` | **Редагування закладу (M8)**<br>Тіло: `{ name, type, address, contactPerson }`<br>Оновлює дані закладу; вже створені замовлення зберігають свої незмінні знімки. | `200 OK` (`InstitutionDetailsResponse`), `400`, `403`, `404` |
+| `DELETE` | `/api/manager/institutions` | `MANAGER` | **Пакетне видалення закладів (M8)**<br>Тіло: `{"institutionIds": [1, 2, ...]}` (@NotEmpty).<br>Перевіряє відсутність активних замовлень (`AWAITING_PAYMENT`, `PAID`) — при наявності повертає `409 Conflict`. При успіху у транзакції видаляє завершені замовлення (`DELIVERED`, `CANCELLED`) для цих закладів та самі заклади. | `200 OK` `{"message": "Заклади успішно видалено"}`, `400`, `403`, `404`, `409 Conflict` |
+
+#### Модель `InstitutionDetailsResponse`:
+```json
+{
+  "id": 1,
+  "name": "Дитячий будинок 'Сонечко'",
+  "type": "ORPHANAGE",
+  "address": "вул. Лісова, 10, Київ",
+  "contactPerson": "Олена Петрівна",
+  "giftOrdersCount": 5,
+  "canDelete": true
+}
+```
+
 ---
 
 ## 3. Матриця переходів статусів замовлень (M3, A.1)
@@ -641,16 +680,7 @@
 
 Наступні ендпоінти узгоджені в SRS і будуть додані на відповідних етапах реалізації:
 
-### 4.1. Менеджер: Анонімізація неактивних акаунтів (M5)
-- `GET /api/manager/users/inactive` — вибірка акаунтів без входу понад 2 роки (M5).
-- `POST /api/manager/users/inactive/delete` — видалення неактивних записів із анонімізацією замовлень.
-
-### 4.2. Менеджер: Заклади (M8)
-- `POST /api/manager/institutions` — створення нового закладу-одержувача.
-- `PUT /api/manager/institutions/{id}` — редагування закладу.
-- `DELETE /api/manager/institutions/{id}` — видалення закладу.
-
-### 4.3. Менеджер: Журнал дарунків та аналітика (M9, M10)
+### 4.1. Менеджер: Журнал дарунків та аналітика (M9, M10)
 - `GET /api/manager/gift-log?institutionId=&from=&to=` — журнал переданих книг.
 - `GET /api/manager/analytics/demand` — аналітика затребуваності книг і жанрів.
 - `GET /api/manager/analytics/stock` — аналітика залишків на складі.
