@@ -55,6 +55,7 @@ public class OrderService {
     private final InstitutionRepository institutionRepository;
     private final UserRepository userRepository;
     private final BonusTransactionRepository bonusTransactionRepository;
+    private final ua.readmania.service.notification.NotificationService notificationService;
 
     public OrderService(OrderRepository orderRepository,
                         OrderStatusHistoryRepository orderStatusHistoryRepository,
@@ -62,7 +63,8 @@ public class OrderService {
                         BookRepository bookRepository,
                         InstitutionRepository institutionRepository,
                         UserRepository userRepository,
-                        BonusTransactionRepository bonusTransactionRepository) {
+                        BonusTransactionRepository bonusTransactionRepository,
+                        ua.readmania.service.notification.NotificationService notificationService) {
         this.orderRepository = orderRepository;
         this.orderStatusHistoryRepository = orderStatusHistoryRepository;
         this.cartItemRepository = cartItemRepository;
@@ -70,6 +72,7 @@ public class OrderService {
         this.institutionRepository = institutionRepository;
         this.userRepository = userRepository;
         this.bonusTransactionRepository = bonusTransactionRepository;
+        this.notificationService = notificationService;
     }
 
     @Transactional(readOnly = true)
@@ -203,9 +206,7 @@ public class OrderService {
             userRepository.save(user);
         }
 
-        OrderStatus initialStatus = request.getPaymentMethod() == PaymentMethod.TRANSFER
-                ? OrderStatus.AWAITING_PAYMENT
-                : OrderStatus.PROCESSING;
+        OrderStatus initialStatus = OrderStatus.AWAITING_PAYMENT;
 
         Order order = new Order(
                 user,
@@ -242,6 +243,8 @@ public class OrderService {
 
         log.info("Нове замовлення #{} оформлено користувачем {} на суму {} грн (метод оплати: {})",
                 savedOrder.getId(), user.getEmail(), savedOrder.getTotalToPay(), savedOrder.getPaymentMethod());
+
+        notificationService.sendNewOrderAlertToManagers(savedOrder);
 
         return OrderDetailsResponse.fromEntity(savedOrder, List.of(OrderStatusHistoryResponse.fromEntity(history)));
     }
@@ -329,6 +332,7 @@ public class OrderService {
         order.setDeliveryMethod(null);
         order.setInstitution(institution);
         order.setInstitutionName(institution.getName());
+        order.setInstitutionContactPerson(institution.getContactPerson());
         order.setAddress(institution.getAddress());
         order.setRecipientName(institution.getContactPerson());
 
@@ -350,6 +354,8 @@ public class OrderService {
 
         log.info("Нове благодійне замовлення #{} оформлено для закладу '{}' на суму {} грн",
                 savedOrder.getId(), institution.getName(), savedOrder.getTotalToPay());
+
+        notificationService.sendNewOrderAlertToManagers(savedOrder);
 
         return OrderDetailsResponse.fromEntity(savedOrder, List.of(OrderStatusHistoryResponse.fromEntity(history)));
     }
@@ -420,6 +426,8 @@ public class OrderService {
         orderStatusHistoryRepository.save(history);
 
         Order savedOrder = orderRepository.save(order);
+
+        notificationService.sendOrderStatusChanged(savedOrder);
 
         List<OrderStatusHistoryResponse> historyList = orderStatusHistoryRepository.findByOrderIdOrderByChangedAtAsc(orderId)
                 .stream()

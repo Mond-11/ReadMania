@@ -54,8 +54,16 @@ class AuthIntegrationTest extends BaseIntegrationTest {
     @Autowired
     private PasswordEncoder passwordEncoder;
 
+    @Autowired
+    private ua.readmania.domain.user.UnblockRequestRepository unblockRequestRepository;
+
+    @Autowired
+    private ua.readmania.service.notification.LoggingNotificationService loggingNotificationService;
+
     @BeforeEach
     void setUp() {
+        loggingNotificationService.clear();
+        unblockRequestRepository.deleteAll();
         passwordResetTokenRepository.deleteAll();
         userRepository.deleteAll();
     }
@@ -225,23 +233,28 @@ class AuthIntegrationTest extends BaseIntegrationTest {
         mockMvc.perform(post("/api/auth/login")
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(loginRequest)))
-                .andExpect(status().isUnauthorized());
+                .andExpect(status().isForbidden())
+                .andExpect(content().contentTypeCompatibleWith(MediaType.APPLICATION_PROBLEM_JSON))
+                .andExpect(jsonPath("$.type", is("urn:readmania:error:login-rate-limited")))
+                .andExpect(jsonPath("$.retryAfter").exists());
 
         User lockedUser = userRepository.findByEmailIgnoreCase("bruteforce@example.com").orElseThrow();
         assertThat(lockedUser.getFailedLoginAttempts()).isEqualTo(5);
         assertThat(lockedUser.getLockedUntil()).isNotNull();
         assertThat(lockedUser.getLockedUntil()).isAfter(Instant.now());
 
-        // Subsequent login attempt while locked is rejected with 400 Bad Request Problem Details
+        // Subsequent login attempt while locked is rejected with 403 Forbidden Problem Details
         mockMvc.perform(post("/api/auth/login")
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(loginRequest)))
-                .andExpect(status().isBadRequest())
-                .andExpect(jsonPath("$.title", is("Порушення бізнес-правил")));
+                .andExpect(status().isForbidden())
+                .andExpect(content().contentTypeCompatibleWith(MediaType.APPLICATION_PROBLEM_JSON))
+                .andExpect(jsonPath("$.type", is("urn:readmania:error:login-rate-limited")))
+                .andExpect(jsonPath("$.retryAfter").exists());
     }
 
     @Test
-    @DisplayName("G4, M6: Blocked user login returns 403 Forbidden with reason in Problem Details")
+    @DisplayName("G4, M6: Blocked user login returns 403 Forbidden with reason and type in Problem Details")
     void shouldRejectLoginForBlockedUserWith403() throws Exception {
         User user = new User();
         user.setEmail("blocked@example.com");
@@ -249,6 +262,7 @@ class AuthIntegrationTest extends BaseIntegrationTest {
         user.setRole(Role.USER);
         user.setStatus(UserStatus.BLOCKED);
         user.setBlockReason("Порушення правил спільноти");
+        user.setBlockedAt(Instant.now());
         userRepository.save(user);
 
         LoginRequest loginRequest = new LoginRequest("blocked@example.com", "Password123!");
@@ -259,12 +273,15 @@ class AuthIntegrationTest extends BaseIntegrationTest {
                 .andExpect(status().isForbidden())
                 .andExpect(content().contentTypeCompatibleWith(MediaType.APPLICATION_PROBLEM_JSON))
                 .andExpect(jsonPath("$.status", is(403)))
+                .andExpect(jsonPath("$.type", is("urn:readmania:error:account-blocked")))
                 .andExpect(jsonPath("$.title", is("Forbidden")))
-                .andExpect(jsonPath("$.detail", is("Порушення правил спільноти")));
+                .andExpect(jsonPath("$.detail", is("Порушення правил спільноти")))
+                .andExpect(jsonPath("$.blockReason", is("Порушення правил спільноти")))
+                .andExpect(jsonPath("$.blockedAt").exists());
     }
 
     @Test
-    @DisplayName("M6: AccountStatusFilter blocks active session immediately when account is set to BLOCKED")
+    @DisplayName("M6: AccountStatusFilter blocks active session immediately when account is set to BLOCKED with urn:readmania:error:account-blocked")
     void shouldInvalidateActiveSessionWhenUserBecomesBlocked() throws Exception {
         User user = new User();
         user.setEmail("active-then-blocked@example.com");
@@ -291,15 +308,19 @@ class AuthIntegrationTest extends BaseIntegrationTest {
         // Now manager blocks this user in database
         user.setStatus(UserStatus.BLOCKED);
         user.setBlockReason("Блокування через підозрілу активність");
+        user.setBlockedAt(Instant.now());
         userRepository.save(user);
 
-        // Next request in same session is immediately blocked with 403 Problem Details
+        // Next request in same session is immediately blocked with 403 Problem Details and custom properties
         mockMvc.perform(get("/api/auth/me").session(session))
                 .andExpect(status().isForbidden())
                 .andExpect(content().contentTypeCompatibleWith(MediaType.APPLICATION_PROBLEM_JSON))
                 .andExpect(jsonPath("$.status", is(403)))
+                .andExpect(jsonPath("$.type", is("urn:readmania:error:account-blocked")))
                 .andExpect(jsonPath("$.title", is("Forbidden")))
-                .andExpect(jsonPath("$.detail", is("Блокування через підозрілу активність")));
+                .andExpect(jsonPath("$.detail", is("Блокування через підозрілу активність")))
+                .andExpect(jsonPath("$.blockReason", is("Блокування через підозрілу активність")))
+                .andExpect(jsonPath("$.blockedAt").exists());
     }
 
     @Test
@@ -399,7 +420,7 @@ class AuthIntegrationTest extends BaseIntegrationTest {
                 "+380501234567",
                 "м. Київ, вул. Хрещатик, 1",
                 null,
-                null
+                "CurrentPass123!"
         );
 
         mockMvc.perform(put("/api/account")
@@ -437,5 +458,194 @@ class AuthIntegrationTest extends BaseIntegrationTest {
                         .content(objectMapper.writeValueAsString(badChangeRequest)))
                 .andExpect(status().isBadRequest())
                 .andExpect(jsonPath("$.title", is("Порушення бізнес-правил")));
+    }
+
+    @Test
+    @DisplayName("Patch 2: Password reset request returns fixed message without token and sends email via NotificationService")
+    void shouldSendPasswordResetNotificationAndNotExposeTokenInResponse() throws Exception {
+        User user = new User();
+        user.setEmail("user_reset@example.com");
+        user.setPasswordHash(passwordEncoder.encode("Pass123!"));
+        user.setRole(Role.USER);
+        user.setStatus(UserStatus.ACTIVE);
+        userRepository.save(user);
+
+        PasswordResetRequest request = new PasswordResetRequest("user_reset@example.com");
+
+        mockMvc.perform(post("/api/auth/password-reset/request")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(request)))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.message", is("Якщо обліковий запис існує, лист надіслано")))
+                .andExpect(jsonPath("$.token").doesNotExist());
+
+        assertThat(loggingNotificationService.getSentEmails()).hasSize(1);
+        var sentEmail = loggingNotificationService.getLastSentEmail();
+        assertThat(sentEmail.recipient()).isEqualTo("user_reset@example.com");
+        assertThat(sentEmail.subject()).contains("Відновлення пароля");
+
+        // Non-existent email returns same message for security
+        loggingNotificationService.clear();
+        PasswordResetRequest nonExistentRequest = new PasswordResetRequest("nonexistent@example.com");
+        mockMvc.perform(post("/api/auth/password-reset/request")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(nonExistentRequest)))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.message", is("Якщо обліковий запис існує, лист надіслано")))
+                .andExpect(jsonPath("$.token").doesNotExist());
+
+        assertThat(loggingNotificationService.getSentEmails()).isEmpty();
+    }
+
+    @Test
+    @DisplayName("Patch 2: Unblock request submission for blocked user creates/updates request and validates password")
+    void shouldSubmitUnblockRequestAndHandleDuplicateOrInvalid() throws Exception {
+        User user = new User();
+        user.setEmail("blocked_appeal@example.com");
+        user.setPasswordHash(passwordEncoder.encode("SecretPass123!"));
+        user.setRole(Role.USER);
+        user.setStatus(UserStatus.BLOCKED);
+        user.setBlockReason("Порушення умов сервісу");
+        user.setBlockedAt(Instant.now());
+        userRepository.save(user);
+
+        // 1. Wrong password rejected
+        ua.readmania.dto.auth.CreateUnblockRequest wrongPassReq = new ua.readmania.dto.auth.CreateUnblockRequest(
+                "blocked_appeal@example.com",
+                "WrongPass!",
+                "Прошу розблокувати мій акаунт"
+        );
+
+        mockMvc.perform(post("/api/auth/unblock-request")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(wrongPassReq)))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.detail", is("Невірний пароль")));
+
+        // 2. Correct submission creates unblock request
+        ua.readmania.dto.auth.CreateUnblockRequest validReq = new ua.readmania.dto.auth.CreateUnblockRequest(
+                "blocked_appeal@example.com",
+                "SecretPass123!",
+                "Прошу розблокувати мій акаунт, я зрозумів помилку"
+        );
+
+        mockMvc.perform(post("/api/auth/unblock-request")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(validReq)))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.message", is("Запит на розблокування успішно надіслано")));
+
+        var requests = unblockRequestRepository.findByUserIdOrderByCreatedAtDesc(user.getId());
+        assertThat(requests).hasSize(1);
+        assertThat(requests.getFirst().getReason()).isEqualTo("Прошу розблокувати мій акаунт, я зрозумів помилку");
+        assertThat(requests.getFirst().getStatus()).isEqualTo(ua.readmania.domain.user.UnblockRequestStatus.PENDING);
+
+        // 3. Second submission updates reason of existing pending request
+        ua.readmania.dto.auth.CreateUnblockRequest updateReq = new ua.readmania.dto.auth.CreateUnblockRequest(
+                "blocked_appeal@example.com",
+                "SecretPass123!",
+                "Оновлена причина: більше так не буду"
+        );
+
+        mockMvc.perform(post("/api/auth/unblock-request")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(updateReq)))
+                .andExpect(status().isOk());
+
+        var updatedRequests = unblockRequestRepository.findByUserIdOrderByCreatedAtDesc(user.getId());
+        assertThat(updatedRequests).hasSize(1);
+        assertThat(updatedRequests.getFirst().getReason()).isEqualTo("Оновлена причина: більше так не буду");
+
+        // 4. Request for active user is rejected
+        user.setStatus(UserStatus.ACTIVE);
+        userRepository.save(user);
+
+        mockMvc.perform(post("/api/auth/unblock-request")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(updateReq)))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.detail", is("Обліковий запис не заблокований")));
+    }
+
+    @Test
+    @DisplayName("Patch 2: Profile email update requires password, checks lowercase uniqueness, and refreshes session SecurityContext")
+    void shouldUpdateEmailWithPasswordVerificationAndRefreshSessionSecurityContext() throws Exception {
+        User user1 = new User();
+        user1.setEmail("initial_email@example.com");
+        user1.setPasswordHash(passwordEncoder.encode("CurrentPass123!"));
+        user1.setRole(Role.USER);
+        user1.setStatus(UserStatus.ACTIVE);
+        user1.setFullName("Тарас Шевченко");
+        userRepository.save(user1);
+
+        User user2 = new User();
+        user2.setEmail("existing_target@example.com");
+        user2.setPasswordHash(passwordEncoder.encode("Pass123!"));
+        user2.setRole(Role.USER);
+        user2.setStatus(UserStatus.ACTIVE);
+        userRepository.save(user2);
+
+        // Login as user1
+        LoginRequest loginRequest = new LoginRequest("initial_email@example.com", "CurrentPass123!");
+        MvcResult loginResult = mockMvc.perform(post("/api/auth/login")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(loginRequest)))
+                .andExpect(status().isOk())
+                .andReturn();
+
+        MockHttpSession session = (MockHttpSession) loginResult.getRequest().getSession(false);
+
+        // 1. Conflict on existing email
+        UpdateProfileRequest conflictReq = new UpdateProfileRequest(
+                "Тарас Шевченко",
+                null,
+                null,
+                "EXISTING_TARGET@example.com",
+                "CurrentPass123!"
+        );
+
+        mockMvc.perform(put("/api/account")
+                        .session(session)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(conflictReq)))
+                .andExpect(status().isConflict())
+                .andExpect(jsonPath("$.title", is("Конфлікт даних")));
+
+        // 2. Missing current password
+        UpdateProfileRequest missingPassReq = new UpdateProfileRequest(
+                "Тарас Шевченко",
+                null,
+                null,
+                "new_unique_email@example.com",
+                null
+        );
+
+        mockMvc.perform(put("/api/account")
+                        .session(session)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(missingPassReq)))
+                .andExpect(status().isBadRequest());
+
+        // 3. Successful email update
+        UpdateProfileRequest validEmailChange = new UpdateProfileRequest(
+                "Тарас Шевченко",
+                "+380991112233",
+                "м. Львів, пл. Ринок, 1",
+                "NEW_UNIQUE_EMAIL@example.com",
+                "CurrentPass123!"
+        );
+
+        mockMvc.perform(put("/api/account")
+                        .session(session)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(validEmailChange)))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.email", is("new_unique_email@example.com")))
+                .andExpect(jsonPath("$.deliveryAddress", is("м. Львів, пл. Ринок, 1")));
+
+        // 4. Verify session security context updated to new email
+        mockMvc.perform(get("/api/auth/me").session(session))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.email", is("new_unique_email@example.com")));
     }
 }

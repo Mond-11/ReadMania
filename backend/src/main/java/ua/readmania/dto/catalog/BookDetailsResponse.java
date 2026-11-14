@@ -16,6 +16,8 @@ public class BookDetailsResponse {
     private List<AuthorResponse> authors = new ArrayList<>();
     private BigDecimal price;
     private int stock;
+    private String publisher;
+    private Integer publicationYear;
     private Long version;
     private Double averageRating;
     private Integer ratingsCount;
@@ -44,6 +46,8 @@ public class BookDetailsResponse {
         }
         response.setPrice(book.getPrice());
         response.setStock(book.getStock());
+        response.setPublisher(book.getPublisher());
+        response.setPublicationYear(book.getPublicationYear());
         response.setVersion(book.getVersion());
         response.setAverageRating(averageRating != null ? Math.round(averageRating * 10.0) / 10.0 : null);
         response.setRatingsCount(ratingsCount != null ? ratingsCount : 0);
@@ -118,6 +122,22 @@ public class BookDetailsResponse {
 
     public void setStock(int stock) {
         this.stock = stock;
+    }
+
+    public String getPublisher() {
+        return publisher;
+    }
+
+    public void setPublisher(String publisher) {
+        this.publisher = publisher;
+    }
+
+    public Integer getPublicationYear() {
+        return publicationYear;
+    }
+
+    public void setPublicationYear(Integer publicationYear) {
+        this.publicationYear = publicationYear;
     }
 
     public Long getVersion() {

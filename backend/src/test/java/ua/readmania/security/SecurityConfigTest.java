@@ -58,7 +58,7 @@ class SecurityConfigTest {
     }
 
     @Test
-    @DisplayName("USER role access to /api/manager/books returns 403 with Problem Details JSON")
+    @DisplayName("USER role access to /api/manager/books returns 403 with Problem Details JSON and access-denied type")
     @WithMockUser(roles = "USER")
     void userRoleAccessToManagerBooksReturns403WithProblemDetailsJson() throws Exception {
         mockMvc.perform(get("/api/manager/books"))
@@ -66,6 +66,7 @@ class SecurityConfigTest {
                 .andExpect(content().contentTypeCompatibleWith(MediaType.APPLICATION_PROBLEM_JSON))
                 .andExpect(jsonPath("$.status", is(403)))
                 .andExpect(jsonPath("$.title", is("Forbidden")))
+                .andExpect(jsonPath("$.type", is("urn:readmania:error:access-denied")))
                 .andExpect(jsonPath("$.instance", is("/api/manager/books")))
                 .andExpect(jsonPath("$.detail").exists());
     }

@@ -79,6 +79,12 @@ public class ManagerCatalogService {
         if (request.getDescription() != null) {
             book.setDescription(request.getDescription().trim());
         }
+        if (request.getPublisher() != null && !request.getPublisher().isBlank()) {
+            book.setPublisher(request.getPublisher().trim());
+        }
+        if (request.getPublicationYear() != null) {
+            book.setPublicationYear(request.getPublicationYear());
+        }
 
         book = bookRepository.save(book);
 
@@ -103,6 +109,12 @@ public class ManagerCatalogService {
         book.setPrice(request.getPrice());
         book.setStock(request.getStock());
         book.setDescription(request.getDescription() != null ? request.getDescription().trim() : null);
+        if (request.getPublisher() != null && !request.getPublisher().isBlank()) {
+            book.setPublisher(request.getPublisher().trim());
+        }
+        if (request.getPublicationYear() != null) {
+            book.setPublicationYear(request.getPublicationYear());
+        }
         book.setGenre(genre);
         book.setAuthors(authors);
 
@@ -127,10 +139,10 @@ public class ManagerCatalogService {
 
         boolean inActiveOrders = orderItemRepository.existsByBookIdAndOrderStatusIn(
                 id,
-                List.of(OrderStatus.AWAITING_PAYMENT, OrderStatus.PROCESSING)
+                List.of(OrderStatus.AWAITING_PAYMENT, OrderStatus.PAID)
         );
         if (inActiveOrders) {
-            throw new ConflictException("Неможливо видалити книгу, оскільки вона фігурує в активних замовленнях (зі статусом AWAITING_PAYMENT або PROCESSING)");
+            throw new ConflictException("Неможливо видалити книгу, оскільки вона фігурує в активних замовленнях (зі статусом AWAITING_PAYMENT або PAID)");
         }
 
         book.setDeletedAt(Instant.now());

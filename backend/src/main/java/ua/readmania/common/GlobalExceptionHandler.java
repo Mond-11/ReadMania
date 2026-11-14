@@ -86,7 +86,27 @@ public class GlobalExceptionHandler extends ResponseEntityExceptionHandler {
     public ProblemDetail handleAccountBlockedException(AccountBlockedException ex, HttpServletRequest request) {
         ProblemDetail problemDetail = ProblemDetail.forStatusAndDetail(HttpStatus.FORBIDDEN, ex.getMessage());
         problemDetail.setTitle("Forbidden");
+        problemDetail.setType(URI.create("urn:readmania:error:account-blocked"));
         problemDetail.setInstance(URI.create(request.getRequestURI()));
+        if (ex.getBlockReason() != null) {
+            problemDetail.setProperty("blockReason", ex.getBlockReason());
+        }
+        if (ex.getBlockedAt() != null) {
+            problemDetail.setProperty("blockedAt", ex.getBlockedAt());
+        }
+        return problemDetail;
+    }
+
+    @ExceptionHandler(LoginRateLimitedException.class)
+    public ProblemDetail handleLoginRateLimitedException(LoginRateLimitedException ex, HttpServletRequest request) {
+        HttpStatus status = ex.getStatus() != null ? ex.getStatus() : HttpStatus.FORBIDDEN;
+        ProblemDetail problemDetail = ProblemDetail.forStatusAndDetail(status, ex.getMessage());
+        problemDetail.setTitle("Login Rate Limited");
+        problemDetail.setType(URI.create("urn:readmania:error:login-rate-limited"));
+        problemDetail.setInstance(URI.create(request.getRequestURI()));
+        if (ex.getRetryAfter() != null) {
+            problemDetail.setProperty("retryAfter", ex.getRetryAfter());
+        }
         return problemDetail;
     }
 

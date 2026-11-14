@@ -132,6 +132,9 @@ class OrderIntegrationTest extends BaseIntegrationTest {
     @Autowired
     private PasswordEncoder passwordEncoder;
 
+    @Autowired
+    private ua.readmania.service.notification.LoggingNotificationService loggingNotificationService;
+
     private User testUser;
     private User managerUser;
     private Book testBook1;
@@ -141,6 +144,7 @@ class OrderIntegrationTest extends BaseIntegrationTest {
 
     @BeforeEach
     void setUp() {
+        loggingNotificationService.clear();
         jdbcClient.sql("""
             TRUNCATE TABLE 
                 unblock_requests,
@@ -340,6 +344,11 @@ class OrderIntegrationTest extends BaseIntegrationTest {
 
         // Перевіряємо очищення кошика
         assertTrue(cartItemRepository.findByUserId(testUser.getId()).isEmpty());
+
+        // Перевіряємо надсилання сповіщення менеджерам
+        assertFalse(loggingNotificationService.getSentEmails().isEmpty());
+        assertEquals("managers@readmania.ua", loggingNotificationService.getLastSentEmail().recipient());
+        assertTrue(loggingNotificationService.getLastSentEmail().subject().contains("Нове замовлення"));
     }
 
     @Test
@@ -360,6 +369,7 @@ class OrderIntegrationTest extends BaseIntegrationTest {
                 .andExpect(jsonPath("$.type").value("GIFT"))
                 .andExpect(jsonPath("$.institutionId").value(testInstitution.getId()))
                 .andExpect(jsonPath("$.institutionName").value("Дитячий будинок 'Пролісок'"))
+                .andExpect(jsonPath("$.institutionContactPerson").value(testInstitution.getContactPerson()))
                 .andExpect(jsonPath("$.deliveryMethod").doesNotExist())
                 .andExpect(jsonPath("$.itemsTotal").value(750.00))
                 .andExpect(jsonPath("$.totalToPay").value(750.00));
@@ -406,6 +416,11 @@ class OrderIntegrationTest extends BaseIntegrationTest {
 
         List<BonusTransaction> refundTxs = bonusTransactionRepository.findByUserIdOrderByCreatedAtDesc(testUser.getId());
         assertTrue(refundTxs.stream().anyMatch(t -> t.getType() == BonusTransactionType.REFUND && t.getPoints() == 10));
+
+        // Перевіряємо сповіщення про зміну статусу на CANCELLED
+        assertFalse(loggingNotificationService.getSentEmails().isEmpty());
+        assertEquals("buyer@example.com", loggingNotificationService.getLastSentEmail().recipient());
+        assertTrue(loggingNotificationService.getLastSentEmail().subject().contains("CANCELLED"));
     }
 
     @Test
@@ -418,10 +433,10 @@ class OrderIntegrationTest extends BaseIntegrationTest {
         order.addItem(new OrderItem(order, testBook1, "Соляріс", new BigDecimal("300.00"), 2));
         order = orderRepository.save(order);
 
-        // 1. Успішний перехід менеджером: AWAITING_PAYMENT -> PROCESSING
+        // 1. Успішний перехід менеджером: AWAITING_PAYMENT -> PAID
         UpdateOrderStatusRequest updateReq1 = new UpdateOrderStatusRequest(
                 OrderStatus.AWAITING_PAYMENT,
-                OrderStatus.PROCESSING,
+                OrderStatus.PAID,
                 "Оплату переказом підтверджено"
         );
 
@@ -429,12 +444,12 @@ class OrderIntegrationTest extends BaseIntegrationTest {
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(updateReq1)))
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$.status").value("PROCESSING"));
+                .andExpect(jsonPath("$.status").value("PAID"));
 
         // 2. Інший менеджер пробує змінити, вважаючи, що статус все ще AWAITING_PAYMENT -> 409 Conflict
         UpdateOrderStatusRequest staleReq = new UpdateOrderStatusRequest(
                 OrderStatus.AWAITING_PAYMENT,
-                OrderStatus.PROCESSING,
+                OrderStatus.PAID,
                 "Спроба зміни застарілого статусу"
         );
 
@@ -444,18 +459,41 @@ class OrderIntegrationTest extends BaseIntegrationTest {
                 .andExpect(status().isConflict())
                 .andExpect(jsonPath("$.detail", containsString("не відповідає очікуваному")));
 
-        // 3. Неприпустимий перехід (наприклад PROCESSING -> DELIVERED напряму в обхід ASSEMBLED та DELIVERING) -> 400 Bad Request
+        // 3. Неприпустимий перехід (наприклад з AWAITING_PAYMENT у DELIVERED при оплаті TRANSFER) -> 400 Bad Request
+        Order transferOrder = new Order(testUser, OrderType.REGULAR, PaymentMethod.TRANSFER, new BigDecimal("300.00"), BigDecimal.ZERO, 0);
+        transferOrder.setStatus(OrderStatus.AWAITING_PAYMENT);
+        transferOrder.addItem(new OrderItem(transferOrder, testBook1, "Соляріс", new BigDecimal("300.00"), 1));
+        transferOrder = orderRepository.save(transferOrder);
+
         UpdateOrderStatusRequest invalidTransition = new UpdateOrderStatusRequest(
-                OrderStatus.PROCESSING,
+                OrderStatus.AWAITING_PAYMENT,
                 OrderStatus.DELIVERED,
                 "Стрибок статусу"
         );
 
-        mockMvc.perform(patch("/api/manager/orders/" + order.getId() + "/status")
+        mockMvc.perform(patch("/api/manager/orders/" + transferOrder.getId() + "/status")
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(invalidTransition)))
                 .andExpect(status().isBadRequest())
                 .andExpect(jsonPath("$.detail", containsString("Неприпустимий перехід статусу")));
+
+        // 4. Дозволений перехід: з AWAITING_PAYMENT у DELIVERED при оплаті ON_DELIVERY (CASH_ON_DELIVERY)
+        Order codOrder = new Order(testUser, OrderType.REGULAR, PaymentMethod.ON_DELIVERY, new BigDecimal("300.00"), BigDecimal.ZERO, 0);
+        codOrder.setStatus(OrderStatus.AWAITING_PAYMENT);
+        codOrder.addItem(new OrderItem(codOrder, testBook1, "Соляріс", new BigDecimal("300.00"), 1));
+        codOrder = orderRepository.save(codOrder);
+
+        UpdateOrderStatusRequest codDeliveredReq = new UpdateOrderStatusRequest(
+                OrderStatus.AWAITING_PAYMENT,
+                OrderStatus.DELIVERED,
+                "Оплачено і доставлено кур'єром"
+        );
+
+        mockMvc.perform(patch("/api/manager/orders/" + codOrder.getId() + "/status")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(codDeliveredReq)))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.status").value("DELIVERED"));
     }
 
     @Test
@@ -476,9 +514,10 @@ class OrderIntegrationTest extends BaseIntegrationTest {
 
         // Благодійне замовлення на 600 грн (2 книги наукової фантастики)
         Order order = new Order(testUser, OrderType.GIFT, PaymentMethod.TRANSFER, new BigDecimal("600.00"), BigDecimal.ZERO, 0);
-        order.setStatus(OrderStatus.DELIVERING);
+        order.setStatus(OrderStatus.PAID);
         order.setInstitution(testInstitution);
         order.setInstitutionName(testInstitution.getName());
+        order.setInstitutionContactPerson(testInstitution.getContactPerson());
         order.addItem(new OrderItem(order, testBook1, "Соляріс", new BigDecimal("300.00"), 2));
         order = orderRepository.save(order);
 
@@ -486,7 +525,7 @@ class OrderIntegrationTest extends BaseIntegrationTest {
 
         // Менеджер переводить у DELIVERED
         UpdateOrderStatusRequest deliveredReq = new UpdateOrderStatusRequest(
-                OrderStatus.DELIVERING,
+                OrderStatus.PAID,
                 OrderStatus.DELIVERED,
                 "Замовлення доставлено в заклад"
         );

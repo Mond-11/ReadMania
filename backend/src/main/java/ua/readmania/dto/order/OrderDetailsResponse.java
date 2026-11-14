@@ -22,6 +22,7 @@ public class OrderDetailsResponse {
     private String recipientPhone;
     private Long institutionId;
     private String institutionName;
+    private String institutionContactPerson;
     private BigDecimal itemsTotal;
     private BigDecimal discountAmount;
     private int pointsUsed;
@@ -53,6 +54,7 @@ public class OrderDetailsResponse {
             response.setInstitutionId(order.getInstitution().getId());
         }
         response.setInstitutionName(order.getInstitutionName());
+        response.setInstitutionContactPerson(order.getInstitutionContactPerson());
         response.setItemsTotal(order.getItemsTotal());
         response.setDiscountAmount(order.getDiscountAmount());
         response.setPointsUsed(order.getPointsUsed());
@@ -146,6 +148,14 @@ public class OrderDetailsResponse {
 
     public void setInstitutionName(String institutionName) {
         this.institutionName = institutionName;
+    }
+
+    public String getInstitutionContactPerson() {
+        return institutionContactPerson;
+    }
+
+    public void setInstitutionContactPerson(String institutionContactPerson) {
+        this.institutionContactPerson = institutionContactPerson;
     }
 
     public BigDecimal getItemsTotal() {

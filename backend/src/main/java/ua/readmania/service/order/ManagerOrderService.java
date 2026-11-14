@@ -35,6 +35,7 @@ import ua.readmania.domain.order.OrderStatus;
 import ua.readmania.domain.order.OrderStatusHistory;
 import ua.readmania.domain.order.OrderStatusHistoryRepository;
 import ua.readmania.domain.order.OrderType;
+import ua.readmania.domain.order.PaymentMethod;
 import ua.readmania.domain.user.User;
 import ua.readmania.domain.user.UserRepository;
 import ua.readmania.dto.order.OrderDetailsResponse;
@@ -56,6 +57,7 @@ public class ManagerOrderService {
     private final ChallengeRepository challengeRepository;
     private final ChallengeCompletionRepository challengeCompletionRepository;
     private final GiftLogRepository giftLogRepository;
+    private final ua.readmania.service.notification.NotificationService notificationService;
 
     public ManagerOrderService(OrderRepository orderRepository,
                                OrderItemRepository orderItemRepository,
@@ -65,7 +67,8 @@ public class ManagerOrderService {
                                BonusTransactionRepository bonusTransactionRepository,
                                ChallengeRepository challengeRepository,
                                ChallengeCompletionRepository challengeCompletionRepository,
-                               GiftLogRepository giftLogRepository) {
+                               GiftLogRepository giftLogRepository,
+                               ua.readmania.service.notification.NotificationService notificationService) {
         this.orderRepository = orderRepository;
         this.orderItemRepository = orderItemRepository;
         this.orderStatusHistoryRepository = orderStatusHistoryRepository;
@@ -75,6 +78,7 @@ public class ManagerOrderService {
         this.challengeRepository = challengeRepository;
         this.challengeCompletionRepository = challengeCompletionRepository;
         this.giftLogRepository = giftLogRepository;
+        this.notificationService = notificationService;
     }
 
     @Transactional(readOnly = true)
@@ -132,10 +136,10 @@ public class ManagerOrderService {
 
         // State Machine validation (SRS Table 3)
         boolean isValidTransition = switch (currentStatus) {
-            case AWAITING_PAYMENT -> targetStatus == OrderStatus.PROCESSING || targetStatus == OrderStatus.CANCELLED;
-            case PROCESSING -> targetStatus == OrderStatus.ASSEMBLED || targetStatus == OrderStatus.CANCELLED;
-            case ASSEMBLED -> targetStatus == OrderStatus.DELIVERING || targetStatus == OrderStatus.CANCELLED;
-            case DELIVERING -> targetStatus == OrderStatus.DELIVERED || targetStatus == OrderStatus.CANCELLED;
+            case AWAITING_PAYMENT -> (targetStatus == OrderStatus.PAID)
+                    || (targetStatus == OrderStatus.DELIVERED && order.getPaymentMethod() == PaymentMethod.ON_DELIVERY)
+                    || (targetStatus == OrderStatus.CANCELLED);
+            case PAID -> targetStatus == OrderStatus.DELIVERED || targetStatus == OrderStatus.CANCELLED;
             default -> false;
         };
 
@@ -246,6 +250,8 @@ public class ManagerOrderService {
         OrderStatusHistory history = new OrderStatusHistory(savedOrder, currentStatus, targetStatus, manager, request.getComment());
         orderStatusHistoryRepository.save(history);
 
+        notificationService.sendOrderStatusChanged(savedOrder);
+
         List<OrderStatusHistoryResponse> historyList = orderStatusHistoryRepository.findByOrderIdOrderByChangedAtAsc(orderId)
                 .stream()
                 .map(OrderStatusHistoryResponse::fromEntity)
@@ -288,7 +294,8 @@ public class ManagerOrderService {
 
             OrderStatusHistory history = new OrderStatusHistory(order, previousStatus, OrderStatus.CANCELLED, null, "Автоматичне скасування: не оплачено понад 7 днів");
             orderStatusHistoryRepository.save(history);
-            orderRepository.save(order);
+            Order saved = orderRepository.save(order);
+            notificationService.sendOrderStatusChanged(saved);
             cancelledCount++;
         }
 

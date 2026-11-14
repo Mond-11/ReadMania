@@ -1,5 +1,7 @@
 package ua.readmania.controller;
 
+import jakarta.servlet.http.HttpServletRequest;
+import jakarta.servlet.http.HttpServletResponse;
 import jakarta.validation.Valid;
 import java.security.Principal;
 import org.springframework.http.ResponseEntity;
@@ -31,8 +33,10 @@ public class ProfileController {
 
     @PutMapping
     public ResponseEntity<UserResponse> updateProfile(Principal principal,
-                                                      @Valid @RequestBody UpdateProfileRequest request) {
-        UserResponse response = userService.updateProfile(principal.getName(), request);
+                                                      @Valid @RequestBody UpdateProfileRequest request,
+                                                      HttpServletRequest httpRequest,
+                                                      HttpServletResponse httpResponse) {
+        UserResponse response = userService.updateProfile(principal.getName(), request, httpRequest, httpResponse);
         return ResponseEntity.ok(response);
     }
 

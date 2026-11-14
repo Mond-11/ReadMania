@@ -140,7 +140,7 @@ class SchemaIT extends BaseIntegrationTest {
         assertThatThrownBy(() ->
                 jdbcClient.sql("""
                     INSERT INTO orders (user_id, type, status, payment_method, items_total, discount_amount, points_used, total_to_pay)
-                    VALUES (:userId, 'REGULAR', 'PROCESSING', 'ON_DELIVERY', 100.00, 40.00, 4, 60.00)
+                    VALUES (:userId, 'REGULAR', 'PAID', 'ON_DELIVERY', 100.00, 40.00, 4, 60.00)
                 """)
                         .param("userId", userId)
                         .update()
@@ -149,7 +149,7 @@ class SchemaIT extends BaseIntegrationTest {
         // items_total = 100.00, points_used = 3 -> discount_amount = 30.00 (рівно 30%) -> успіх
         Long orderId = jdbcClient.sql("""
                     INSERT INTO orders (user_id, type, status, payment_method, items_total, discount_amount, points_used, total_to_pay)
-                    VALUES (:userId, 'REGULAR', 'PROCESSING', 'ON_DELIVERY', 100.00, 30.00, 3, 70.00)
+                    VALUES (:userId, 'REGULAR', 'PAID', 'ON_DELIVERY', 100.00, 30.00, 3, 70.00)
                     RETURNING id
                 """)
                 .param("userId", userId)
@@ -166,7 +166,7 @@ class SchemaIT extends BaseIntegrationTest {
 
         Long orderId = jdbcClient.sql("""
                     INSERT INTO orders (user_id, type, status, payment_method, items_total, discount_amount, points_used, total_to_pay)
-                    VALUES (:userId, 'REGULAR', 'PROCESSING', 'ON_DELIVERY', 200.00, 0.00, 0, 200.00)
+                    VALUES (:userId, 'REGULAR', 'PAID', 'ON_DELIVERY', 200.00, 0.00, 0, 200.00)
                     RETURNING id
                 """)
                 .param("userId", userId)
@@ -195,7 +195,7 @@ class SchemaIT extends BaseIntegrationTest {
 
         Long orderId = jdbcClient.sql("""
                     INSERT INTO orders (user_id, type, status, payment_method, items_total, discount_amount, points_used, total_to_pay)
-                    VALUES (:userId, 'REGULAR', 'PROCESSING', 'ON_DELIVERY', 250.00, 0.00, 0, 250.00)
+                    VALUES (:userId, 'REGULAR', 'PAID', 'ON_DELIVERY', 250.00, 0.00, 0, 250.00)
                     RETURNING id
                 """)
                 .param("userId", userId)
@@ -272,22 +272,33 @@ class SchemaIT extends BaseIntegrationTest {
     }
 
     @Test
-    @DisplayName("V5: Для подарункового замовлення (type = 'GIFT') обов'язкова назва закладу institution_name")
+    @DisplayName("V5/V9: Для подарункового замовлення (type = 'GIFT') обов'язкові institution_name та institution_contact_person")
     void shouldRequireInstitutionNameForGiftOrders() {
         Long userId = insertUser("gift_giver@example.com");
 
+        // Відхилення без назви закладу
         assertThatThrownBy(() ->
                 jdbcClient.sql("""
-                    INSERT INTO orders (user_id, type, status, payment_method, items_total, discount_amount, points_used, total_to_pay, institution_name)
-                    VALUES (:userId, 'GIFT', 'PROCESSING', 'TRANSFER', 300.00, 0.00, 0, 300.00, NULL)
+                    INSERT INTO orders (user_id, type, status, payment_method, items_total, discount_amount, points_used, total_to_pay, institution_name, institution_contact_person)
+                    VALUES (:userId, 'GIFT', 'PAID', 'TRANSFER', 300.00, 0.00, 0, 300.00, NULL, 'Олена Ковальчук')
+                """)
+                        .param("userId", userId)
+                        .update()
+        ).isInstanceOf(DataIntegrityViolationException.class);
+
+        // Відхилення без контактної особи
+        assertThatThrownBy(() ->
+                jdbcClient.sql("""
+                    INSERT INTO orders (user_id, type, status, payment_method, items_total, discount_amount, points_used, total_to_pay, institution_name, institution_contact_person)
+                    VALUES (:userId, 'GIFT', 'PAID', 'TRANSFER', 300.00, 0.00, 0, 300.00, 'Дитяча лікарня №1', NULL)
                 """)
                         .param("userId", userId)
                         .update()
         ).isInstanceOf(DataIntegrityViolationException.class);
 
         Long giftOrderId = jdbcClient.sql("""
-                    INSERT INTO orders (user_id, type, status, payment_method, items_total, discount_amount, points_used, total_to_pay, institution_name)
-                    VALUES (:userId, 'GIFT', 'PROCESSING', 'TRANSFER', 300.00, 0.00, 0, 300.00, 'Дитяча лікарня №1')
+                    INSERT INTO orders (user_id, type, status, payment_method, items_total, discount_amount, points_used, total_to_pay, institution_name, institution_contact_person)
+                    VALUES (:userId, 'GIFT', 'PAID', 'TRANSFER', 300.00, 0.00, 0, 300.00, 'Дитяча лікарня №1', 'Олена Ковальчук')
                     RETURNING id
                 """)
                 .param("userId", userId)
@@ -437,8 +448,8 @@ class SchemaIT extends BaseIntegrationTest {
                 .single();
 
         Long orderId = jdbcClient.sql("""
-                    INSERT INTO orders (user_id, type, status, payment_method, items_total, discount_amount, points_used, total_to_pay, institution_id, institution_name)
-                    VALUES (:userId, 'GIFT', 'DELIVERED', 'TRANSFER', 500.00, 0.00, 0, 500.00, :instId, 'Дитячий будинок №5')
+                    INSERT INTO orders (user_id, type, status, payment_method, items_total, discount_amount, points_used, total_to_pay, institution_id, institution_name, institution_contact_person)
+                    VALUES (:userId, 'GIFT', 'DELIVERED', 'TRANSFER', 500.00, 0.00, 0, 500.00, :instId, 'Дитячий будинок №5', 'Директор')
                     RETURNING id
                 """)
                 .param("userId", userId)
@@ -496,6 +507,107 @@ class SchemaIT extends BaseIntegrationTest {
         assertThat(unindexedForeignKeys)
                 .as("Усі зовнішні ключі (FK) повинні мати відповідний індекс згідно з вимогою D7")
                 .isEmpty();
+    }
+
+    @Test
+    @DisplayName("A.1/V9: Обмеження статусів замовлень та історії рівно 4 значеннями: AWAITING_PAYMENT, PAID, DELIVERED, CANCELLED")
+    void shouldEnforceFourOrderStatuses() {
+        Long userId = insertUser("status_test@example.com");
+
+        for (String status : new String[]{"AWAITING_PAYMENT", "PAID", "DELIVERED", "CANCELLED"}) {
+            Long orderId = jdbcClient.sql("""
+                        INSERT INTO orders (user_id, type, status, payment_method, items_total, discount_amount, points_used, total_to_pay)
+                        VALUES (:userId, 'REGULAR', :status, 'ON_DELIVERY', 100.00, 0.00, 0, 100.00)
+                        RETURNING id
+                    """)
+                    .param("userId", userId)
+                    .param("status", status)
+                    .query(Long.class)
+                    .single();
+            assertThat(orderId).isNotNull();
+
+            // Перевірка order_status_history
+            Long historyId = jdbcClient.sql("""
+                        INSERT INTO order_status_history (order_id, from_status, to_status, comment)
+                        VALUES (:orderId, NULL, :status, 'Початковий статус')
+                        RETURNING id
+                    """)
+                    .param("orderId", orderId)
+                    .param("status", status)
+                    .query(Long.class)
+                    .single();
+            assertThat(historyId).isNotNull();
+        }
+
+        // Відхилення невалідного статусу (наприклад застарілого PROCESSING)
+        assertThatThrownBy(() ->
+                jdbcClient.sql("""
+                    INSERT INTO orders (user_id, type, status, payment_method, items_total, discount_amount, points_used, total_to_pay)
+                    VALUES (:userId, 'REGULAR', 'PROCESSING', 'ON_DELIVERY', 100.00, 0.00, 0, 100.00)
+                """)
+                        .param("userId", userId)
+                        .update()
+        ).isInstanceOf(DataIntegrityViolationException.class);
+    }
+
+    @Test
+    @DisplayName("A.4/V9: Видавництво та рік видання — значення за замовчуванням та обмеження 1450..2100")
+    void shouldEnforcePublisherAndPublicationYearConstraints() {
+        Long genreId = insertGenre("Наукова фантастика");
+
+        // Успішне додавання з дефолтними значеннями
+        Long book1Id = jdbcClient.sql("""
+                    INSERT INTO books (title, isbn, genre_id, price, stock)
+                    VALUES ('Тестова книга 1', '978-966-03-7099-1', :genreId, 250.00, 5)
+                    RETURNING id
+                """)
+                .param("genreId", genreId)
+                .query(Long.class)
+                .single();
+
+        var book1Row = jdbcClient.sql("SELECT publisher, publication_year FROM books WHERE id = :id")
+                .param("id", book1Id)
+                .query()
+                .singleRow();
+        assertThat(book1Row.get("publisher")).isEqualTo("Невідоме видавництво");
+        assertThat(((Number) book1Row.get("publication_year")).intValue()).isEqualTo(2024);
+
+        // Успішне додавання з вказаним видавництвом та валідним роком
+        Long book2Id = jdbcClient.sql("""
+                    INSERT INTO books (title, isbn, genre_id, price, stock, publisher, publication_year)
+                    VALUES ('Тестова книга 2', '978-966-03-7099-2', :genreId, 300.00, 10, 'А-ба-ба-га-ла-ма-га', 2023)
+                    RETURNING id
+                """)
+                .param("genreId", genreId)
+                .query(Long.class)
+                .single();
+
+        var book2Row = jdbcClient.sql("SELECT publisher, publication_year FROM books WHERE id = :id")
+                .param("id", book2Id)
+                .query()
+                .singleRow();
+        assertThat(book2Row.get("publisher")).isEqualTo("А-ба-ба-га-ла-ма-га");
+        assertThat(((Number) book2Row.get("publication_year")).intValue()).isEqualTo(2023);
+
+        // Відхилення року раніше 1450
+        assertThatThrownBy(() ->
+                jdbcClient.sql("""
+                    INSERT INTO books (title, isbn, genre_id, price, stock, publication_year)
+                    VALUES ('Стародавня книга', '978-966-03-7099-3', :genreId, 500.00, 1, 1400)
+                """)
+                        .param("genreId", genreId)
+                        .update()
+        ).isInstanceOf(DataIntegrityViolationException.class);
+
+        // Відхилення року пізніше 2100
+        assertThatThrownBy(() ->
+                jdbcClient.sql("""
+                    INSERT INTO books (title, isbn, genre_id, price, stock, publication_year)
+                    VALUES ('Книга з майбутнього', '978-966-03-7099-4', :genreId, 500.00, 1, 2150)
+                """)
+                        .param("genreId", genreId)
+                        .update()
+        ).isInstanceOf(DataIntegrityViolationException.class);
     }
 
     // Допоміжні методи для підготовки тестових даних

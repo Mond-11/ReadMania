@@ -20,6 +20,7 @@ public class OrderSummaryResponse {
     private int pointsUsed;
     private BigDecimal totalToPay;
     private String institutionName;
+    private String institutionContactPerson;
     private int itemsCount;
     private Instant createdAt;
     private Instant statusChangedAt;
@@ -43,6 +44,7 @@ public class OrderSummaryResponse {
         response.setPointsUsed(order.getPointsUsed());
         response.setTotalToPay(order.getTotalToPay());
         response.setInstitutionName(order.getInstitutionName());
+        response.setInstitutionContactPerson(order.getInstitutionContactPerson());
         if (order.getItems() != null) {
             response.setItemsCount(order.getItems().stream().mapToInt(item -> item.getQuantity()).sum());
         }
@@ -130,6 +132,14 @@ public class OrderSummaryResponse {
 
     public void setInstitutionName(String institutionName) {
         this.institutionName = institutionName;
+    }
+
+    public String getInstitutionContactPerson() {
+        return institutionContactPerson;
+    }
+
+    public void setInstitutionContactPerson(String institutionContactPerson) {
+        this.institutionContactPerson = institutionContactPerson;
     }
 
     public int getItemsCount() {

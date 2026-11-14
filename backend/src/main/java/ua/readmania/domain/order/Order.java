@@ -40,7 +40,7 @@ public class Order {
 
     @Enumerated(EnumType.STRING)
     @Column(nullable = false, length = 50)
-    private OrderStatus status = OrderStatus.PROCESSING;
+    private OrderStatus status = OrderStatus.AWAITING_PAYMENT;
 
     @Enumerated(EnumType.STRING)
     @Column(name = "delivery_method", length = 50)
@@ -65,6 +65,9 @@ public class Order {
 
     @Column(name = "institution_name")
     private String institutionName;
+
+    @Column(name = "institution_contact_person")
+    private String institutionContactPerson;
 
     @Column(name = "items_total", nullable = false, precision = 12, scale = 2)
     private BigDecimal itemsTotal = BigDecimal.ZERO;
@@ -207,6 +210,14 @@ public class Order {
 
     public void setInstitutionName(String institutionName) {
         this.institutionName = institutionName;
+    }
+
+    public String getInstitutionContactPerson() {
+        return institutionContactPerson;
+    }
+
+    public void setInstitutionContactPerson(String institutionContactPerson) {
+        this.institutionContactPerson = institutionContactPerson;
     }
 
     public BigDecimal getItemsTotal() {

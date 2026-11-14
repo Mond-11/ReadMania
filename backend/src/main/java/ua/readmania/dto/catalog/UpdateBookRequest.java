@@ -26,6 +26,13 @@ public class UpdateBookRequest {
     @Min(value = 0, message = "Кількість на складі не може бути від'ємною")
     private int stock = 0;
 
+    @Size(max = 255, message = "Видавництво не повинно перевищувати 255 символів")
+    private String publisher;
+
+    @Min(value = 1450, message = "Рік видання не може бути раніше 1450")
+    @jakarta.validation.constraints.Max(value = 2100, message = "Рік видання не може бути пізніше 2100")
+    private Integer publicationYear;
+
     private String description;
 
     private Long genreId;
@@ -81,6 +88,22 @@ public class UpdateBookRequest {
 
     public void setStock(int stock) {
         this.stock = stock;
+    }
+
+    public String getPublisher() {
+        return publisher;
+    }
+
+    public void setPublisher(String publisher) {
+        this.publisher = publisher;
+    }
+
+    public Integer getPublicationYear() {
+        return publicationYear;
+    }
+
+    public void setPublicationYear(Integer publicationYear) {
+        this.publicationYear = publicationYear;
     }
 
     public String getDescription() {

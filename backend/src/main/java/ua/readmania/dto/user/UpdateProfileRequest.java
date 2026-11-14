@@ -1,6 +1,7 @@
 package ua.readmania.dto.user;
 
 import jakarta.validation.constraints.Email;
+import jakarta.validation.constraints.NotBlank;
 
 public class UpdateProfileRequest {
 
@@ -11,6 +12,7 @@ public class UpdateProfileRequest {
     @Email(message = "Невірний формат email. Приклад: user@example.com")
     private String email;
 
+    @NotBlank(message = "Для зміни даних профілю необхідно обов'язково вказати поточний пароль")
     private String currentPassword;
 
     public UpdateProfileRequest() {

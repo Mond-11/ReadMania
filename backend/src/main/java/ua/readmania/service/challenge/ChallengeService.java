@@ -36,17 +36,20 @@ public class ChallengeService {
     private final OrderItemRepository orderItemRepository;
     private final GenreRepository genreRepository;
     private final UserRepository userRepository;
+    private final ua.readmania.service.notification.NotificationService notificationService;
 
     public ChallengeService(ChallengeRepository challengeRepository,
                             ChallengeCompletionRepository challengeCompletionRepository,
                             OrderItemRepository orderItemRepository,
                             GenreRepository genreRepository,
-                            UserRepository userRepository) {
+                            UserRepository userRepository,
+                            ua.readmania.service.notification.NotificationService notificationService) {
         this.challengeRepository = challengeRepository;
         this.challengeCompletionRepository = challengeCompletionRepository;
         this.orderItemRepository = orderItemRepository;
         this.genreRepository = genreRepository;
         this.userRepository = userRepository;
+        this.notificationService = notificationService;
     }
 
     @Transactional(readOnly = true)
@@ -215,6 +218,7 @@ public class ChallengeService {
                 );
                 if (progress > 0) {
                     notifiedCount++;
+                    notificationService.sendChallengeTerminatedEarly(user, challenge);
                     log.info("Сповіщення користувача {} (ID: {}): читацький виклик '{}' (ID: {}) достроково завершено менеджером. Поточний прогрес: {}/{}",
                             user.getEmail(), user.getId(), challenge.getTitle(), challenge.getId(), progress, challenge.getRequiredBooks());
                 }

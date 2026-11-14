@@ -41,6 +41,7 @@ public class ProblemDetailsAccessDeniedHandler implements AccessDeniedHandler {
 
         ProblemDetail problemDetail = ProblemDetail.forStatusAndDetail(HttpStatus.FORBIDDEN, detail);
         problemDetail.setTitle("Forbidden");
+        problemDetail.setType(URI.create("urn:readmania:error:access-denied"));
         problemDetail.setInstance(URI.create(request.getRequestURI()));
 
         objectMapper.writeValue(response.getWriter(), problemDetail);
