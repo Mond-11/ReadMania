@@ -79,13 +79,15 @@ public class CsvImportService {
             int isbnIdx = findHeaderIndex(headers, "isbn", "ісбн");
             int priceIdx = findHeaderIndex(headers, "price", "ціна", "вартість");
             int stockIdx = findHeaderIndex(headers, "stock", "кількість", "залишок", "наявність");
+            int publisherIdx = findHeaderIndex(headers, "publisher", "видавництво", "видавець", "book_publisher");
+            int yearIdx = findHeaderIndex(headers, "publicationyear", "publication_year", "publication year", "рік видання", "рік", "рік публікації", "year");
             int descriptionIdx = findHeaderIndex(headers, "description", "опис");
             int genreIdx = findHeaderIndex(headers, "genre", "жанр", "категорія");
             int authorsIdx = findHeaderIndex(headers, "authors", "author", "автори", "автор");
             int coverUrlIdx = findHeaderIndex(headers, "cover", "coverurl", "cover_url", "image", "imageurl", "image_url", "обкладинка");
 
-            if (titleIdx == -1 || isbnIdx == -1 || priceIdx == -1) {
-                rejectedRows.add(new CsvRejectedRow(1, "", "", "Файл не містить обов'язкових колонок: title, isbn, price"));
+            if (titleIdx == -1 || isbnIdx == -1 || priceIdx == -1 || publisherIdx == -1 || yearIdx == -1) {
+                rejectedRows.add(new CsvRejectedRow(1, "", "", "Файл не містить обов'язкових колонок: title, isbn, price, publisher (Видавництво), publication_year (Рік Видання)"));
                 return new CsvImportResponse(0, 0, 1, rejectedRows);
             }
 
@@ -104,6 +106,8 @@ public class CsvImportService {
                 String isbn = getValue(values, isbnIdx);
                 String priceStr = getValue(values, priceIdx);
                 String stockStr = getValue(values, stockIdx);
+                String publisher = getValue(values, publisherIdx);
+                String yearStr = getValue(values, yearIdx);
                 String description = getValue(values, descriptionIdx);
                 String genreName = getValue(values, genreIdx);
                 String authorsStr = getValue(values, authorsIdx);
@@ -128,6 +132,28 @@ public class CsvImportService {
 
                 if (bookRepository.existsActiveByIsbn(cleanIsbn)) {
                     rejectedRows.add(new CsvRejectedRow(rowNumber, cleanIsbn, title, "Книга з ISBN " + cleanIsbn + " вже існує в базі даних"));
+                    continue;
+                }
+
+                if (publisher == null || publisher.isBlank()) {
+                    rejectedRows.add(new CsvRejectedRow(rowNumber, cleanIsbn, title, "Видавництво не може бути порожнім"));
+                    continue;
+                }
+
+                if (yearStr == null || yearStr.isBlank()) {
+                    rejectedRows.add(new CsvRejectedRow(rowNumber, cleanIsbn, title, "Рік видання обов'язковий"));
+                    continue;
+                }
+
+                int publicationYear;
+                try {
+                    publicationYear = Integer.parseInt(yearStr.trim());
+                    if (publicationYear < 1450 || publicationYear > 2100) {
+                        rejectedRows.add(new CsvRejectedRow(rowNumber, cleanIsbn, title, "Рік видання повинен бути в діапазоні від 1450 до 2100: " + yearStr));
+                        continue;
+                    }
+                } catch (Exception e) {
+                    rejectedRows.add(new CsvRejectedRow(rowNumber, cleanIsbn, title, "Некоректний числовий формат року видання: " + yearStr));
                     continue;
                 }
 
@@ -190,6 +216,8 @@ public class CsvImportService {
 
                 // Create and save Book
                 Book book = new Book(title.trim(), cleanIsbn, price, stock, genre, authors);
+                book.setPublisher(publisher.trim());
+                book.setPublicationYear(publicationYear);
                 if (description != null && !description.isBlank()) {
                     book.setDescription(description.trim());
                 }

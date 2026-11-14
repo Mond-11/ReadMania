@@ -24,7 +24,9 @@ import ua.readmania.domain.catalog.GenreRepository;
 import ua.readmania.domain.loyalty.RatingRepository;
 import ua.readmania.domain.order.OrderItemRepository;
 import ua.readmania.domain.order.OrderStatus;
+import ua.readmania.dto.catalog.AuthorResponse;
 import ua.readmania.dto.catalog.BookDetailsResponse;
+import ua.readmania.dto.catalog.CreateAuthorRequest;
 import ua.readmania.dto.catalog.CreateBookRequest;
 import ua.readmania.dto.catalog.CsvImportResponse;
 import ua.readmania.dto.catalog.GenreRequest;
@@ -88,7 +90,12 @@ public class ManagerCatalogService {
 
         book = bookRepository.save(book);
 
-        return BookDetailsResponse.fromEntity(book, null, 0, false);
+        boolean canDelete = book.getStock() == 0 && !orderItemRepository.existsByBookIdAndOrderStatusIn(
+                book.getId(),
+                List.of(OrderStatus.AWAITING_PAYMENT, OrderStatus.PAID)
+        );
+
+        return BookDetailsResponse.fromEntity(book, null, 0, false, canDelete);
     }
 
     public BookDetailsResponse updateBook(Long id, UpdateBookRequest request) {
@@ -125,7 +132,12 @@ public class ManagerCatalogService {
         int ratingsCount = countLong != null ? countLong.intValue() : 0;
         boolean hasCover = bookCoverRepository.existsById(id);
 
-        return BookDetailsResponse.fromEntity(book, avgRating, ratingsCount, hasCover);
+        boolean canDelete = book.getStock() == 0 && !orderItemRepository.existsByBookIdAndOrderStatusIn(
+                id,
+                List.of(OrderStatus.AWAITING_PAYMENT, OrderStatus.PAID)
+        );
+
+        return BookDetailsResponse.fromEntity(book, avgRating, ratingsCount, hasCover, canDelete);
     }
 
     public void deleteBook(Long id) {
@@ -183,6 +195,16 @@ public class ManagerCatalogService {
         }
 
         genreRepository.delete(genre);
+    }
+
+    public AuthorResponse createAuthor(CreateAuthorRequest request) {
+        String cleanName = request.getFullName().trim();
+        if (authorRepository.existsByNameIgnoreCase(cleanName)) {
+            throw new ConflictException("Автор з ім'ям '" + cleanName + "' вже існує");
+        }
+
+        Author author = authorRepository.save(new Author(cleanName));
+        return AuthorResponse.fromEntity(author);
     }
 
     public void uploadCover(Long bookId, byte[] data, String contentType) {

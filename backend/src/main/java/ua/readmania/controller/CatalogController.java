@@ -44,6 +44,8 @@ public class CatalogController {
             @RequestParam(name = "authorId", required = false) Long authorId,
             @RequestParam(name = "priceMin", required = false) BigDecimal priceMin,
             @RequestParam(name = "priceMax", required = false) BigDecimal priceMax,
+            @RequestParam(name = "stockMin", required = false) Integer stockMin,
+            @RequestParam(name = "stockMax", required = false) Integer stockMax,
             @RequestParam(name = "inStock", required = false) Boolean inStock,
             @RequestParam(name = "page", defaultValue = "0") int page,
             @RequestParam(name = "size", defaultValue = "10") int size,
@@ -64,12 +66,21 @@ public class CatalogController {
         if (priceMin != null && priceMax != null && priceMin.compareTo(priceMax) > 0) {
             throw new BusinessRuleException("Мінімальна ціна не може бути більшою за максимальну ціну");
         }
+        if (stockMin != null && stockMin < 0) {
+            throw new BusinessRuleException("Мінімальна кількість не може бути від'ємною");
+        }
+        if (stockMax != null && stockMax < 0) {
+            throw new BusinessRuleException("Максимальна кількість не може бути від'ємною");
+        }
+        if (stockMin != null && stockMax != null && stockMin > stockMax) {
+            throw new BusinessRuleException("Мінімальна кількість не може бути більшою за максимальну кількість");
+        }
 
         String searchQuery = (query != null && !query.isBlank()) ? query : q;
         Pageable pageable = createPageable(page, size, sort);
 
         return catalogService.getBooks(
-                searchQuery, genre, genreId, author, authorId, priceMin, priceMax, inStock, pageable
+                searchQuery, genre, genreId, author, authorId, priceMin, priceMax, stockMin, stockMax, inStock, pageable
         );
     }
 
@@ -124,6 +135,7 @@ public class CatalogController {
             case "price" -> "price";
             case "title" -> "title";
             case "stock" -> "stock";
+            case "publicationyear", "publication_year", "year" -> "publicationYear";
             case "createdat", "created_at" -> "createdAt";
             default -> "id";
         };

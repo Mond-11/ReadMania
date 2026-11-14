@@ -16,6 +16,7 @@ import ua.readmania.common.NotFoundException;
 import ua.readmania.domain.user.User;
 import ua.readmania.domain.user.UserRepository;
 import ua.readmania.dto.rating.CreateRatingRequest;
+import ua.readmania.dto.rating.PublicRatingResponse;
 import ua.readmania.dto.rating.RatingResponse;
 import ua.readmania.security.CustomUserDetails;
 import ua.readmania.service.rating.RatingService;
@@ -50,8 +51,8 @@ public class RatingController {
     }
 
     @GetMapping("/book/{bookId}")
-    public ResponseEntity<List<RatingResponse>> getBookRatings(@PathVariable("bookId") Long bookId) {
-        List<RatingResponse> response = ratingService.getBookRatings(bookId);
+    public ResponseEntity<List<PublicRatingResponse>> getBookRatings(@PathVariable("bookId") Long bookId) {
+        List<PublicRatingResponse> response = ratingService.getBookRatings(bookId);
         return ResponseEntity.ok(response);
     }
 

@@ -24,6 +24,8 @@ import ua.readmania.domain.catalog.BookSpecifications;
 import ua.readmania.domain.catalog.Genre;
 import ua.readmania.domain.catalog.GenreRepository;
 import ua.readmania.domain.loyalty.RatingRepository;
+import ua.readmania.domain.order.OrderItemRepository;
+import ua.readmania.domain.order.OrderStatus;
 import ua.readmania.dto.catalog.AuthorResponse;
 import ua.readmania.dto.catalog.BookDetailsResponse;
 import ua.readmania.dto.catalog.BookSummaryResponse;
@@ -38,17 +40,20 @@ public class CatalogService {
     private final GenreRepository genreRepository;
     private final AuthorRepository authorRepository;
     private final RatingRepository ratingRepository;
+    private final OrderItemRepository orderItemRepository;
 
     public CatalogService(BookRepository bookRepository,
                           BookCoverRepository bookCoverRepository,
                           GenreRepository genreRepository,
                           AuthorRepository authorRepository,
-                          RatingRepository ratingRepository) {
+                          RatingRepository ratingRepository,
+                          OrderItemRepository orderItemRepository) {
         this.bookRepository = bookRepository;
         this.bookCoverRepository = bookCoverRepository;
         this.genreRepository = genreRepository;
         this.authorRepository = authorRepository;
         this.ratingRepository = ratingRepository;
+        this.orderItemRepository = orderItemRepository;
     }
 
     public Page<BookSummaryResponse> getBooks(String query,
@@ -60,8 +65,22 @@ public class CatalogService {
                                              BigDecimal priceMax,
                                              Boolean inStock,
                                              Pageable pageable) {
+        return getBooks(query, genre, genreId, author, authorId, priceMin, priceMax, null, null, inStock, pageable);
+    }
+
+    public Page<BookSummaryResponse> getBooks(String query,
+                                             String genre,
+                                             Long genreId,
+                                             String author,
+                                             Long authorId,
+                                             BigDecimal priceMin,
+                                             BigDecimal priceMax,
+                                             Integer stockMin,
+                                             Integer stockMax,
+                                             Boolean inStock,
+                                             Pageable pageable) {
         Specification<Book> spec = BookSpecifications.filter(
-                query, genre, genreId, author, authorId, priceMin, priceMax, inStock
+                query, genre, genreId, author, authorId, priceMin, priceMax, stockMin, stockMax, inStock
         );
 
         Page<Book> bookPage = bookRepository.findAll(spec, pageable);
@@ -104,7 +123,12 @@ public class CatalogService {
         int ratingsCount = countLong != null ? countLong.intValue() : 0;
         boolean hasCover = bookCoverRepository.existsById(id);
 
-        return BookDetailsResponse.fromEntity(book, averageRating, ratingsCount, hasCover);
+        boolean canDelete = book.getStock() == 0 && !orderItemRepository.existsByBookIdAndOrderStatusIn(
+                id,
+                List.of(OrderStatus.AWAITING_PAYMENT, OrderStatus.PAID)
+        );
+
+        return BookDetailsResponse.fromEntity(book, averageRating, ratingsCount, hasCover, canDelete);
     }
 
     public BookCover getBookCover(Long bookId) {
@@ -117,8 +141,16 @@ public class CatalogService {
     }
 
     public List<GenreResponse> getGenres() {
-        return genreRepository.findAll(Sort.by("name")).stream()
-                .map(GenreResponse::fromEntity)
+        List<Genre> genres = genreRepository.findAll(Sort.by("name"));
+        Map<Long, Long> countsMap = new HashMap<>();
+        List<Object[]> stats = bookRepository.countActiveBooksByGenreGrouped();
+        for (Object[] row : stats) {
+            Long genreId = ((Number) row[0]).longValue();
+            Long count = ((Number) row[1]).longValue();
+            countsMap.put(genreId, count);
+        }
+        return genres.stream()
+                .map(genre -> GenreResponse.fromEntity(genre, countsMap.getOrDefault(genre.getId(), 0L)))
                 .toList();
     }
 

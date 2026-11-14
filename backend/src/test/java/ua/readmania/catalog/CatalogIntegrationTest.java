@@ -36,6 +36,7 @@ import ua.readmania.domain.user.Role;
 import ua.readmania.domain.user.User;
 import ua.readmania.domain.user.UserRepository;
 import ua.readmania.domain.user.UserStatus;
+import ua.readmania.dto.catalog.CreateAuthorRequest;
 import ua.readmania.dto.catalog.CreateBookRequest;
 import ua.readmania.dto.catalog.GenreRequest;
 import ua.readmania.dto.catalog.UpdateBookRequest;
@@ -105,7 +106,13 @@ class CatalogIntegrationTest extends BaseIntegrationTest {
     void shouldGetBooksWithPaginationAndFilters() throws Exception {
         Author secondAuthor = authorRepository.save(new Author("Джордж Орвелл"));
         Genre classicGenre = genreRepository.save(new Genre("Класика"));
-        bookRepository.save(new Book("1984", "978-966-03-0002-2", new BigDecimal("250.00"), 5, classicGenre, Set.of(secondAuthor)));
+        Book book1984 = new Book("1984", "978-966-03-0002-2", new BigDecimal("250.00"), 5, classicGenre, Set.of(secondAuthor));
+        book1984.setPublisher("Видавництво А");
+        book1984.setPublicationYear(1949);
+        bookRepository.save(book1984);
+
+        testBook.setPublicationYear(1961);
+        bookRepository.save(testBook);
 
         // Filter by genre
         mockMvc.perform(get("/api/catalog/books")
@@ -125,12 +132,39 @@ class CatalogIntegrationTest extends BaseIntegrationTest {
                 .andExpect(jsonPath("$.content", hasSize(1)))
                 .andExpect(jsonPath("$.content[0].title").value("1984"));
 
+        // Filter by stock range
+        mockMvc.perform(get("/api/catalog/books")
+                        .param("stockMin", "8")
+                        .param("stockMax", "12"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.content", hasSize(1)))
+                .andExpect(jsonPath("$.content[0].title").value("Соляріс"));
+
+        // Sort by publicationYear desc
+        mockMvc.perform(get("/api/catalog/books")
+                        .param("sort", "publicationYear,desc"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.content", hasSize(2)))
+                .andExpect(jsonPath("$.content[0].title").value("Соляріс"))
+                .andExpect(jsonPath("$.content[1].title").value("1984"));
+
         // Search query
         mockMvc.perform(get("/api/catalog/books")
                         .param("query", "Лем"))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.content", hasSize(1)))
                 .andExpect(jsonPath("$.content[0].title").value("Соляріс"));
+    }
+
+    @Test
+    @DisplayName("G1: Запит з stockMin > stockMax повертає 400 Bad Request")
+    void shouldReturn400WhenStockMinGreaterThanStockMax() throws Exception {
+        mockMvc.perform(get("/api/catalog/books")
+                        .param("stockMin", "20")
+                        .param("stockMax", "10"))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.status").value(400))
+                .andExpect(jsonPath("$.detail", containsString("Мінімальна кількість не може бути більшою")));
     }
 
     @Test
@@ -144,7 +178,41 @@ class CatalogIntegrationTest extends BaseIntegrationTest {
                 .andExpect(jsonPath("$.title").value("Соляріс"))
                 .andExpect(jsonPath("$.averageRating").value(5.0))
                 .andExpect(jsonPath("$.ratingsCount").value(1))
-                .andExpect(jsonPath("$.hasCover").value(false));
+                .andExpect(jsonPath("$.hasCover").value(false))
+                .andExpect(jsonPath("$.canDelete").value(false)); // stock = 10
+    }
+
+    @Test
+    @DisplayName("G1, M1.3: Перевірка прапорця canDelete у деталях книги")
+    void shouldComputeCanDeleteFlagCorrectly() throws Exception {
+        // Initially testBook has stock = 10 -> canDelete = false
+        mockMvc.perform(get("/api/catalog/books/" + testBook.getId()))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.canDelete").value(false));
+
+        // When stock = 0 and in active order -> canDelete = false
+        testBook.setStock(0);
+        bookRepository.save(testBook);
+
+        Order order = new Order(
+                testUser, OrderType.REGULAR, PaymentMethod.TRANSFER,
+                new BigDecimal("320.00"), BigDecimal.ZERO, 0, new BigDecimal("320.00")
+        );
+        order.setStatus(OrderStatus.AWAITING_PAYMENT);
+        order = orderRepository.save(order);
+        OrderItem item = orderItemRepository.save(new OrderItem(order, testBook, "Соляріс", new BigDecimal("320.00"), 1));
+
+        mockMvc.perform(get("/api/catalog/books/" + testBook.getId()))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.canDelete").value(false));
+
+        // When order is DELIVERED -> active order item no longer blocks -> canDelete = true
+        order.setStatus(OrderStatus.DELIVERED);
+        orderRepository.save(order);
+
+        mockMvc.perform(get("/api/catalog/books/" + testBook.getId()))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.canDelete").value(true));
     }
 
     @Test
@@ -187,12 +255,14 @@ class CatalogIntegrationTest extends BaseIntegrationTest {
     }
 
     @Test
-    @DisplayName("G1: Отримання списку жанрів та авторів")
+    @DisplayName("G1: Отримання списку жанрів з підрахунком активних книг (booksCount) та списку авторів")
     void shouldGetGenresAndAuthors() throws Exception {
+        // testBook is active and belongs to testGenre -> booksCount should be 1
         mockMvc.perform(get("/api/catalog/genres"))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$", hasSize(1)))
-                .andExpect(jsonPath("$[0].name").value("Фантастика"));
+                .andExpect(jsonPath("$[0].name").value("Фантастика"))
+                .andExpect(jsonPath("$[0].booksCount").value(1));
 
         mockMvc.perform(get("/api/catalog/authors"))
                 .andExpect(status().isOk())
@@ -373,6 +443,29 @@ class CatalogIntegrationTest extends BaseIntegrationTest {
 
     @Test
     @WithMockUser(roles = "MANAGER")
+    @DisplayName("M1: Створення автора менеджером (201 Created) та захист від дублікатів (409 Conflict)")
+    void shouldManageAuthorsAsManager() throws Exception {
+        CreateAuthorRequest request = new CreateAuthorRequest("Тарас Шевченко");
+
+        mockMvc.perform(post("/api/manager/authors")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(request)))
+                .andExpect(status().isCreated())
+                .andExpect(jsonPath("$.name").value("Тарас Шевченко"));
+
+        assertTrue(authorRepository.existsByNameIgnoreCase("Тарас Шевченко"));
+
+        // Duplicate author -> 409 Conflict
+        mockMvc.perform(post("/api/manager/authors")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(request)))
+                .andExpect(status().isConflict())
+                .andExpect(jsonPath("$.status").value(409))
+                .andExpect(jsonPath("$.detail", containsString("вже існує")));
+    }
+
+    @Test
+    @WithMockUser(roles = "MANAGER")
     @DisplayName("M1: Завантаження обкладинки для книги (200 OK)")
     void shouldUploadBookCover() throws Exception {
         MockMultipartFile file = new MockMultipartFile(
@@ -395,11 +488,12 @@ class CatalogIntegrationTest extends BaseIntegrationTest {
     @DisplayName("M2: Імпорт книг із CSV з покроковою валідацією, створенням авторів/жанрів та звітом")
     void shouldImportBooksFromCsvWithValidationReport() throws Exception {
         String csvContent = """
-                title,isbn,price,stock,description,genre,authors
-                Мистецтво війни,978-966-03-7777-1,280.00,10,Трактат про військову стратегію,Філософія,Сунь-цзи
-                Дублікат у файлі,978-966-03-7777-1,150.00,5,Тест дубліката,Філософія,Сунь-цзи
-                Існуючий у БД,978-966-03-0001-1,300.00,5,Тест дубля БД,Фантастика,Станіслав Лем
-                Битий рядок з від'ємною ціною,978-966-03-8888-2,-50.00,2,Опис,Філософія,Автор
+                title,isbn,price,stock,publisher,publication_year,description,genre,authors
+                Мистецтво війни,978-966-03-7777-1,280.00,10,Апріорі,2023,Трактат про військову стратегію,Філософія,Сунь-цзи
+                Дублікат у файлі,978-966-03-7777-1,150.00,5,Видавництво,2020,Тест дубліката,Філософія,Сунь-цзи
+                Існуючий у БД,978-966-03-0001-1,300.00,5,Фоліо,2021,Тест дубля БД,Фантастика,Станіслав Лем
+                Битий рядок з від'ємною ціною,978-966-03-8888-2,-50.00,2,Ранок,2022,Опис,Філософія,Автор
+                Битий рядок з некоректним роком,978-966-03-8888-3,100.00,2,Ранок,1200,Опис,Філософія,Автор
                 """;
 
         MockMultipartFile csvFile = new MockMultipartFile(
@@ -409,15 +503,19 @@ class CatalogIntegrationTest extends BaseIntegrationTest {
         mockMvc.perform(multipart("/api/manager/books/import-csv")
                         .file(csvFile))
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$.totalRows").value(4))
+                .andExpect(jsonPath("$.totalRows").value(5))
                 .andExpect(jsonPath("$.addedCount").value(1))
-                .andExpect(jsonPath("$.rejectedCount").value(3))
-                .andExpect(jsonPath("$.rejectedRows", hasSize(3)))
+                .andExpect(jsonPath("$.rejectedCount").value(4))
+                .andExpect(jsonPath("$.rejectedRows", hasSize(4)))
                 .andExpect(jsonPath("$.rejectedRows[0].reason", containsString("Дублікат ISBN у файлі")))
                 .andExpect(jsonPath("$.rejectedRows[1].reason", containsString("вже існує в базі даних")))
-                .andExpect(jsonPath("$.rejectedRows[2].reason", containsString("Ціна не може бути від'ємною")));
+                .andExpect(jsonPath("$.rejectedRows[2].reason", containsString("Ціна не може бути від'ємною")))
+                .andExpect(jsonPath("$.rejectedRows[3].reason", containsString("Рік видання повинен бути в діапазоні")));
 
         assertTrue(bookRepository.existsActiveByIsbn("978-966-03-7777-1"));
+        Book importedBook = bookRepository.findByIsbn("978-966-03-7777-1").orElseThrow();
+        assertEquals("Апріорі", importedBook.getPublisher());
+        assertEquals(2023, importedBook.getPublicationYear());
         assertTrue(genreRepository.existsByNameIgnoreCase("Філософія"));
         assertTrue(authorRepository.existsByNameIgnoreCase("Сунь-цзи"));
     }
