@@ -19,6 +19,8 @@ public interface RatingRepository extends JpaRepository<Rating, Long> {
 
     Optional<Rating> findByUserIdAndBookId(Long userId, Long bookId);
 
+    List<Rating> findByUserIdAndBookIdIn(Long userId, Collection<Long> bookIds);
+
     boolean existsByUserIdAndBookId(Long userId, Long bookId);
 
     @Query("SELECT AVG(r.value) FROM Rating r WHERE r.book.id = :bookId")

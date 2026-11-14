@@ -5,16 +5,22 @@ import java.math.RoundingMode;
 import java.time.Instant;
 import java.time.LocalDate;
 import java.time.temporal.ChronoUnit;
+import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
+import java.util.Objects;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
+import org.springframework.http.HttpStatus;
+import org.springframework.orm.ObjectOptimisticLockingFailureException;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import ua.readmania.common.BusinessRuleException;
-import ua.readmania.common.ConflictException;
 import ua.readmania.common.NotFoundException;
+import ua.readmania.common.OrderStatusConflictException;
 import ua.readmania.domain.catalog.Book;
 import ua.readmania.domain.catalog.BookRepository;
 import ua.readmania.domain.challenge.Challenge;
@@ -27,6 +33,8 @@ import ua.readmania.domain.gift.GiftLogRepository;
 import ua.readmania.domain.loyalty.BonusTransaction;
 import ua.readmania.domain.loyalty.BonusTransactionRepository;
 import ua.readmania.domain.loyalty.BonusTransactionType;
+import ua.readmania.domain.loyalty.Rating;
+import ua.readmania.domain.loyalty.RatingRepository;
 import ua.readmania.domain.order.Order;
 import ua.readmania.domain.order.OrderItem;
 import ua.readmania.domain.order.OrderItemRepository;
@@ -57,6 +65,7 @@ public class ManagerOrderService {
     private final ChallengeRepository challengeRepository;
     private final ChallengeCompletionRepository challengeCompletionRepository;
     private final GiftLogRepository giftLogRepository;
+    private final RatingRepository ratingRepository;
     private final ua.readmania.service.notification.NotificationService notificationService;
 
     public ManagerOrderService(OrderRepository orderRepository,
@@ -68,6 +77,7 @@ public class ManagerOrderService {
                                ChallengeRepository challengeRepository,
                                ChallengeCompletionRepository challengeCompletionRepository,
                                GiftLogRepository giftLogRepository,
+                               RatingRepository ratingRepository,
                                ua.readmania.service.notification.NotificationService notificationService) {
         this.orderRepository = orderRepository;
         this.orderItemRepository = orderItemRepository;
@@ -78,6 +88,7 @@ public class ManagerOrderService {
         this.challengeRepository = challengeRepository;
         this.challengeCompletionRepository = challengeCompletionRepository;
         this.giftLogRepository = giftLogRepository;
+        this.ratingRepository = ratingRepository;
         this.notificationService = notificationService;
     }
 
@@ -114,7 +125,9 @@ public class ManagerOrderService {
                 .map(OrderStatusHistoryResponse::fromEntity)
                 .toList();
 
-        return OrderDetailsResponse.fromEntity(order, history);
+        User customer = order.getUser();
+        Map<Long, Integer> bookRatings = getBookRatingsForUser(customer != null ? customer.getId() : null, order.getItems());
+        return OrderDetailsResponse.fromEntity(order, history, bookRatings);
     }
 
     @Transactional
@@ -124,19 +137,19 @@ public class ManagerOrderService {
 
         // Check expected status for optimistic concurrency protection (M3 7.2.2.8)
         if (request.getExpectedStatus() != null && order.getStatus() != request.getExpectedStatus()) {
-            throw new ConflictException("Поточний статус замовлення '" + order.getStatus() + "' не відповідає очікуваному '" + request.getExpectedStatus() + "'");
+            throw new OrderStatusConflictException("Поточний статус замовлення '" + order.getStatus() + "' не відповідає очікуваному '" + request.getExpectedStatus() + "'", order.getStatus());
         }
 
         OrderStatus currentStatus = order.getStatus();
         OrderStatus targetStatus = request.getStatus();
 
         if (currentStatus == OrderStatus.DELIVERED || currentStatus == OrderStatus.CANCELLED) {
-            throw new BusinessRuleException("Замовлення у фінальному статусі '" + currentStatus + "' не може бути змінено");
+            throw new OrderStatusConflictException("Замовлення у фінальному статусі '" + currentStatus + "' не може бути змінено", currentStatus);
         }
 
         // State Machine validation (SRS Table 3)
         boolean isValidTransition = switch (currentStatus) {
-            case AWAITING_PAYMENT -> (targetStatus == OrderStatus.PAID)
+            case AWAITING_PAYMENT -> (targetStatus == OrderStatus.PAID && order.getPaymentMethod() == PaymentMethod.TRANSFER)
                     || (targetStatus == OrderStatus.DELIVERED && order.getPaymentMethod() == PaymentMethod.ON_DELIVERY)
                     || (targetStatus == OrderStatus.CANCELLED);
             case PAID -> targetStatus == OrderStatus.DELIVERED || targetStatus == OrderStatus.CANCELLED;
@@ -144,7 +157,7 @@ public class ManagerOrderService {
         };
 
         if (!isValidTransition) {
-            throw new BusinessRuleException("Неприпустимий перехід статусу з '" + currentStatus + "' у '" + targetStatus + "'");
+            throw new OrderStatusConflictException("Неприпустимий перехід статусу з '" + currentStatus + "' у '" + targetStatus + "' для методу оплати '" + order.getPaymentMethod() + "'", currentStatus);
         }
 
         User manager = managerUserId != null ? userRepository.findById(managerUserId).orElse(null) : null;
@@ -177,7 +190,6 @@ public class ManagerOrderService {
 
         if (targetStatus == OrderStatus.DELIVERED) {
             order.setDeliveredAt(Instant.now());
-            orderRepository.saveAndFlush(order);
 
             // 1. Award order bonus points (C8): floor(itemsTotal / 100)
             if (customer != null && order.getItemsTotal() != null) {
@@ -245,7 +257,13 @@ public class ManagerOrderService {
             }
         }
 
-        Order savedOrder = orderRepository.save(order);
+        Order savedOrder;
+        try {
+            savedOrder = orderRepository.saveAndFlush(order);
+        } catch (ObjectOptimisticLockingFailureException | jakarta.persistence.OptimisticLockException e) {
+            Order actualOrder = orderRepository.findById(orderId).orElse(order);
+            throw new OrderStatusConflictException("Замовлення було змінено іншим процесом. Поточний статус: " + actualOrder.getStatus(), actualOrder.getStatus(), e);
+        }
 
         OrderStatusHistory history = new OrderStatusHistory(savedOrder, currentStatus, targetStatus, manager, request.getComment());
         orderStatusHistoryRepository.save(history);
@@ -257,16 +275,38 @@ public class ManagerOrderService {
                 .map(OrderStatusHistoryResponse::fromEntity)
                 .toList();
 
-        return OrderDetailsResponse.fromEntity(savedOrder, historyList);
+        Map<Long, Integer> bookRatings = getBookRatingsForUser(customer != null ? customer.getId() : null, savedOrder.getItems());
+        return OrderDetailsResponse.fromEntity(savedOrder, historyList, bookRatings);
     }
 
     @Transactional
-    public int cancelUnpaidOverdueOrders() {
-        Instant before = Instant.now().minus(7, ChronoUnit.DAYS);
-        List<Order> overdueOrders = orderRepository.findUnpaidOrdersOlderThan(before);
-        int cancelledCount = 0;
+    public int cancelUnpaidOverdueOrders(List<Long> orderIds) {
+        if (orderIds == null || orderIds.isEmpty()) {
+            throw new BusinessRuleException("Список замовлень не може бути порожнім", HttpStatus.BAD_REQUEST);
+        }
 
-        for (Order order : overdueOrders) {
+        Instant overdueThreshold = Instant.now().minus(7, ChronoUnit.DAYS);
+        List<Order> ordersToCancel = new ArrayList<>();
+
+        for (Long orderId : orderIds) {
+            Order order = orderRepository.findWithDetailsById(orderId)
+                    .orElseThrow(() -> new BusinessRuleException("Замовлення з ID " + orderId + " не знайдено", HttpStatus.CONFLICT));
+
+            boolean isAwaitingPayment = order.getStatus() == OrderStatus.AWAITING_PAYMENT;
+            boolean isTransfer = order.getPaymentMethod() == PaymentMethod.TRANSFER;
+            boolean isOverdue = order.getCreatedAt() != null && order.getCreatedAt().isBefore(overdueThreshold);
+
+            if (!isAwaitingPayment || !isTransfer || !isOverdue) {
+                throw new BusinessRuleException(
+                        "Замовлення #" + orderId + " не відповідає критеріям простроченого неоплаченого замовлення (AWAITING_PAYMENT, TRANSFER, старше 7 днів)",
+                        HttpStatus.CONFLICT
+                );
+            }
+            ordersToCancel.add(order);
+        }
+
+        int cancelledCount = 0;
+        for (Order order : ordersToCancel) {
             OrderStatus previousStatus = order.getStatus();
             order.setStatus(OrderStatus.CANCELLED);
             order.setStatusChangedAt(Instant.now());
@@ -292,29 +332,70 @@ public class ManagerOrderService {
                 bonusTransactionRepository.save(refundTx);
             }
 
-            OrderStatusHistory history = new OrderStatusHistory(order, previousStatus, OrderStatus.CANCELLED, null, "Автоматичне скасування: не оплачено понад 7 днів");
+            OrderStatusHistory history = new OrderStatusHistory(order, previousStatus, OrderStatus.CANCELLED, null, "Масове скасування: прострочена оплата переказом (>7 днів)");
             orderStatusHistoryRepository.save(history);
             Order saved = orderRepository.save(order);
             notificationService.sendOrderStatusChanged(saved);
             cancelledCount++;
         }
 
-        log.info("Скасовано {} прострочених неоплачених замовлень", cancelledCount);
+        log.info("Скасовано {} обраних прострочених неоплачених замовлень", cancelledCount);
         return cancelledCount;
     }
 
     @Transactional
-    public int cleanupArchivedOrders() {
-        Instant before = Instant.now().minus(3 * 365, ChronoUnit.DAYS);
-        List<Order> archivedOrders = orderRepository.findArchivedOrdersOlderThan(before);
-        int deletedCount = archivedOrders.size();
+    public int cleanupArchivedOrders(List<Long> orderIds) {
+        if (orderIds == null || orderIds.isEmpty()) {
+            throw new BusinessRuleException("Список замовлень не може бути порожнім", HttpStatus.BAD_REQUEST);
+        }
 
-        for (Order order : archivedOrders) {
+        Instant archiveThreshold = Instant.now().minus(3 * 365, ChronoUnit.DAYS);
+        List<Order> ordersToDelete = new ArrayList<>();
+
+        for (Long orderId : orderIds) {
+            Order order = orderRepository.findWithDetailsById(orderId)
+                    .orElseThrow(() -> new BusinessRuleException("Замовлення з ID " + orderId + " не знайдено", HttpStatus.CONFLICT));
+
+            boolean isFinalStatus = order.getStatus() == OrderStatus.DELIVERED || order.getStatus() == OrderStatus.CANCELLED;
+            boolean isArchivedAge = order.getCreatedAt() != null && order.getCreatedAt().isBefore(archiveThreshold);
+
+            if (!isFinalStatus || !isArchivedAge) {
+                throw new BusinessRuleException(
+                        "Замовлення #" + orderId + " не відповідає критеріям архівного замовлення (DELIVERED або CANCELLED, старше 3 років)",
+                        HttpStatus.CONFLICT
+                );
+            }
+            ordersToDelete.add(order);
+        }
+
+        int deletedCount = ordersToDelete.size();
+        for (Order order : ordersToDelete) {
             orderStatusHistoryRepository.deleteAll(orderStatusHistoryRepository.findByOrderIdOrderByChangedAtAsc(order.getId()));
             orderRepository.delete(order);
         }
 
-        log.info("Видалено {} архівних замовлень (старших за 3 роки)", deletedCount);
+        log.info("Видалено {} обраних архівних замовлень (старших за 3 роки)", deletedCount);
         return deletedCount;
+    }
+
+    private Map<Long, Integer> getBookRatingsForUser(Long userId, List<OrderItem> items) {
+        if (userId == null || items == null || items.isEmpty()) {
+            return Map.of();
+        }
+        List<Long> bookIds = items.stream()
+                .map(item -> item.getBook() != null ? item.getBook().getId() : null)
+                .filter(Objects::nonNull)
+                .toList();
+        if (bookIds.isEmpty()) {
+            return Map.of();
+        }
+        List<Rating> ratings = ratingRepository.findByUserIdAndBookIdIn(userId, bookIds);
+        Map<Long, Integer> ratingMap = new HashMap<>();
+        for (Rating r : ratings) {
+            if (r.getBook() != null && r.getBook().getId() != null) {
+                ratingMap.put(r.getBook().getId(), (int) r.getValue());
+            }
+        }
+        return ratingMap;
     }
 }

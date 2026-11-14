@@ -55,6 +55,8 @@ import ua.readmania.domain.institution.InstitutionType;
 import ua.readmania.domain.loyalty.BonusTransaction;
 import ua.readmania.domain.loyalty.BonusTransactionRepository;
 import ua.readmania.domain.loyalty.BonusTransactionType;
+import ua.readmania.domain.loyalty.Rating;
+import ua.readmania.domain.loyalty.RatingRepository;
 import ua.readmania.domain.order.DeliveryMethod;
 import ua.readmania.domain.order.Order;
 import ua.readmania.domain.order.OrderItem;
@@ -70,6 +72,7 @@ import ua.readmania.domain.user.UserRepository;
 import ua.readmania.domain.user.UserStatus;
 import ua.readmania.dto.cart.AddToCartRequest;
 import ua.readmania.dto.cart.UpdateCartItemRequest;
+import ua.readmania.dto.order.BatchOrderActionRequest;
 import ua.readmania.dto.order.CreateGiftOrderRequest;
 import ua.readmania.dto.order.CreateOrderRequest;
 import ua.readmania.dto.order.OrderContactDto;
@@ -116,6 +119,9 @@ class OrderIntegrationTest extends BaseIntegrationTest {
 
     @Autowired
     private BonusTransactionRepository bonusTransactionRepository;
+
+    @Autowired
+    private RatingRepository ratingRepository;
 
     @Autowired
     private InstitutionRepository institutionRepository;
@@ -459,7 +465,7 @@ class OrderIntegrationTest extends BaseIntegrationTest {
                 .andExpect(status().isConflict())
                 .andExpect(jsonPath("$.detail", containsString("не відповідає очікуваному")));
 
-        // 3. Неприпустимий перехід (наприклад з AWAITING_PAYMENT у DELIVERED при оплаті TRANSFER) -> 400 Bad Request
+        // 3. Неприпустимий перехід (наприклад з AWAITING_PAYMENT у DELIVERED при оплаті TRANSFER) -> 409 Conflict
         Order transferOrder = new Order(testUser, OrderType.REGULAR, PaymentMethod.TRANSFER, new BigDecimal("300.00"), BigDecimal.ZERO, 0);
         transferOrder.setStatus(OrderStatus.AWAITING_PAYMENT);
         transferOrder.addItem(new OrderItem(transferOrder, testBook1, "Соляріс", new BigDecimal("300.00"), 1));
@@ -474,7 +480,8 @@ class OrderIntegrationTest extends BaseIntegrationTest {
         mockMvc.perform(patch("/api/manager/orders/" + transferOrder.getId() + "/status")
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(invalidTransition)))
-                .andExpect(status().isBadRequest())
+                .andExpect(status().isConflict())
+                .andExpect(jsonPath("$.currentStatus").value("AWAITING_PAYMENT"))
                 .andExpect(jsonPath("$.detail", containsString("Неприпустимий перехід статусу")));
 
         // 4. Дозволений перехід: з AWAITING_PAYMENT у DELIVERED при оплаті ON_DELIVERY (CASH_ON_DELIVERY)
@@ -554,7 +561,7 @@ class OrderIntegrationTest extends BaseIntegrationTest {
     }
 
     @Test
-    @DisplayName("7.2.2.6, 7.2.2.7: Спеціальні дії менеджера: скасування прострочених (>7 днів) та очищення архіву (>3 років)")
+    @DisplayName("7.2.2.6, 7.2.2.7: Спеціальні дії менеджера: скасування прострочених (>7 днів) та очищення архіву (>3 років) за списком ID")
     @WithMockUser(username = "manager@example.com", roles = {"MANAGER"})
     void shouldHandleOverdueAndArchivedOrders() throws Exception {
         // Замовлення, неоплачене 8 днів тому
@@ -572,20 +579,78 @@ class OrderIntegrationTest extends BaseIntegrationTest {
         archivedOrder.addItem(new OrderItem(archivedOrder, testBook1, "Соляріс", new BigDecimal("300.00"), 1));
         archivedOrder = orderRepository.save(archivedOrder);
 
-        // 1. Скасування прострочених
-        mockMvc.perform(post("/api/manager/orders/cancel-unpaid-overdue"))
+        // 1. Скасування прострочених за списком ID
+        mockMvc.perform(post("/api/manager/orders/cancel-unpaid-overdue")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(new BatchOrderActionRequest(List.of(overdueOrder.getId())))))
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$.cancelledCount", greaterThan(0)));
+                .andExpect(jsonPath("$.cancelledCount").value(1));
 
         Order checkedOverdue = orderRepository.findById(overdueOrder.getId()).orElseThrow();
         assertEquals(OrderStatus.CANCELLED, checkedOverdue.getStatus());
 
-        // 2. Очищення архівних
-        mockMvc.perform(delete("/api/manager/orders/archive"))
+        // 2. Очищення архівних за списком ID
+        mockMvc.perform(delete("/api/manager/orders/archive")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(new BatchOrderActionRequest(List.of(archivedOrder.getId())))))
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$.deletedCount", greaterThan(0)));
+                .andExpect(jsonPath("$.deletedCount").value(1));
 
         assertFalse(orderRepository.existsById(archivedOrder.getId()));
+    }
+
+    @Test
+    @DisplayName("Перевірка userRating у OrderItemResponse та конфлікту при скасуванні замовлення Користувачем")
+    @WithMockUser(username = "buyer@example.com", roles = {"USER"})
+    void shouldReturnUserRatingInOrderItemsAndConflictOnInvalidCancel() throws Exception {
+        // Оцінюємо книгу testBook1 оцінкою 5
+        ratingRepository.save(new Rating(testUser, testBook1, null, (short) 5));
+
+        Order order = new Order(testUser, OrderType.REGULAR, PaymentMethod.TRANSFER, new BigDecimal("550.00"), BigDecimal.ZERO, 0);
+        order.setStatus(OrderStatus.AWAITING_PAYMENT);
+        order.addItem(new OrderItem(order, testBook1, "Соляріс", new BigDecimal("300.00"), 1));
+        order.addItem(new OrderItem(order, testBook2, "Гобіт", new BigDecimal("250.00"), 1));
+        order = orderRepository.save(order);
+
+        // Перевіряємо деталі замовлення: testBook1 має userRating = 5, testBook2 має userRating = null
+        mockMvc.perform(get("/api/orders/" + order.getId()))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.items[0].userRating").value(5))
+                .andExpect(jsonPath("$.items[1].userRating").doesNotExist());
+
+        // Змінюємо статус на PAID
+        order.setStatus(OrderStatus.PAID);
+        orderRepository.save(order);
+
+        // Спроба скасувати замовлення у статусі PAID користувачем -> 409 Conflict з currentStatus = PAID
+        mockMvc.perform(post("/api/orders/" + order.getId() + "/cancel"))
+                .andExpect(status().isConflict())
+                .andExpect(jsonPath("$.currentStatus").value("PAID"));
+    }
+
+    @Test
+    @DisplayName("Масові дії менеджера: валідація умов списку та повернення 409 Conflict при невідповідності")
+    @WithMockUser(username = "manager@example.com", roles = {"MANAGER"})
+    void shouldReturn409WhenBatchActionItemsDoNotMatchCriteria() throws Exception {
+        // Замовлення, створене 1 день тому (не є простроченим)
+        Order recentOrder = new Order(testUser, OrderType.REGULAR, PaymentMethod.TRANSFER, new BigDecimal("300.00"), BigDecimal.ZERO, 0);
+        recentOrder.setStatus(OrderStatus.AWAITING_PAYMENT);
+        recentOrder.setCreatedAt(Instant.now().minus(1, ChronoUnit.DAYS));
+        recentOrder = orderRepository.save(recentOrder);
+
+        // Спроба скасування непростроченого замовлення через cancel-unpaid-overdue -> 409 Conflict
+        mockMvc.perform(post("/api/manager/orders/cancel-unpaid-overdue")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(new BatchOrderActionRequest(List.of(recentOrder.getId())))))
+                .andExpect(status().isConflict())
+                .andExpect(jsonPath("$.detail", containsString("не відповідає критеріям")));
+
+        // Спроба архівування неархівного замовлення -> 409 Conflict
+        mockMvc.perform(delete("/api/manager/orders/archive")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(new BatchOrderActionRequest(List.of(recentOrder.getId())))))
+                .andExpect(status().isConflict())
+                .andExpect(jsonPath("$.detail", containsString("не відповідає критеріям")));
     }
 
     @Test

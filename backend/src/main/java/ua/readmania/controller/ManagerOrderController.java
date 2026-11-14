@@ -20,6 +20,7 @@ import org.springframework.web.bind.annotation.RestController;
 import ua.readmania.domain.order.OrderStatus;
 import ua.readmania.domain.user.User;
 import ua.readmania.domain.user.UserRepository;
+import ua.readmania.dto.order.BatchOrderActionRequest;
 import ua.readmania.dto.order.OrderDetailsResponse;
 import ua.readmania.dto.order.OrderSummaryResponse;
 import ua.readmania.dto.order.UpdateOrderStatusRequest;
@@ -66,20 +67,22 @@ public class ManagerOrderController {
     }
 
     @PostMapping("/cancel-unpaid-overdue")
-    public ResponseEntity<Map<String, Object>> cancelUnpaidOverdueOrders() {
-        int count = managerOrderService.cancelUnpaidOverdueOrders();
+    public ResponseEntity<Map<String, Object>> cancelUnpaidOverdueOrders(
+            @Valid @RequestBody BatchOrderActionRequest request) {
+        int count = managerOrderService.cancelUnpaidOverdueOrders(request.getOrderIds());
         return ResponseEntity.ok(Map.of(
-                "message", "Скасовано прострочені неоплачені замовлення",
-                "cancelledCount", count
+            "message", "Скасовано прострочені неоплачені замовлення",
+            "cancelledCount", count
         ));
     }
 
     @DeleteMapping("/archive")
-    public ResponseEntity<Map<String, Object>> cleanupArchivedOrders() {
-        int count = managerOrderService.cleanupArchivedOrders();
+    public ResponseEntity<Map<String, Object>> cleanupArchivedOrders(
+            @Valid @RequestBody BatchOrderActionRequest request) {
+        int count = managerOrderService.cleanupArchivedOrders(request.getOrderIds());
         return ResponseEntity.ok(Map.of(
-                "message", "Очищено архівні замовлення",
-                "deletedCount", count
+            "message", "Очищено архівні замовлення",
+            "deletedCount", count
         ));
     }
 
