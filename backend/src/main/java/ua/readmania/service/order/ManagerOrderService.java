@@ -57,6 +57,7 @@ public class ManagerOrderService {
     private final ChallengeRepository challengeRepository;
     private final ChallengeCompletionRepository challengeCompletionRepository;
     private final GiftLogRepository giftLogRepository;
+    private final ua.readmania.service.notification.NotificationService notificationService;
 
     public ManagerOrderService(OrderRepository orderRepository,
                                OrderItemRepository orderItemRepository,
@@ -66,7 +67,8 @@ public class ManagerOrderService {
                                BonusTransactionRepository bonusTransactionRepository,
                                ChallengeRepository challengeRepository,
                                ChallengeCompletionRepository challengeCompletionRepository,
-                               GiftLogRepository giftLogRepository) {
+                               GiftLogRepository giftLogRepository,
+                               ua.readmania.service.notification.NotificationService notificationService) {
         this.orderRepository = orderRepository;
         this.orderItemRepository = orderItemRepository;
         this.orderStatusHistoryRepository = orderStatusHistoryRepository;
@@ -76,6 +78,7 @@ public class ManagerOrderService {
         this.challengeRepository = challengeRepository;
         this.challengeCompletionRepository = challengeCompletionRepository;
         this.giftLogRepository = giftLogRepository;
+        this.notificationService = notificationService;
     }
 
     @Transactional(readOnly = true)
@@ -247,6 +250,8 @@ public class ManagerOrderService {
         OrderStatusHistory history = new OrderStatusHistory(savedOrder, currentStatus, targetStatus, manager, request.getComment());
         orderStatusHistoryRepository.save(history);
 
+        notificationService.sendOrderStatusChanged(savedOrder);
+
         List<OrderStatusHistoryResponse> historyList = orderStatusHistoryRepository.findByOrderIdOrderByChangedAtAsc(orderId)
                 .stream()
                 .map(OrderStatusHistoryResponse::fromEntity)
@@ -289,7 +294,8 @@ public class ManagerOrderService {
 
             OrderStatusHistory history = new OrderStatusHistory(order, previousStatus, OrderStatus.CANCELLED, null, "Автоматичне скасування: не оплачено понад 7 днів");
             orderStatusHistoryRepository.save(history);
-            orderRepository.save(order);
+            Order saved = orderRepository.save(order);
+            notificationService.sendOrderStatusChanged(saved);
             cancelledCount++;
         }
 

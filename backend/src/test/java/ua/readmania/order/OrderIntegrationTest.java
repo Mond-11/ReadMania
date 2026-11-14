@@ -132,6 +132,9 @@ class OrderIntegrationTest extends BaseIntegrationTest {
     @Autowired
     private PasswordEncoder passwordEncoder;
 
+    @Autowired
+    private ua.readmania.service.notification.LoggingNotificationService loggingNotificationService;
+
     private User testUser;
     private User managerUser;
     private Book testBook1;
@@ -141,6 +144,7 @@ class OrderIntegrationTest extends BaseIntegrationTest {
 
     @BeforeEach
     void setUp() {
+        loggingNotificationService.clear();
         jdbcClient.sql("""
             TRUNCATE TABLE 
                 unblock_requests,
@@ -340,6 +344,11 @@ class OrderIntegrationTest extends BaseIntegrationTest {
 
         // Перевіряємо очищення кошика
         assertTrue(cartItemRepository.findByUserId(testUser.getId()).isEmpty());
+
+        // Перевіряємо надсилання сповіщення менеджерам
+        assertFalse(loggingNotificationService.getSentEmails().isEmpty());
+        assertEquals("managers@readmania.ua", loggingNotificationService.getLastSentEmail().recipient());
+        assertTrue(loggingNotificationService.getLastSentEmail().subject().contains("Нове замовлення"));
     }
 
     @Test
@@ -407,6 +416,11 @@ class OrderIntegrationTest extends BaseIntegrationTest {
 
         List<BonusTransaction> refundTxs = bonusTransactionRepository.findByUserIdOrderByCreatedAtDesc(testUser.getId());
         assertTrue(refundTxs.stream().anyMatch(t -> t.getType() == BonusTransactionType.REFUND && t.getPoints() == 10));
+
+        // Перевіряємо сповіщення про зміну статусу на CANCELLED
+        assertFalse(loggingNotificationService.getSentEmails().isEmpty());
+        assertEquals("buyer@example.com", loggingNotificationService.getLastSentEmail().recipient());
+        assertTrue(loggingNotificationService.getLastSentEmail().subject().contains("CANCELLED"));
     }
 
     @Test

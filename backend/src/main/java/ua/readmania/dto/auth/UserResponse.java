@@ -17,6 +17,8 @@ public class UserResponse {
     private int bonusBalance;
     private Instant createdAt;
     private Instant lastLoginAt;
+    private Instant blockedAt;
+    private String blockReason;
 
     public UserResponse() {
     }
@@ -36,6 +38,8 @@ public class UserResponse {
         response.setBonusBalance(user.getBonusBalance());
         response.setCreatedAt(user.getCreatedAt());
         response.setLastLoginAt(user.getLastLoginAt());
+        response.setBlockedAt(user.getBlockedAt());
+        response.setBlockReason(user.getBlockReason());
         return response;
     }
 
@@ -117,5 +121,21 @@ public class UserResponse {
 
     public void setLastLoginAt(Instant lastLoginAt) {
         this.lastLoginAt = lastLoginAt;
+    }
+
+    public Instant getBlockedAt() {
+        return blockedAt;
+    }
+
+    public void setBlockedAt(Instant blockedAt) {
+        this.blockedAt = blockedAt;
+    }
+
+    public String getBlockReason() {
+        return blockReason;
+    }
+
+    public void setBlockReason(String blockReason) {
+        this.blockReason = blockReason;
     }
 }

@@ -21,38 +21,50 @@ import org.springframework.transaction.annotation.Transactional;
 import ua.readmania.common.AccountBlockedException;
 import ua.readmania.common.BusinessRuleException;
 import ua.readmania.common.ConflictException;
+import ua.readmania.common.LoginRateLimitedException;
 import ua.readmania.common.NotFoundException;
 import ua.readmania.domain.user.PasswordResetToken;
 import ua.readmania.domain.user.PasswordResetTokenRepository;
 import ua.readmania.domain.user.Role;
+import ua.readmania.domain.user.UnblockRequest;
+import ua.readmania.domain.user.UnblockRequestRepository;
+import ua.readmania.domain.user.UnblockRequestStatus;
 import ua.readmania.domain.user.User;
 import ua.readmania.domain.user.UserRepository;
 import ua.readmania.domain.user.UserStatus;
+import ua.readmania.dto.auth.CreateUnblockRequest;
 import ua.readmania.dto.auth.LoginRequest;
 import ua.readmania.dto.auth.PasswordResetConfirmRequest;
 import ua.readmania.dto.auth.PasswordResetRequest;
 import ua.readmania.dto.auth.RegisterRequest;
 import ua.readmania.dto.auth.UserResponse;
+import ua.readmania.service.notification.NotificationService;
 
 @Service
 public class AuthService {
 
     private final UserRepository userRepository;
     private final PasswordResetTokenRepository passwordResetTokenRepository;
+    private final UnblockRequestRepository unblockRequestRepository;
     private final PasswordEncoder passwordEncoder;
     private final AuthenticationManager authenticationManager;
     private final SecurityContextRepository securityContextRepository;
+    private final NotificationService notificationService;
 
     public AuthService(UserRepository userRepository,
                        PasswordResetTokenRepository passwordResetTokenRepository,
+                       UnblockRequestRepository unblockRequestRepository,
                        PasswordEncoder passwordEncoder,
                        AuthenticationManager authenticationManager,
-                       SecurityContextRepository securityContextRepository) {
+                       SecurityContextRepository securityContextRepository,
+                       NotificationService notificationService) {
         this.userRepository = userRepository;
         this.passwordResetTokenRepository = passwordResetTokenRepository;
+        this.unblockRequestRepository = unblockRequestRepository;
         this.passwordEncoder = passwordEncoder;
         this.authenticationManager = authenticationManager;
         this.securityContextRepository = securityContextRepository;
+        this.notificationService = notificationService;
     }
 
     @Transactional
@@ -92,12 +104,15 @@ public class AuthService {
                 String reason = user.getBlockReason() != null && !user.getBlockReason().isBlank()
                         ? user.getBlockReason()
                         : "Обліковий запис заблоковано";
-                throw new AccountBlockedException(reason);
+                throw new AccountBlockedException(reason, user.getBlockReason(), user.getBlockedAt());
             }
 
             if (user.getLockedUntil() != null) {
                 if (Instant.now().isBefore(user.getLockedUntil())) {
-                    throw new BusinessRuleException("Обліковий запис тимчасово заблоковано через перевищення ліміту спроб входу (5 спроб). Спробуйте через 15 хвилин.");
+                    throw new LoginRateLimitedException(
+                            "Обліковий запис тимчасово заблоковано через перевищення ліміту спроб входу (5 спроб). Спробуйте через 15 хвилин.",
+                            user.getLockedUntil()
+                    );
                 } else {
                     user.setLockedUntil(null);
                     user.setFailedLoginAttempts(0);
@@ -129,7 +144,13 @@ public class AuthService {
                 int attempts = user.getFailedLoginAttempts() + 1;
                 user.setFailedLoginAttempts(attempts);
                 if (attempts >= 5) {
-                    user.setLockedUntil(Instant.now().plus(Duration.ofMinutes(15)));
+                    Instant lockedUntil = Instant.now().plus(Duration.ofMinutes(15));
+                    user.setLockedUntil(lockedUntil);
+                    userRepository.save(user);
+                    throw new LoginRateLimitedException(
+                            "Перевищено ліміт спроб входу (5 спроб). Обліковий запис тимчасово заблоковано на 15 хвилин.",
+                            lockedUntil
+                    );
                 }
                 userRepository.save(user);
             }
@@ -153,7 +174,7 @@ public class AuthService {
     }
 
     @Transactional
-    public String requestPasswordReset(PasswordResetRequest request) {
+    public void requestPasswordReset(PasswordResetRequest request) {
         String normalizedEmail = request.getEmail().trim().toLowerCase();
         Optional<User> userOpt = userRepository.findByEmailIgnoreCase(normalizedEmail);
 
@@ -164,10 +185,9 @@ public class AuthService {
             String tokenStr = UUID.randomUUID().toString();
             PasswordResetToken token = new PasswordResetToken(user, tokenStr, Instant.now().plus(Duration.ofHours(1)));
             passwordResetTokenRepository.save(token);
-            return tokenStr;
-        }
 
-        return null;
+            notificationService.sendPasswordResetLink(user, tokenStr);
+        }
     }
 
     @Transactional
@@ -191,5 +211,31 @@ public class AuthService {
 
         userRepository.save(user);
         passwordResetTokenRepository.save(token);
+    }
+
+    @Transactional
+    public void submitUnblockRequest(CreateUnblockRequest request) {
+        String normalizedEmail = request.getEmail().trim().toLowerCase();
+        User user = userRepository.findByEmailIgnoreCase(normalizedEmail)
+                .orElseThrow(() -> new NotFoundException("Користувача з такою електронною адресою не знайдено"));
+
+        if (!passwordEncoder.matches(request.getPassword(), user.getPasswordHash())) {
+            throw new BusinessRuleException("Невірний пароль");
+        }
+
+        if (user.getStatus() != UserStatus.BLOCKED) {
+            throw new BusinessRuleException("Обліковий запис не заблокований");
+        }
+
+        Optional<UnblockRequest> existingOpt = unblockRequestRepository.findFirstByUserIdAndStatus(user.getId(), UnblockRequestStatus.PENDING);
+        if (existingOpt.isPresent()) {
+            UnblockRequest unblockRequest = existingOpt.get();
+            unblockRequest.setReason(request.getReason());
+            unblockRequest.setCreatedAt(Instant.now());
+            unblockRequestRepository.save(unblockRequest);
+        } else {
+            UnblockRequest unblockRequest = new UnblockRequest(user, request.getReason());
+            unblockRequestRepository.save(unblockRequest);
+        }
     }
 }

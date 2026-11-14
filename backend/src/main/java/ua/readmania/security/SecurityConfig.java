@@ -96,7 +96,7 @@ public class SecurityConfig {
 
             auth
                     // Public endpoints
-                    .requestMatchers("/api/auth/register", "/api/auth/login", "/api/auth/logout", "/api/auth/password-reset/**").permitAll()
+                    .requestMatchers("/api/auth/register", "/api/auth/login", "/api/auth/logout", "/api/auth/password-reset/**", "/api/auth/unblock-request").permitAll()
                     .requestMatchers("/api/auth/me").authenticated()
                     .requestMatchers("/api/catalog/**", "/api/institutions/**", "/api/challenges/**", "/api/gift-sets/**", "/api/ratings/book/**").permitAll()
                     // Actuator health check (without sensitive details)

@@ -98,6 +98,9 @@ public class Slice4GamificationAndGiftSetIT extends BaseIntegrationTest {
     @Autowired
     private PasswordEncoder passwordEncoder;
 
+    @Autowired
+    private ua.readmania.service.notification.LoggingNotificationService loggingNotificationService;
+
     private User testUser;
     private User managerUser;
     private Genre fictionGenre;
@@ -109,6 +112,7 @@ public class Slice4GamificationAndGiftSetIT extends BaseIntegrationTest {
 
     @BeforeEach
     void setUp() {
+        loggingNotificationService.clear();
         jdbcClient.sql("TRUNCATE TABLE bonus_transactions, ratings, challenge_completions, challenges, order_status_history, order_items, gift_log, orders, cart_items, book_authors, book_covers, books, authors, genres, password_reset_tokens, unblock_requests, users CASCADE").update();
 
         testUser = new User();
@@ -453,6 +457,10 @@ public class Slice4GamificationAndGiftSetIT extends BaseIntegrationTest {
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.status", is("CANCELLED")))
                 .andExpect(jsonPath("$.notifiedUsersCount", is(1)));
+
+        assertThat(loggingNotificationService.getSentEmails()).hasSize(1);
+        assertThat(loggingNotificationService.getLastSentEmail().recipient()).isEqualTo("reader@example.com");
+        assertThat(loggingNotificationService.getLastSentEmail().subject()).contains("завершено достроково");
 
         // Повторна спроба редагування неактивного виклику повинна повернути 400
         UpdateChallengeRequest updateRequest = new UpdateChallengeRequest(

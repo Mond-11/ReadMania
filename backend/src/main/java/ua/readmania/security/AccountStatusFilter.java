@@ -67,7 +67,12 @@ public class AccountStatusFilter extends OncePerRequestFilter {
 
                 ProblemDetail problemDetail = ProblemDetail.forStatusAndDetail(HttpStatus.FORBIDDEN, blockReason);
                 problemDetail.setTitle("Forbidden");
+                problemDetail.setType(URI.create("urn:readmania:error:account-blocked"));
                 problemDetail.setInstance(URI.create(request.getRequestURI()));
+                userOpt.ifPresent(u -> {
+                    problemDetail.setProperty("blockReason", u.getBlockReason());
+                    problemDetail.setProperty("blockedAt", u.getBlockedAt());
+                });
 
                 objectMapper.writeValue(response.getWriter(), problemDetail);
                 return;
