@@ -1,6 +1,6 @@
 # Специфікація REST API ReadMania
 
-Цей документ є єдиним джерелом правди (Single Source of Truth) щодо контракту API між бекендом та фронтендом/зовнішніми клієнтами. Усі шляхи, структури DTO, параметри та коди відповідей відповідають поточній реалізації у Spring Boot бекенді.
+Цей документ є єдиним джерелом правди (Single Source of Truth) щодо контракту API між бекендом та фронтендом/зовнішніми клієнтами. Усі шляхи, структури DTO, параметри та коди відповідей повністю відповідають специфікації OpenAPI (`docs/openapi.json`) та реалізації у Spring Boot бекенді.
 
 ---
 
@@ -53,14 +53,14 @@
 - **Статуси HTTP:**
   - `200 OK` — успішний запит із поверненням даних.
   - `201 Created` — ресурс успішно створено.
-  - `204 No Content` — успішна дія без повернення тіла (наприклад, видалення або очищення).
+  - `204 No Content` — успішна дія без повернення тіла (наприклад, очищення кошика або видалення).
   - `400 Bad Request` — помилка валідації вхідних параметрів або порушення бізнес-правила.
   - `401 Unauthorized` — запит потребує автентифікації.
   - `403 Forbidden` — недостатньо прав або обліковий запис заблоковано (вимога M6).
   - `404 Not Found` — запитуваний ресурс не знайдено.
   - `409 Conflict` — конфлікт даних (дублікат ISBN/Email, конкурентна зміна статусу `expectedStatus`, оверселінг або зміна стану замовлення).
   - `500 Internal Server Error` — непередбачена помилка сервера.
-- **Пагінація списків (Spring Data Page):**
+- **Пагінація списків (Spring Data Page / PagedModel):**
   - Параметри запиту: `?page=0&size=10&sort=field,direction` (наприклад, `sort=price,desc` або `sort=createdAt,desc`).
   - Формат відповіді:
     ```json
@@ -77,15 +77,17 @@
 - **Формати та типи значень:**
   - Суми: число `NUMERIC(12,2)` з двома знаками після коми (наприклад `250.00`).
   - Час: рядок у форматі ISO-8601 UTC (наприклад `2026-11-13T18:30:00Z`).
+  - Дати: рядок у форматі ISO-8601 Date (`YYYY-MM-DD`, наприклад `2026-11-14`).
   - Переліки (Enums):
-    - Статуси замовлення: `AWAITING_PAYMENT`, `PAID`, `DELIVERED`, `CANCELLED` (Таблиця 3 SRS / A.1)
-    - Типи замовлення: `REGULAR`, `GIFT`
-    - Спосіб доставки: `COURIER`, `POST_OFFICE`
-    - Спосіб оплати: `ON_DELIVERY`, `TRANSFER`
-    - Статус акаунта: `ACTIVE`, `BLOCKED`
-    - Роль: `USER`, `MANAGER`
-    - Тип благодійного закладу: `ORPHANAGE`, `BOARDING_SCHOOL`, `LIBRARY`
-    - Тип бонусних транзакцій: `ORDER_REWARD`, `RATING_REWARD`, `CHALLENGE_REWARD`, `SPENT`, `REFUND`
+    - Статуси замовлення (`OrderStatus`): `AWAITING_PAYMENT`, `PAID`, `DELIVERED`, `CANCELLED` (Таблиця 3 SRS / A.1)
+    - Типи замовлення (`OrderType`): `REGULAR`, `GIFT`
+    - Спосіб доставки (`DeliveryMethod`): `COURIER`, `POST_OFFICE`
+    - Спосіб оплати (`PaymentMethod`): `ON_DELIVERY`, `TRANSFER`
+    - Статус акаунта (`UserStatus`): `ACTIVE`, `BLOCKED`
+    - Роль (`UserRole`): `USER`, `MANAGER`
+    - Тип благодійного закладу (`InstitutionType`): `ORPHANAGE`, `BOARDING_SCHOOL`, `LIBRARY`
+    - Тип бонусних транзакцій (`BonusTransactionType`): `ORDER_REWARD`, `RATING_REWARD`, `CHALLENGE_REWARD`, `SPENT`, `REFUND`
+    - Статус читацького виклику (`ChallengeStatus`): `ACTIVE`, `COMPLETED`, `EXPIRED`, `CANCELLED`
 
 ---
 
@@ -95,13 +97,13 @@
 
 | Метод | Ендпоінт | Доступ | Опис та параметри | Коди відповідей |
 |---|---|---|---|---|
-| `POST` | `/api/auth/register` | `GUEST` | **Реєстрація нового користувача (G2)**<br>Тіло: `{ email, password, confirmPassword, fullName, phone, deliveryAddress }` | `201 Created` (`UserResponse`), `400`, `409 Conflict` (дублікат email) |
-| `POST` | `/api/auth/login` | `GUEST` | **Вхід у систему (G3)**<br>Тіло: `{ email, password }`<br>Встановлює сесійну cookie `JSESSIONID`. Захист від brute-force (5 спроб → 15 хв блок, `login-rate-limited`). При блокуванні акаунта повертає `403` з `account-blocked`. | `200 OK` (`UserResponse`), `400`, `401`, `403 Forbidden` |
-| `POST` | `/api/auth/logout` | `USER`, `MANAGER` | **Вихід із системи (C10)**<br>Інвалідує поточну сесію та очищає контекст безпеки. | `200 OK` `{ message: "..." }` |
+| `POST` | `/api/auth/register` | `GUEST` | **Реєстрація нового користувача (G2)**<br>Тіло (`RegisterRequest`): `{ email, password, confirmPassword, fullName? }` | `201 Created` (`UserResponse`), `400`, `409 Conflict` (дублікат email) |
+| `POST` | `/api/auth/login` | `GUEST` | **Вхід у систему (G3)**<br>Тіло (`LoginRequest`): `{ email, password }`<br>Встановлює сесійну cookie `JSESSIONID`. Захист від brute-force (5 спроб → 15 хв блок, `login-rate-limited`). При блокуванні акаунта повертає `403` з `account-blocked`. | `200 OK` (`UserResponse`), `400`, `401`, `403 Forbidden` |
+| `POST` | `/api/auth/logout` | `USER`, `MANAGER` | **Вихід із системи (C10)**<br>Інвалідує поточну сесію та очищає контекст безпеки. | `200 OK` `{"message": "Ви успішно вийшли із системи"}` |
 | `GET` | `/api/auth/me` | `USER`, `MANAGER` | **Отримання профілю поточного автентифікованого користувача** | `200 OK` (`UserResponse`), `401` |
-| `POST` | `/api/auth/password-reset/request` | `GUEST` | **Запит на скидання пароля (G3)**<br>Тіло: `{ email }`<br>Генерує одноразовий токен на 1 годину і надсилає посилання через `NotificationService`. Завжди повертає стандартне повідомлення без токена у відповіді. | `200 OK` `{ message: "Якщо обліковий запис існує, лист надіслано" }`, `400` |
-| `POST` | `/api/auth/password-reset/confirm` | `GUEST` | **Підтвердження зміни пароля за токеном (G3)**<br>Тіло: `{ token, newPassword, confirmPassword }` | `200 OK` `{ message }`, `400`, `404` |
-| `POST` | `/api/auth/unblock-request` | `GUEST` | **Подання апеляції на розблокування акаунта (M6, M7)**<br>Тіло: `{ email, password, reason }`<br>Перевіряє пароль заблокованого користувача, створює або оновлює запис у `unblock_requests` зі статусом `PENDING`. | `200 OK` `{ message, id, status, createdAt }`, `400`, `401`, `404` |
+| `POST` | `/api/auth/password-reset/request` | `GUEST` | **Запит на скидання пароля (G3)**<br>Тіло (`PasswordResetRequest`): `{ email }`<br>Генерує одноразовий токен на 1 годину і надсилає посилання через `NotificationService`. Завжди повертає стандартне повідомлення без токена у відповіді. | `200 OK` `{"message": "Якщо обліковий запис існує, лист надіслано"}`, `400` |
+| `POST` | `/api/auth/password-reset/confirm` | `GUEST` | **Підтвердження зміни пароля за токеном (G3)**<br>Тіло (`PasswordResetConfirmRequest`): `{ token, newPassword, confirmPassword }` | `200 OK` `{"message": "Пароль успішно змінено"}`, `400`, `404` |
+| `POST` | `/api/auth/unblock-request` | `GUEST` | **Подання апеляції на розблокування акаунта (M6, M7)**<br>Тіло (`CreateUnblockRequest`): `{ email, password, reason }`<br>Перевіряє пароль заблокованого користувача, створює або оновлює запис у `unblock_requests` зі статусом `PENDING`. | `200 OK` `{"message": "Запит на розблокування успішно надіслано"}`, `400`, `401`, `404` |
 
 #### Модель `UserResponse`:
 ```json
@@ -109,15 +111,15 @@
   "id": 1,
   "email": "user@example.com",
   "fullName": "Тарас Шевченко",
-  "phone": "+380501234567",
-  "deliveryAddress": "м. Київ, вул. Хрещатик, 1",
   "role": "USER",
   "status": "ACTIVE",
-  "blockReason": null,
-  "blockedAt": null,
+  "phone": "+380501234567",
+  "deliveryAddress": "м. Київ, вул. Хрещатик, 1",
   "bonusBalance": 150,
   "createdAt": "2026-11-01T10:00:00Z",
-  "lastLoginAt": "2026-11-13T12:00:00Z"
+  "lastLoginAt": "2026-11-13T12:00:00Z",
+  "blockedAt": null,
+  "blockReason": null
 }
 ```
 
@@ -127,9 +129,9 @@
 
 | Метод | Ендпоінт | Доступ | Опис та параметри | Коди відповідей |
 |---|---|---|---|---|
-| `GET` | `/api/account` | `USER`, `MANAGER` | **Отримання контактних даних та інформації профілю (C5)** | `200 OK` (`UserResponse`), `401` |
-| `PUT` | `/api/account`, `/api/profile` | `USER`, `MANAGER` | **Оновлення даних профілю, контактів, email або пароля (C5)**<br>Тіло: `{ currentPassword, email?, fullName?, phone?, deliveryAddress?, newPassword?, confirmPassword? }`<br>Поле `currentPassword` є обов'язковим для будь-якого редагування. При зміні email перевіряється унікальність `lower(email)` (`409 Conflict`) та оновлюється сесія. | `200 OK` (`UserResponse`), `400`, `401`, `409 Conflict` |
-| `PUT` | `/api/account/password` | `USER`, `MANAGER` | **Зміна пароля (C5)**<br>Тіло: `{ currentPassword, newPassword, confirmPassword }`<br>Перевіряє коректність поточного пароля. | `200 OK` (`UserResponse`), `400`, `401` |
+| `GET` | `/api/account`, `/api/profile` | `USER`, `MANAGER` | **Отримання контактних даних та інформації профілю (C5)** | `200 OK` (`UserResponse`), `401` |
+| `PUT` | `/api/account`, `/api/profile` | `USER`, `MANAGER` | **Оновлення даних профілю та контактів (C5)**<br>Тіло (`UpdateProfileRequest`): `{ currentPassword, fullName?, phone?, deliveryAddress?, email? }`<br>Поле `currentPassword` є обов'язковим. При зміні email перевіряється унікальність `lower(email)` (`409 Conflict`) та оновлюється сесія. | `200 OK` (`UserResponse`), `400`, `401`, `409 Conflict` |
+| `PUT` | `/api/account/password`, `/api/profile/password` | `USER`, `MANAGER` | **Зміна пароля (C5)**<br>Тіло (`ChangePasswordRequest`): `{ currentPassword, newPassword, confirmPassword }`<br>Перевіряє коректність поточного пароля. | `200 OK` (`UserResponse`), `400`, `401` |
 
 ---
 
@@ -143,18 +145,45 @@
 | `GET` | `/api/catalog/genres` | Публічний | **Список усіх доступних жанрів**<br>Включає кількість активних книг `booksCount` для блокування видалення непорожнього жанру на фронтенді. | `200 OK` (`List<GenreResponse>`) |
 | `GET` | `/api/catalog/authors` | Публічний | **Список усіх авторів каталогу** | `200 OK` (`List<AuthorResponse>`) |
 
+#### Модель `GenreResponse`:
+```json
+{
+  "id": 1,
+  "name": "Поезія",
+  "booksCount": 12
+}
+```
+
+#### Модель `AuthorResponse`:
+```json
+{
+  "id": 1,
+  "name": "Тарас Шевченко"
+}
+```
+
 #### Модель `BookSummaryResponse`:
 ```json
 {
   "id": 1,
   "title": "Кобзар",
-  "publisher": "А-БА-БА-ГА-ЛА-МА-ГА",
-  "publicationYear": 2024,
+  "description": "Повне зібрання поетичних творів",
   "isbn": "978-966-00-1234-5",
+  "genre": {
+    "id": 1,
+    "name": "Поезія",
+    "booksCount": 12
+  },
+  "authors": [
+    {
+      "id": 1,
+      "name": "Тарас Шевченко"
+    }
+  ],
   "price": 350.00,
   "stock": 15,
-  "genre": { "id": 1, "name": "Поезія", "description": "Поетичні твори", "booksCount": 12 },
-  "authors": [{ "id": 1, "name": "Тарас Шевченко" }],
+  "publisher": "А-БА-БА-ГА-ЛА-МА-ГА",
+  "publicationYear": 2024,
   "averageRating": 4.9,
   "ratingsCount": 28,
   "hasCover": true,
@@ -167,38 +196,31 @@
 {
   "id": 1,
   "title": "Кобзар",
-  "publisher": "А-БА-БА-ГА-ЛА-МА-ГА",
-  "publicationYear": 2024,
-  "isbn": "978-966-00-1234-5",
   "description": "Повне зібрання поетичних творів",
+  "isbn": "978-966-00-1234-5",
+  "genre": {
+    "id": 1,
+    "name": "Поезія",
+    "booksCount": 12
+  },
+  "authors": [
+    {
+      "id": 1,
+      "name": "Тарас Шевченко"
+    }
+  ],
   "price": 350.00,
   "stock": 15,
+  "publisher": "А-БА-БА-ГА-ЛА-МА-ГА",
+  "publicationYear": 2024,
   "canDelete": false,
-  "genre": { "id": 1, "name": "Поезія", "description": "Поетичні твори", "booksCount": 12 },
-  "authors": [{ "id": 1, "name": "Тарас Шевченко" }],
+  "version": 0,
   "averageRating": 4.9,
   "ratingsCount": 28,
   "hasCover": true,
   "coverUrl": "/api/catalog/books/1/cover",
-  "createdAt": "2026-11-01T10:00:00Z"
-}
-```
-
-#### Модель `GenreResponse`:
-```json
-{
-  "id": 1,
-  "name": "Поезія",
-  "description": "Поетичні твори",
-  "booksCount": 12
-}
-```
-
-#### Модель `AuthorResponse`:
-```json
-{
-  "id": 1,
-  "fullName": "Тарас Шевченко"
+  "createdAt": "2026-11-01T10:00:00Z",
+  "updatedAt": "2026-11-13T12:00:00Z"
 }
 ```
 
@@ -209,10 +231,10 @@
 | Метод | Ендпоінт | Доступ | Опис та параметри | Коди відповідей |
 |---|---|---|---|---|
 | `GET` | `/api/cart` | `USER` | **Отримання вмісту кошика (C1)**<br>Автоматично перевіряє актуальну наявність та залишки (`available`, `stock`). | `200 OK` (`CartResponse`), `401` |
-| `POST` | `/api/cart/items` | `USER` | **Додавання книги до кошика (C1.1)**<br>Тіло: `{ bookId, quantity }` (за замовчуванням `quantity = 1`). Не дозволяє перевищувати `stock`. | `200 OK` (`CartResponse`), `400`, `401`, `404` |
-| `PUT` | `/api/cart/items/{bookId}` | `USER` | **Зміна кількості книги в кошику (C1.2)**<br>Тіло: `{ quantity }` (від 1 до поточного `stock`). | `200 OK` (`CartResponse`), `400`, `401`, `404` |
+| `POST` | `/api/cart/items` | `USER` | **Додавання книги до кошика (C1.1)**<br>Тіло (`AddToCartRequest`): `{ bookId, quantity? }` (за замовчуванням `quantity = 1`). Не дозволяє перевищувати `stock`. | `200 OK` (`CartResponse`), `400`, `401`, `404` |
+| `PUT` | `/api/cart/items/{bookId}` | `USER` | **Зміна кількості книги в кошику (C1.2)**<br>Тіло (`UpdateCartItemRequest`): `{ quantity }` (від 1 до поточного `stock`). | `200 OK` (`CartResponse`), `400`, `401`, `404` |
 | `DELETE` | `/api/cart/items/{bookId}` | `USER` | **Вилучення окремої позиції з кошика (C1.3)** | `200 OK` (`CartResponse`), `401`, `404` |
-| `DELETE` | `/api/cart` | `USER` | **Повне очищення кошика користувача** | `204 No Content`, `401` |
+| `DELETE` | `/api/cart` | `USER` | **Повне очищення кошика користувача** | `204 No Content` / `200 OK`, `401` |
 
 #### Модель `CartResponse`:
 ```json
@@ -243,8 +265,9 @@
 
 | Метод | Ендпоінт | Доступ | Опис та параметри | Коди відповідей |
 |---|---|---|---|---|
-| `POST` | `/api/orders/preview` | `USER` | **Попередній розрахунок вартості та знижки (C8)**<br>Тіло: `{ bonusPoints, items?: [{ bookId, quantity }] }`<br>Якщо `items` не вказано, розраховує для поточного вмісту кошика. Перевіряє правило ліміту знижки до 30% ($\min(\text{balance}, \lfloor \frac{0.30 \times \text{total}}{10} \rfloor)$). | `200 OK` (`OrderPreviewResponse`), `400`, `401` |
-| `POST` | `/api/orders` | `USER` | **Оформлення замовлення (C2, C10, A.10)**<br>Тіло: `{ type, deliveryMethod, paymentMethod, recipientName, recipientPhone, deliveryAddress, institutionId, institutionName, institutionContactPerson, pointsUsed, items?: [{ bookId, quantity }] }`<br>Транзакційно списує залишки книг (із захистом від оверселінгу через `@Version`), списує бонуси (`SPENT`), фіксує незмінні знімки цін (`priceSnapshot`) і очищає кошик. Для типу `GIFT` обов'язковими є `institutionName` та `institutionContactPerson`, а спосіб оплати фіксується як `TRANSFER`. При оформленні сповіщає менеджерів через `NotificationService`. | `201 Created` (`OrderDetailsResponse`), `400`, `401`, `409 Conflict` (недостатній залишок / оверселінг) |
+| `POST` | `/api/orders/preview` | `USER` | **Попередній розрахунок вартості та знижки (C8)**<br>Тіло (`OrderPreviewRequest`): `{ items?: [{ bookId, quantity }], bonusPoints?: number }`<br>Якщо `items` не вказано, розраховує для поточного вмісту кошика. Перевіряє правило ліміту знижки до 30% ($\min(\text{balance}, \lfloor \frac{0.30 \times \text{total}}{10} \rfloor)$). | `200 OK` (`OrderPreviewResponse`), `400`, `401` |
+| `POST` | `/api/orders` | `USER` | **Оформлення звичайного замовлення (C2, A.10)**<br>Тіло (`CreateOrderRequest`): `{ items?: [{ bookId, quantity }], deliveryMethod, address, contacts: { recipientName, phone }, paymentMethod, bonusPoints?: number }`<br>Транзакційно списує залишки книг (із захистом від оверселінгу через `@Version`), списує бонуси (`SPENT`), фіксує незмінні знімки цін (`priceSnapshot`) і очищає кошик. Сповіщає менеджерів через `NotificationService`. | `201 Created` (`OrderDetailsResponse`), `400`, `401`, `409 Conflict` (недостатній залишок / оверселінг) |
+| `POST` | `/api/orders/gift` | `USER` | **Оформлення замовлення в дар благодійному закладу (C10, A.10)**<br>Тіло (`CreateGiftOrderRequest`): `{ institutionId, items?: [{ bookId, quantity }], paymentMethod, bonusPoints?: number }`<br>Отримує назву, адресу та контактну особу закладу, фіксує їх знімки в замовленні. Спосіб оплати фіксується як `TRANSFER`. | `201 Created` (`OrderDetailsResponse`), `400`, `401`, `409 Conflict` |
 | `GET` | `/api/orders` | `USER` | **Історія замовлень користувача (C4)**<br>Пагінація: `?page=0&size=10&sort=createdAt,desc`. | `200 OK` (`Page<OrderSummaryResponse>`), `401` |
 | `GET` | `/api/orders/{id}` | `USER` | **Детальна інформація про власне замовлення (C4)** | `200 OK` (`OrderDetailsResponse`), `401`, `404` |
 | `POST` | `/api/orders/{id}/cancel` | `USER` | **Скасування замовлення покупцем (C3, 7.2.2.4)**<br>Дозволено лише для власних замовлень зі статусом `AWAITING_PAYMENT` та оплатою `TRANSFER`. Повертає залишки на склад та нараховує повернення бонусів (`REFUND`). | `200 OK` (`OrderDetailsResponse`), `400`, `401`, `404` |
@@ -275,14 +298,13 @@
 ```json
 {
   "id": 101,
-  "userId": 1,
   "type": "REGULAR",
   "status": "AWAITING_PAYMENT",
-  "deliveryMethod": "COURIER",
   "paymentMethod": "TRANSFER",
+  "deliveryMethod": "COURIER",
+  "address": "м. Київ, вул. Хрещатик, 1",
   "recipientName": "Тарас Шевченко",
   "recipientPhone": "+380501234567",
-  "deliveryAddress": "м. Київ, вул. Хрещатик, 1",
   "institutionId": null,
   "institutionName": null,
   "institutionContactPerson": null,
@@ -290,6 +312,7 @@
   "discountAmount": 100.00,
   "pointsUsed": 10,
   "totalToPay": 600.00,
+  "version": 0,
   "createdAt": "2026-11-13T14:30:00Z",
   "statusChangedAt": "2026-11-13T14:30:00Z",
   "deliveredAt": null,
@@ -304,7 +327,16 @@
       "userRating": 5
     }
   ],
-  "allowedNextStatuses": ["CANCELLED"]
+  "statusHistory": [
+    {
+      "id": 1,
+      "fromStatus": null,
+      "toStatus": "AWAITING_PAYMENT",
+      "changedAt": "2026-11-13T14:30:00Z",
+      "changedByUserName": "Тарас Шевченко",
+      "comment": "Створення замовлення"
+    }
+  ]
 }
 ```
 
@@ -312,21 +344,19 @@
 ```json
 {
   "id": 101,
-  "userId": 1,
   "type": "REGULAR",
   "status": "AWAITING_PAYMENT",
-  "deliveryMethod": "COURIER",
   "paymentMethod": "TRANSFER",
-  "recipientName": "Тарас Шевченко",
-  "recipientPhone": "+380501234567",
-  "institutionName": null,
-  "institutionContactPerson": null,
+  "deliveryMethod": "COURIER",
   "itemsTotal": 700.00,
   "discountAmount": 100.00,
   "pointsUsed": 10,
   "totalToPay": 600.00,
-  "totalItems": 2,
+  "institutionName": null,
+  "institutionContactPerson": null,
+  "itemsCount": 2,
   "createdAt": "2026-11-13T14:30:00Z",
+  "statusChangedAt": "2026-11-13T14:30:00Z",
   "deliveredAt": null
 }
 ```
@@ -337,7 +367,7 @@
 
 | Метод | Ендпоінт | Доступ | Опис та параметри | Коди відповідей |
 |---|---|---|---|---|
-| `GET` | `/api/loyalty/balance` або `/api/loyalty/transactions` | `USER` | **Отримання поточного балансу та історії бонусних транзакцій (C7)** | `200 OK` (`LoyaltyBalanceResponse`), `401` |
+| `GET` | `/api/loyalty/balance`, `/api/loyalty/transactions` | `USER` | **Отримання поточного балансу та історії бонусних транзакцій (C7)** | `200 OK` (`LoyaltyBalanceResponse`), `401` |
 
 #### Модель `LoyaltyBalanceResponse`:
 ```json
@@ -346,20 +376,20 @@
   "transactions": [
     {
       "id": 1,
-      "amount": 25,
+      "points": 25,
       "type": "ORDER_REWARD",
       "orderId": 100,
-      "bookId": null,
       "challengeId": null,
+      "challengeName": null,
       "createdAt": "2026-11-10T09:00:00Z"
     },
     {
       "id": 2,
-      "amount": -10,
+      "points": -10,
       "type": "SPENT",
       "orderId": 101,
-      "bookId": null,
       "challengeId": null,
+      "challengeName": null,
       "createdAt": "2026-11-13T14:30:00Z"
     }
   ]
@@ -379,10 +409,11 @@
 ```json
 {
   "id": 1,
-  "title": "Осінній марафон читання",
+  "name": "Осінній марафон читання",
   "description": "Прочитайте 5 книг до кінця листопада",
   "requiredBooks": 5,
-  "genre": { "id": 2, "name": "Фантастика", "description": "Наукова фантастика" },
+  "genreId": 2,
+  "genreName": "Фантастика",
   "deadline": "2026-11-30T23:59:59Z",
   "rewardPoints": 50,
   "status": "ACTIVE",
@@ -420,15 +451,15 @@
 
 | Метод | Ендпоінт | Доступ | Опис та параметри | Коди відповідей |
 |---|---|---|---|---|
-| `POST` | `/api/manager/books` | `MANAGER` | **Додавання нового видання книги (M1.1, A.4)**<br>Тіло: `{ title, publisher, publicationYear, isbn, description, price, stock, genreId, authorIds }`<br>Перевіряє унікальність активного ISBN. | `201 Created` (`BookDetailsResponse`), `400`, `403`, `409 Conflict` (дублікат ISBN) |
-| `PUT` | `/api/manager/books/{id}` | `MANAGER` | **Редагування видання книги (M1.2, A.4)**<br>Тіло: `{ title, publisher, publicationYear, isbn, description, price, stock, genreId, authorIds }` | `200 OK` (`BookDetailsResponse`), `400`, `403`, `404`, `409 Conflict` |
-| `DELETE` | `/api/manager/books/{id}` | `MANAGER` | **М'яке видалення книги (M1.3)**<br>Дозволено лише якщо `stock == 0` та книга не фігурує в активних замовленнях (`AWAITING_PAYMENT`, `PAID`). Встановлює `deleted_at`. | `204 No Content`, `400` (якщо stock > 0), `403`, `404`, `409 Conflict` (є активні замовлення) |
+| `POST` | `/api/manager/books` | `MANAGER` | **Додавання нового видання книги (M1.1, A.4)**<br>Тіло (`CreateBookRequest`): `{ title, publisher, publicationYear, isbn, price, stock?, description?, genreId?, genre?, author?, authors?, authorIds? }`<br>Перевіряє унікальність активного ISBN. | `201 Created` (`BookDetailsResponse`), `400`, `403`, `409 Conflict` (дублікат ISBN) |
+| `PUT` | `/api/manager/books/{id}` | `MANAGER` | **Редагування видання книги (M1.2, A.4)**<br>Тіло (`UpdateBookRequest`): `{ title, publisher, publicationYear, isbn, price, stock?, description?, genreId?, genre?, author?, authors?, authorIds? }` | `200 OK` (`BookDetailsResponse`), `400`, `403`, `404`, `409 Conflict` |
+| `DELETE` | `/api/manager/books/{id}` | `MANAGER` | **М'яке видалення книги (M1.3)**<br>Дозволено лише якщо `stock == 0` та книга не фігурує в активних замовленнях (`AWAITING_PAYMENT`, `PAID`). Встановлює `deleted_at`. | `200 OK` / `204 No Content`, `400` (якщо stock > 0), `403`, `404`, `409 Conflict` (є активні замовлення) |
 | `POST` | `/api/manager/books/{id}/cover` | `MANAGER` | **Завантаження файлу обкладинки для книги**<br>Формат: `multipart/form-data`, поле `file`. Зберігає `bytea` у таблиці `book_covers`. | `200 OK`, `400`, `403`, `404` |
-| `POST` | `/api/manager/genres` | `MANAGER` | **Створення нового жанру (M1)**<br>Тіло: `{ name, description }` | `201 Created` (`GenreResponse`), `400`, `403`, `409 Conflict` |
-| `PUT` | `/api/manager/genres/{id}` | `MANAGER` | **Редагування жанру (M1)**<br>Тіло: `{ name, description }` | `200 OK` (`GenreResponse`), `400`, `403`, `404` |
-| `DELETE` | `/api/manager/genres/{id}` | `MANAGER` | **Видалення жанру (M1)**<br>Дозволено лише якщо до жанру не прив'язана жодна книга (`RESTRICT`). | `204 No Content`, `400`, `403`, `404`, `409 Conflict` |
-| `POST` | `/api/manager/authors` | `MANAGER` | **Створення нового автора (M1)**<br>Тіло: `{ fullName }`<br>Створює запис автора або повертає 409 Conflict, якщо автор з таким ім'ям уже існує. | `201 Created` (`AuthorResponse`), `400`, `403`, `409 Conflict` |
-| `POST` | `/api/manager/books/import-csv` | `MANAGER` | **Пакетний імпорт книг із CSV-файлу (M2)**<br>Формат: `multipart/form-data`, поле `file`. Підтримує автовизначення роздільників (`,`, `;`, `\t`), валідує поля (включаючи `publisher` та `publication_year`), завантажує обкладинки за URL, створює відсутні жанри й авторів. | `200 OK` (`CsvImportResponse`), `400`, `403` |
+| `POST` | `/api/manager/genres` | `MANAGER` | **Створення нового жанру (M1)**<br>Тіло (`GenreRequest`): `{ name }` | `201 Created` (`GenreResponse`), `400`, `403`, `409 Conflict` |
+| `PUT` | `/api/manager/genres/{id}` | `MANAGER` | **Редагування жанру (M1)**<br>Тіло (`GenreRequest`): `{ name }` | `200 OK` (`GenreResponse`), `400`, `403`, `404` |
+| `DELETE` | `/api/manager/genres/{id}` | `MANAGER` | **Видалення жанру (M1)**<br>Дозволено лише якщо до жанру не прив'язана жодна книга (`RESTRICT`). | `200 OK` / `204 No Content`, `400`, `403`, `404`, `409 Conflict` |
+| `POST` | `/api/manager/authors` | `MANAGER` | **Створення нового автора (M1)**<br>Тіло (`CreateAuthorRequest`): `{ fullName }`<br>Створює запис автора або повертає 409 Conflict, якщо автор з таким ім'ям уже існує. | `201 Created` (`AuthorResponse`), `400`, `403`, `409 Conflict` |
+| `POST` | `/api/manager/books/import-csv` | `MANAGER` | **Пакетний імпорт книг із CSV-файлу (M2)**<br>Формат: `multipart/form-data`, поле `file`. Підтримує автовизначення роздільників (`,`, `;`, `\t`), валідує поля (включаючи `publisher` та `publicationYear`), завантажує обкладинки за URL, створює відсутні жанри й авторів. | `200 OK` (`CsvImportResponse`), `400`, `403` |
 
 #### Модель `CsvImportResponse`:
 ```json
@@ -440,11 +471,13 @@
     {
       "rowNumber": 4,
       "isbn": "978-966-00-1111-1",
+      "title": "Кобзар",
       "reason": "Книга з таким ISBN вже існує в базі даних"
     },
     {
       "rowNumber": 12,
       "isbn": "978-966-00-2222-2",
+      "title": "Невідома книга",
       "reason": "Ціна повинна бути більше 0"
     }
   ]
@@ -460,10 +493,10 @@
 | Метод | Ендпоінт | Доступ | Опис та параметри | Коди відповідей |
 |---|---|---|---|---|
 | `GET` | `/api/manager/orders` | `MANAGER` | **Перегляд списку замовлень (M3)**<br>Фільтри:<br>- `status`: конкретний статус замовлення (`AWAITING_PAYMENT`, `PAID`, `DELIVERED`, `CANCELLED`)<br>- `unpaidOverdue`: `true` (не оплачено понад 7 днів — п. 7.2.2.6)<br>- `archived`: `true` (поставлені або скасовані понад 3 роки тому — п. 7.2.2.7)<br>- Пагінація: `page`, `size`, `sort` | `200 OK` (`Page<OrderSummaryResponse>`), `403` |
-| `GET` | `/api/manager/orders/{id}` | `MANAGER` | **Повна картка замовлення з переліком дозволених переходів статусів (M3)** | `200 OK` (`OrderDetailsResponse`), `403`, `404` |
-| `PATCH` | `/api/manager/orders/{id}/status` | `MANAGER` | **Зміна статусу замовлення (M3, Таблиця 3 SRS, A.1)**<br>Тіло: `{ status, expectedStatus }`<br>Суворо контролює допустимі переходи:<br>- з `AWAITING_PAYMENT` дозволено в `PAID`, `DELIVERED` (лише при `ON_DELIVERY`, п. 7.2.2.3), `CANCELLED`<br>- з `PAID` дозволено в `DELIVERED`, `CANCELLED` (п. 7.2.2.10 — неможливість доставки з поверненням залишків та бонусів).<br>При розбіжності з `expectedStatus` або конфлікті стану повертає `409 Conflict` з полем `currentStatus`.<br>При зміні статусу надсилає сповіщення покупцю через `NotificationService`.<br>При переході в `DELIVERED` нараховує бали ($\lfloor \text{total}/100 \rfloor$), зараховує читацькі виклики та записує у `gift_log`. | `200 OK` (`OrderDetailsResponse`), `400`, `403`, `404`, `409 Conflict` |
-| `POST` | `/api/manager/orders/cancel-unpaid-overdue` | `MANAGER` | **Групове скасування прострочених замовлень за списком ID (п. 7.2.2.6)**<br>Тіло: `{"orderIds": [1, 2, ...]}` (@NotEmpty).<br>Перевіряє для кожного ID: статус `AWAITING_PAYMENT`, метод оплати `TRANSFER` та вік > 7 днів. Якщо хоча б одне не відповідає — відкочує транзакцію та повертає `409 Conflict`. | `200 OK` `{ message, cancelledCount }`, `400`, `403`, `409 Conflict` |
-| `DELETE` | `/api/manager/orders/archive` | `MANAGER` | **Очищення архівних замовлень за списком ID (п. 7.2.2.7)**<br>Тіло: `{"orderIds": [1, 2, ...]}` (@NotEmpty).<br>Перевіряє для кожного ID: статус `DELIVERED` або `CANCELLED` та вік > 3 років. Якщо хоча б одне не відповідає — повертає `409 Conflict`. Видаляє замовлення, зберігаючи оцінки та `gift_log`. | `200 OK` `{ message, deletedCount }`, `400`, `403`, `409 Conflict` |
+| `GET` | `/api/manager/orders/{id}` | `MANAGER` | **Повна картка замовлення з історією статусів (M3)** | `200 OK` (`OrderDetailsResponse`), `403`, `404` |
+| `PATCH` | `/api/manager/orders/{id}/status` | `MANAGER` | **Зміна статусу замовлення (M3, Таблиця 3 SRS, A.1)**<br>Тіло (`UpdateOrderStatusRequest`): `{ status, expectedStatus?, comment? }`<br>Суворо контролює допустимі переходи:<br>- з `AWAITING_PAYMENT` дозволено в `PAID`, `DELIVERED` (лише при `ON_DELIVERY`, п. 7.2.2.3), `CANCELLED`<br>- з `PAID` дозволено в `DELIVERED`, `CANCELLED` (п. 7.2.2.10 — неможливість доставки з поверненням залишків та бонусів).<br>При розбіжності з `expectedStatus` або конфлікті стану повертає `409 Conflict` з полем `currentStatus`.<br>При зміні статусу надсилає сповіщення покупцю через `NotificationService`.<br>При переході в `DELIVERED` нараховує бали ($\lfloor \text{total}/100 \rfloor$), зараховує читацькі виклики та записує у `gift_log`. | `200 OK` (`OrderDetailsResponse`), `400`, `403`, `404`, `409 Conflict` |
+| `POST` | `/api/manager/orders/cancel-unpaid-overdue` | `MANAGER` | **Групове скасування прострочених замовлень за списком ID (п. 7.2.2.6)**<br>Тіло (`BatchOrderActionRequest`): `{"orderIds": [1, 2, ...]}` (@NotEmpty).<br>Перевіряє для кожного ID: статус `AWAITING_PAYMENT`, метод оплати `TRANSFER` та вік > 7 днів. Якщо хоча б одне не відповідає — відкочує транзакцію та повертає `409 Conflict`. | `200 OK` `{"message": "Скасовано прострочені неоплачені замовлення", "cancelledCount": 5}`, `400`, `403`, `409 Conflict` |
+| `DELETE` | `/api/manager/orders/archive` | `MANAGER` | **Очищення архівних замовлень за списком ID (п. 7.2.2.7)**<br>Тіло (`BatchOrderActionRequest`): `{"orderIds": [1, 2, ...]}` (@NotEmpty).<br>Перевіряє для кожного ID: статус `DELIVERED` або `CANCELLED` та вік > 3 років. Якщо хоча б одне не відповідає — повертає `409 Conflict`. Видаляє замовлення, зберігаючи оцінки та `gift_log`. | `200 OK` `{"message": "Очищено архівні замовлення", "deletedCount": 3}`, `400`, `403`, `409 Conflict` |
 
 ---
 
@@ -471,9 +504,9 @@
 
 | Метод | Ендпоінт | Доступ | Опис та параметри | Коди відповідей |
 |---|---|---|---|---|
-| `POST` | `/api/ratings` | `USER` | **Оцінювання придбаного видання книги (C6)**<br>Тіло: `{ bookId, orderId?, value }` (оцінка 1–5).<br>Дозволено лише якщо користувач має замовлення у статусі `DELIVERED`, яке містить цю книгу. Нараховує **+1 бонусний бал** (`RATING_REWARD`). | `201 Created` (`RatingResponse`), `400`, `401`, `409 Conflict` (якщо вже оцінено) |
+| `POST` | `/api/ratings` | `USER` | **Оцінювання придбаного видання книги (C6)**<br>Тіло (`CreateRatingRequest`): `{ bookId, value, orderId? }` (оцінка 1–5).<br>Дозволено лише якщо користувач має замовлення у статусі `DELIVERED`, яке містить цю книгу. Нараховує **+1 бонусний бал** (`RATING_REWARD`). | `201 Created` (`RatingResponse`), `400`, `401`, `409 Conflict` (якщо вже оцінено) |
 | `GET` | `/api/ratings/me` | `USER` | **Перегляд списку власних оцінок поточного користувача** | `200 OK` (`List<RatingResponse>`), `401` |
-| `GET` | `/api/ratings/book/{bookId}` | Публічний | **Публічний перегляд оцінок конкретної книги** | `200 OK` (`List<RatingResponse>`) |
+| `GET` | `/api/ratings/book/{bookId}` | Публічний | **Публічний перегляд оцінок конкретної книги** | `200 OK` (`List<PublicRatingResponse>`) |
 
 #### Модель `RatingResponse`:
 ```json
@@ -489,15 +522,48 @@
 }
 ```
 
+#### Модель `PublicRatingResponse`:
+```json
+{
+  "id": 1,
+  "bookId": 10,
+  "value": 5,
+  "createdAt": "2026-11-13T18:40:00Z"
+}
+```
+
 ---
 
 ### 2.12. Генератор подарункових наборів (`/api/gift-sets`)
 
 | Метод | Ендпоінт | Доступ | Опис та параметри | Коди відповідей |
 |---|---|---|---|---|
-| `POST` | `/api/gift-sets/generate` | Публічний | **Автоматичний підбір випадкового набору книг у наявності (C9)**<br>Тіло: `{ budget, genreIds: [...], bookCount? }`<br>Вимоги: бюджет кратний 50 грн, книги в наявності (`stock > 0`). При неможливості зібрати набір повертає одну з двох чітких бізнес-причин відмови. | `200 OK` (`GiftSetResponse`), `400 Bad Request` |
-| `POST` | `/api/gift-sets/replace` | Публічний | **Заміна книги в наборі на іншу альтернативну в межах залишкового бюджету (C9)**<br>Тіло: `{ currentBookIds: [...], bookIdToReplace, genreIds: [...], budget }` | `200 OK` (`GiftSetResponse`), `400 Bad Request`, `404` |
-| `POST` | `/api/gift-sets/replace-candidates` | Публічний | **Отримання переліку всіх доступних книг-кандидатів для заміни позиції** | `200 OK` (`ReplaceCandidatesResponse`), `400` |
+| `POST` | `/api/gift-sets/generate` | Публічний | **Автоматичний підбір випадкового набору книг у наявності (C9)**<br>Тіло (`GenerateGiftSetRequest`): `{ budget, genreIds: [...], bookCount? }`<br>Вимоги: бюджет кратний 50 грн, книги в наявності (`stock > 0`). При неможливості зібрати набір повертає одну з двох чітких бізнес-причин відмови. | `200 OK` (`GiftSetResponse`), `400 Bad Request` |
+| `POST` | `/api/gift-sets/replace` | Публічний | **Заміна книги в наборі на іншу альтернативну в межах залишкового бюджету (C9)**<br>Тіло (`ReplaceGiftSetBookRequest`): `{ bookIdToReplace, budget, currentBookIds: [...], genreIds: [...] }` | `200 OK` (`GiftSetResponse`), `400 Bad Request`, `404` |
+| `POST` | `/api/gift-sets/replace-candidates` | Публічний | **Отримання переліку всіх доступних книг-кандидатів для заміни позиції**<br>Тіло (`ReplaceGiftSetBookRequest`): `{ bookIdToReplace, budget, currentBookIds: [...], genreIds: [...] }` | `200 OK` (`ReplaceCandidatesResponse`), `400` |
+
+#### Модель `GiftSetBookItem`:
+```json
+{
+  "id": 1,
+  "title": "Інтернат",
+  "isbn": "978-617-679-456-1",
+  "genre": {
+    "id": 1,
+    "name": "Художня література",
+    "booksCount": 10
+  },
+  "authors": [
+    {
+      "id": 1,
+      "name": "Сергій Жадан"
+    }
+  ],
+  "price": 250.00,
+  "stock": 10,
+  "coverUrl": "/api/catalog/books/1/cover"
+}
+```
 
 #### Модель `GiftSetResponse`:
 ```json
@@ -507,29 +573,60 @@
       "id": 1,
       "title": "Інтернат",
       "isbn": "978-617-679-456-1",
-      "genre": { "id": 1, "name": "Художня література" },
-      "authors": [{ "id": 1, "name": "Сергій Жадан" }],
+      "genre": {
+        "id": 1,
+        "name": "Художня література",
+        "booksCount": 10
+      },
+      "authors": [
+        {
+          "id": 1,
+          "name": "Сергій Жадан"
+        }
+      ],
       "price": 250.00,
       "stock": 10,
       "coverUrl": "/api/catalog/books/1/cover"
-    },
+    }
+  ],
+  "totalPrice": 250.00,
+  "budget": 550.00,
+  "remainingBudget": 300.00,
+  "genres": [
+    {
+      "id": 1,
+      "name": "Художня література",
+      "booksCount": 10
+    }
+  ]
+}
+```
+
+#### Модель `ReplaceCandidatesResponse`:
+```json
+{
+  "candidates": [
     {
       "id": 2,
       "title": "Ворошиловград",
       "isbn": "978-617-679-456-2",
-      "genre": { "id": 1, "name": "Художня література" },
-      "authors": [{ "id": 1, "name": "Сергій Жадан" }],
+      "genre": {
+        "id": 1,
+        "name": "Художня література",
+        "booksCount": 10
+      },
+      "authors": [
+        {
+          "id": 1,
+          "name": "Сергій Жадан"
+        }
+      ],
       "price": 300.00,
       "stock": 15,
       "coverUrl": "/api/catalog/books/2/cover"
     }
   ],
-  "totalPrice": 550.00,
-  "budget": 550.00,
-  "remainingBudget": 0.00,
-  "genres": [
-    { "id": 1, "name": "Художня література" }
-  ]
+  "maxPriceAllowed": 300.00
 }
 ```
 
@@ -542,9 +639,21 @@
 | Метод | Ендпоінт | Доступ | Опис та параметри | Коди відповідей |
 |---|---|---|---|---|
 | `GET` | `/api/manager/challenges` | `MANAGER` | **Перегляд усіх читацьких викликів (M4)**<br>Параметри: `status` (`ACTIVE`, `COMPLETED`, `EXPIRED`, `CANCELLED`). | `200 OK` (`List<ChallengeResponse>`), `403` |
-| `POST` | `/api/manager/challenges` | `MANAGER` | **Створення нового читацького виклику (M4.1)**<br>Тіло: `{ title, description, requiredBooks, genreId?, deadline, rewardPoints }` | `201 Created` (`ChallengeResponse`), `400`, `403` |
-| `PUT` | `/api/manager/challenges/{id}` | `MANAGER` | **Редагування активного виклику (M4.2)**<br>Тіло: `{ title, description, requiredBooks, genreId?, deadline, rewardPoints }`<br>При зміні умови прогрес користувачів автоматично динамічно перераховується. | `200 OK` (`ChallengeResponse`), `400`, `403`, `404` |
+| `POST` | `/api/manager/challenges` | `MANAGER` | **Створення нового читацького виклику (M4.1)**<br>Тіло (`CreateChallengeRequest`): `{ title, name?, description?, requiredBooks, genreId?, deadline, rewardPoints }` | `201 Created` (`ChallengeResponse`), `400`, `403` |
+| `PUT` | `/api/manager/challenges/{id}` | `MANAGER` | **Редагування активного виклику (M4.2)**<br>Тіло (`UpdateChallengeRequest`): `{ title, name?, description?, requiredBooks, genreId?, deadline, rewardPoints }`<br>При зміні умови прогрес користувачів автоматично динамічно перераховується. | `200 OK` (`ChallengeResponse`), `400`, `403`, `404` |
 | `POST` | `/api/manager/challenges/{id}/finish` | `MANAGER` | **Дострокове завершення виклику зі сповіщенням користувачів (M4.3)**<br>Переводить виклик у статус `CANCELLED`, фіксує `finished_at` та сповіщає користувачів із ненульовим прогресом. | `200 OK` (`FinishChallengeResponse`), `400`, `403`, `404` |
+
+#### Модель `FinishChallengeResponse`:
+```json
+{
+  "id": 1,
+  "title": "Осінній марафон читання",
+  "status": "CANCELLED",
+  "finishedAt": "2026-11-14T20:00:00Z",
+  "notifiedUsersCount": 12,
+  "message": "Виклик завершено достроково"
+}
+```
 
 ---
 
@@ -556,11 +665,11 @@
 |---|---|---|---|---|
 | `GET` | `/api/manager/users` | `MANAGER` | **Пошук і перегляд списку користувачів (M6)**<br>Показує лише акаунти з роллю `USER`.<br>Параметри: `email` (підрядок, регістронезалежний), `status` (`ACTIVE`, `BLOCKED`), пагінація та сортування (`createdAt`, `lastLoginAt`). | `200 OK` (`Page<ManagerUserSummaryResponse>`), `403` |
 | `GET` | `/api/manager/users/{id}` | `MANAGER` | **Детальна картка облікового запису**<br>Містить агреговану кількість замовлень за 4 статусами (`ordersByStatus`), `totalOrders`, баланс балів, причину та дату блокування. | `200 OK` (`ManagerUserDetailsResponse`), `403`, `404` |
-| `POST` | `/api/manager/users/{id}/block` | `MANAGER` | **Блокування облікового запису (M6)**<br>Тіло: `{"reason": "Причина блокування"}` (@NotBlank, до 500 символів).<br>Встановлює `status = BLOCKED`, фіксує `blockedAt` та `blockReason`, надсилає email через `NotificationService`. Повертає 409 Conflict, якщо акаунт уже заблоковано або це менеджер. | `200 OK` (`ManagerUserDetailsResponse`), `400`, `403`, `404`, `409 Conflict` |
+| `POST` | `/api/manager/users/{id}/block` | `MANAGER` | **Блокування облікового запису (M6)**<br>Тіло (`BlockUserRequest`): `{"reason": "Причина блокування"}` (@NotBlank, до 500 символів).<br>Встановлює `status = BLOCKED`, фіксує `blockedAt` та `blockReason`, надсилає email через `NotificationService`. Повертає 409 Conflict, якщо акаунт уже заблоковано або це менеджер. | `200 OK` (`ManagerUserDetailsResponse`), `400`, `403`, `404`, `409 Conflict` |
 | `GET` | `/api/manager/users/unblock-requests` | `MANAGER` | **Перегляд списку поданих апеляцій на розблокування (M6, M7)**<br>Повертає перелік запитів із даними користувача та обґрунтуванням (`justification`). | `200 OK` (`List<ManagerUnblockRequestResponse>`), `403` |
-| `POST` | `/api/manager/users/unblock` | `MANAGER` | **Масове розблокування облікових записів (M7)**<br>Тіло: `{"userIds": [1, 2, ...]}` (@NotEmpty).<br>Перевіряє для кожного користувача стан `BLOCKED`, змінює статус на `ACTIVE`, скидає причину, лічильник невдалих спроб, видаляє запис із `unblock_requests` та надсилає сповіщення. | `200 OK` `{"message": "Облікові записи успішно розблоковано"}`, `400`, `403`, `404`, `409 Conflict` |
+| `POST` | `/api/manager/users/unblock` | `MANAGER` | **Масове розблокування облікових записів (M7)**<br>Тіло (`UnblockUsersRequest`): `{"userIds": [1, 2, ...]}` (@NotEmpty).<br>Перевіряє для кожного користувача стан `BLOCKED`, змінює статус на `ACTIVE`, скидає причину, лічильник невдалих спроб, видаляє запис із `unblock_requests` та надсилає сповіщення. | `200 OK` `{"message": "Облікові записи успішно розблоковано"}`, `400`, `403`, `404`, `409 Conflict` |
 | `GET` | `/api/manager/users/inactive` | `MANAGER` | **Перелік облікових записів, що підлягають видаленню (M5)**<br>Повертає користувачів ролі `USER`, які не входили понад 2 роки (`COALESCE(last_login_at, created_at) < cutoff`) або заблоковані понад 2 роки (`blocked_at < cutoff`). | `200 OK` (`List<InactiveUserResponse>`), `403` |
-| `DELETE` | `/api/manager/users/inactive` | `MANAGER` | **Пакетне видалення неактивних акаунтів з анонімізацією історії (M5)**<br>Тіло: `{"userIds": [1, 2, ...]}` (@NotEmpty).<br>Перевіряє відповідність критерію неактивності > 2 роки (інакше `409 Conflict`), очищує персональні дані в `orders` (залишаючи склад і суми для звітності), відв'язує `ratings` (`user_id = NULL`), каскадно видаляє `cart_items`, `bonus_transactions`, `unblock_requests` та запис із `users`. | `200 OK` `{"message": "Неактивні облікові записи успішно видалено"}`, `400`, `403`, `409 Conflict` |
+| `DELETE` | `/api/manager/users/inactive` | `MANAGER` | **Пакетне видалення неактивних акаунтів з анонімізацією історії (M5)**<br>Тіло (`DeleteInactiveUsersRequest`): `{"userIds": [1, 2, ...]}` (@NotEmpty).<br>Перевіряє відповідність критерію неактивності > 2 роки (інакше `409 Conflict`), очищує персональні дані в `orders` (залишаючи склад і суми для звітності), відв'язує `ratings` (`user_id = NULL`), каскадно видаляє `cart_items`, `bonus_transactions`, `unblock_requests` та запис із `users`. | `200 OK` `{"message": "Неактивні облікові записи успішно видалено"}`, `400`, `403`, `409 Conflict` |
 
 #### Модель `ManagerUserSummaryResponse`:
 ```json
@@ -627,9 +736,9 @@
 |---|---|---|---|---|
 | `GET` | `/api/manager/institutions` | `MANAGER` | **Пошук і перегляд списку закладів (M8)**<br>Фільтри: `query` (пошук підрядка за назвою або адресою), `type` (`ORPHANAGE`, `BOARDING_SCHOOL`, `LIBRARY`). | `200 OK` (`List<InstitutionDetailsResponse>`), `403` |
 | `GET` | `/api/manager/institutions/{id}` | `MANAGER` | **Детальна сторінка закладу**<br>Повертає дані закладу, кількість благодійних замовлень `giftOrdersCount` та обчислюваний прапорець `canDelete` (true, якщо немає активних замовлень `AWAITING_PAYMENT` / `PAID`). | `200 OK` (`InstitutionDetailsResponse`), `403`, `404` |
-| `POST` | `/api/manager/institutions` | `MANAGER` | **Додавання нового закладу (M8)**<br>Тіло: `{ name, type, address, contactPerson }` | `200 OK` (`InstitutionDetailsResponse`), `400`, `403` |
-| `PUT` | `/api/manager/institutions/{id}` | `MANAGER` | **Редагування закладу (M8)**<br>Тіло: `{ name, type, address, contactPerson }`<br>Оновлює дані закладу; вже створені замовлення зберігають свої незмінні знімки. | `200 OK` (`InstitutionDetailsResponse`), `400`, `403`, `404` |
-| `DELETE` | `/api/manager/institutions` | `MANAGER` | **Пакетне видалення закладів (M8)**<br>Тіло: `{"institutionIds": [1, 2, ...]}` (@NotEmpty).<br>Перевіряє відсутність активних замовлень (`AWAITING_PAYMENT`, `PAID`) — при наявності повертає `409 Conflict`. При успіху у транзакції видаляє завершені замовлення (`DELIVERED`, `CANCELLED`) для цих закладів та самі заклади. | `200 OK` `{"message": "Заклади успішно видалено"}`, `400`, `403`, `404`, `409 Conflict` |
+| `POST` | `/api/manager/institutions` | `MANAGER` | **Додавання нового закладу (M8)**<br>Тіло (`InstitutionUpsertRequest`): `{ name, type, address, contactPerson }` | `200 OK` (`InstitutionDetailsResponse`), `400`, `403` |
+| `PUT` | `/api/manager/institutions/{id}` | `MANAGER` | **Редагування закладу (M8)**<br>Тіло (`InstitutionUpsertRequest`): `{ name, type, address, contactPerson }`<br>Оновлює дані закладу; вже створені замовлення зберігають свої незмінні знімки. | `200 OK` (`InstitutionDetailsResponse`), `400`, `403`, `404` |
+| `DELETE` | `/api/manager/institutions` | `MANAGER` | **Пакетне видалення закладів (M8)**<br>Тіло (`DeleteInstitutionsRequest`): `{"institutionIds": [1, 2, ...]}` (@NotEmpty).<br>Перевіряє відсутність активних замовлень (`AWAITING_PAYMENT`, `PAID`) — при наявності повертає `409 Conflict`. При успіху у транзакції видаляє завершені замовлення (`DELIVERED`, `CANCELLED`) для цих закладів та самі заклади. | `200 OK` `{"message": "Заклади успішно видалено"}`, `400`, `403`, `404`, `409 Conflict` |
 
 #### Модель `InstitutionDetailsResponse`:
 ```json
@@ -683,9 +792,9 @@
 
 | Метод | Ендпоінт | Доступ | Опис та параметри | Коди відповідей |
 |---|---|---|---|---|
-| `GET` | `/api/manager/analytics/demand` | `MANAGER` | **Вкладка 1 — «Затребуваність» (M10)**<br>Параметри: `from`, `to`.<br>Підраховує суму замовлених примірників `SUM(quantity)` за період для незамовлень зі статусом `<> 'CANCELLED'`. Повертає згруповані списки `byGenres` та `byBooks`, відсортовані за спаданням кількості. | `200 OK` (`DemandAnalyticsResponse`), `400`, `403` |
+| `GET` | `/api/manager/analytics/demand` | `MANAGER` | **Вкладка 1 — «Затребуваність» (M10)**<br>Параметри: `from`, `to`.<br>Підраховує суму замовлених примірників `SUM(quantity)` за період для замовлень зі статусом `<> 'CANCELLED'`. Повертає згруповані списки `byGenres` та `byBooks`, відсортовані за спаданням кількості. | `200 OK` (`DemandAnalyticsResponse`), `400`, `403` |
 | `GET` | `/api/manager/analytics/stock` | `MANAGER` | **Вкладка 2 — «Залишки» (M10)**<br>Відображає поточну кількість примірників у каталозі для активних видань (`deleted_at IS NULL`). Повертає списки `byGenres` та `byBooks`. | `200 OK` (`StockAnalyticsResponse`), `403` |
-| `GET` | `/api/manager/analytics/ratings` | `MANAGER` | **Вкладка 3 — «Рейтинг» (M10)**<br>Параметри: `from`, `to`.<br>Обчислює середнє арифметичне оцінок для жанрів (`byGenres`) та окремих видань (`byBooks`), округлене до 2 знаків після коми, разом із кількістю оцінок `ratingsCount`. | `200 OK` (`RatingsAnalyticsResponse`), `400`, `403` |
+| `GET` | `/api/manager/analytics/ratings` | `MANAGER` | **Вкладка 3 — «Рейтинг» (M10)**<br>Параметри: `from`, `to`.<br>Обчислює середнє арифметичне оцінок для жанрів (`byGenres`) та окремих видань (`byBooks`), округлене до 2 знаків після коми, разом із кількістю оцінок `ratingsCount`. | `200 OK` (`RatingAnalyticsResponse`), `400`, `403` |
 
 #### Модель `DemandAnalyticsResponse`:
 ```json
@@ -715,7 +824,7 @@
 }
 ```
 
-#### Модель `RatingsAnalyticsResponse`:
+#### Модель `RatingAnalyticsResponse`:
 ```json
 {
   "byGenres": [
