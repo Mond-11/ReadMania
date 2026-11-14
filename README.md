@@ -27,19 +27,47 @@ ReadMania/
 │   ├── http/                          # Запити HTTP Client в IntelliJ IDEA
 │   │   ├── http-client.env.json       # Змінні середовища (local, prod)
 │   │   ├── http-client.private.env.json.example # Шаблон для приватних секретів (паролів)
-│   │   ├── auth.http                  # Запити домену автентифікації та сесій
-│   │   ├── catalog.http               # Запити домену каталогу книг і жанрів
-│   │   └── orders.http                # Запити домену замовлень і розрахунків
+│   │   ├── auth.http                  # Запити домену автентифікації, профілю та сесій
+│   │   ├── catalog.http               # Запити каталогу книг, фільтрації, авторів та жанрів
+│   │   └── orders.http                # Запити замовлень, розрахунків, масових дій та переходів
 │   └── src/
 │       ├── main/
 │       │   ├── java/ua/readmania/
-│       │   │   ├── ReadmaniaBackendApplication.java  # Головна точка входу Spring Boot застосунку
+│       │   │   ├── ReadmaniaBackendApplication.java  # Головна точка входу Spring Boot застосунку (@EnableAsync, @EnableScheduling)
+│       │   │   ├── ManagerBootstrapInitializer.java  # Автоматичне створення першого менеджера при старті на продакшні
 │       │   │   ├── common/            # Загальносистемні компоненти та обробка винятків
 │       │   │   │   ├── GlobalExceptionHandler.java   # Централізований обробник помилок (Problem Details RFC 9457)
 │       │   │   │   ├── NotFoundException.java        # Доменний виняток для ресурсів, що не знайдено (404)
 │       │   │   │   ├── ConflictException.java        # Доменний виняток для конфліктів стану (409)
+│       │   │   │   ├── OrderStatusConflictException.java # Доменний виняток для конфліктів статусів замовлень (409)
+│       │   │   │   ├── AccountBlockedException.java  # Виняток для заблокованих облікових записів (403)
 │       │   │   │   ├── BusinessRuleException.java    # Доменний виняток для порушення бізнес-правил (400/409)
 │       │   │   │   └── ValidationError.java          # Модель деталізації помилок валідації (field, message)
+│       │   │   ├── controller/        # REST API контролери
+│       │   │   │   ├── AuthController.java           # Публічна автентифікація, сесії, апеляції розблокування
+│       │   │   │   ├── ProfileController.java        # Профіль користувача, зміна email та пароля
+│       │   │   │   ├── CatalogController.java        # Публічний каталог книг, жанрів, авторів, обкладинки
+│       │   │   │   ├── ManagerCatalogController.java # Управління каталогом, жанрами, авторами та CSV-імпортом
+│       │   │   │   ├── CartController.java           # Кошик покупця
+│       │   │   │   ├── OrderController.java          # Оформлення замовлень, історія та скасування покупцем
+│       │   │   │   ├── ManagerOrderController.java   # Управління замовленнями, FSM-переходи, масові операції
+│       │   │   │   ├── LoyaltyController.java        # Бонусний баланс та журнал операцій
+│       │   │   │   ├── ChallengeController.java      # Читацькі виклики
+│       │   │   │   ├── InstitutionController.java    # Благодійні заклади
+│       │   │   │   └── RatingController.java         # Оцінювання книг та публічні рейтинги
+│       │   │   ├── service/           # Сервісний шар бізнес-логіки
+│       │   │   │   ├── AuthService.java              # Логіка входу, захисту від brute-force, відновлення пароля
+│       │   │   │   ├── UserService.java              # Керування профілем, зміна email/пароля
+│       │   │   │   ├── CatalogService.java           # Пошук, фільтрація залишків, розрахунок canDelete
+│       │   │   │   ├── ManagerCatalogService.java    # CRUD книг, жанрів, авторів
+│       │   │   │   ├── CsvImportService.java         # Пакетний імпорт видань із валідацією полів
+│       │   │   │   ├── CartService.java              # Логіка кошика
+│       │   │   │   ├── order/                        # OrderService, ManagerOrderService (FSM 4 статусів)
+│       │   │   │   ├── loyalty/                      # LoyaltyService
+│       │   │   │   ├── challenge/                    # ChallengeService (прогрес та планувальник @Scheduled)
+│       │   │   │   ├── institution/                  # InstitutionService
+│       │   │   │   ├── rating/                       # RatingService (приватність користувачів)
+│       │   │   │   └── notification/                 # NotificationService, LoggingNotificationService, SmtpNotificationService
 │       │   │   ├── domain/            # Доменний шар (JPA-сутності та Spring Data репозиторії)
 │       │   │   │   ├── user/          # User, Role, UserStatus, PasswordResetToken, UnblockRequest
 │       │   │   │   ├── catalog/       # Book, Genre, Author, BookCover, BookSpecifications, BookRepository
@@ -49,14 +77,18 @@ ReadMania/
 │       │   │   │   ├── loyalty/       # BonusTransaction, Rating, BonusTransactionRepository, RatingRepository
 │       │   │   │   ├── challenge/     # Challenge, ChallengeCompletion, ChallengeRepository
 │       │   │   │   └── gift/          # GiftLog, GiftLogRepository
+│       │   │   ├── dto/               # Об'єкти передачі даних (Request / Response DTOs)
 │       │   │   └── security/          # Безпека та автентифікація
-│       │   │       ├── SecurityConfig.java           # Конфігурація Spring Security (RBAC, default deny, BCrypt)
-│       │   │       ├── ProblemDetailsAuthenticationEntryPoint.java  # Обробник 401 Unauthorized у форматі Problem Details
-│       │   │       ├── ProblemDetailsAccessDeniedHandler.java       # Обробник 403 Forbidden у форматі Problem Details
-│       │   │       └── AccountStatusFilter.java      # Фільтр перевірки блокування акаунта під час активної сесії
+│       │   │       ├── SecurityConfig.java           # Конфігурація Spring Security (RBAC, default deny, BCrypt, CSRF)
+│       │   │       ├── SpaCsrfTokenRequestHandler.java # Обробник CSRF-токенів для SPA (заголовок X-XSRF-TOKEN)
+│       │   │       ├── CsrfCookieFilter.java         # Фільтр генерації XSRF-TOKEN cookie
+│       │   │       ├── ProblemDetailsAuthenticationEntryPoint.java  # Обробник 401 Unauthorized
+│       │   │       ├── ProblemDetailsAccessDeniedHandler.java       # Обробник 403 Forbidden з типізованими URI
+│       │   │       ├── AccountStatusFilter.java      # Фільтр перевірки блокування акаунта під час активної сесії
+│       │   │       └── CustomUserDetails.java        # Адаптер користувача для Spring Security
 │       │   └── resources/
 │       │       ├── application.yml         # Основна конфігурація застосунку (БД, JPA, Flyway, Actuator, сесії)
-│       │       ├── application-prod.yml    # Профіль для продакшн-середовища (Secure cookie)
+│       │       ├── application-prod.yml    # Профіль для продакшн-середовища (Secure cookie, SMTP)
 │       │       ├── application-example.yml # Приклад конфігурації для локального налаштування
 │       │       ├── db/migration/
 │       │       │   ├── V1__init.sql        # Початкова схема бази даних
@@ -66,14 +98,21 @@ ReadMania/
 │       │       │   ├── V5__orders.sql      # Замовлення, позиції, історія статусів
 │       │       │   ├── V6__loyalty.sql     # Журнал бонусів та оцінки книг
 │       │       │   ├── V7__challenges.sql  # Читацькі виклики
-│       │       │   └── V8__gift_log.sql    # Журнал благодійних дарунків
+│       │       │   ├── V8__gift_log.sql    # Журнал благодійних дарунків
+│       │       │   └── V9__schema_fixes.sql # Фікси SRS: 4 статуси, видавництво, рік, контакти закладу
 │       │       └── db/seed/
 │       │           └── R__dev_seed.sql     # Початкові дані для локальної розробки (profile local)
 │       └── test/
 │           ├── java/ua/readmania/
 │           │   ├── BaseIntegrationTest.java          # Базовий клас інтеграційних тестів (@Transactional, Flyway, validate)
 │           │   ├── TestcontainersConfiguration.java  # Singleton-контейнер PostgreSQL 17 (@ServiceConnection)
+│           │   ├── CsrfTestHelper.java               # Хелпер налаштування CSRF-заголовків для MockMvc
 │           │   ├── SchemaIT.java                     # Інтеграційні тести схеми БД, FK-індексів та бізнес-обмежень
+│           │   ├── OpenApiExportIT.java              # Тест автоматичного експорту актуальної схеми в docs/openapi.json
+│           │   ├── AuthIntegrationTest.java          # Інтеграційні тести автентифікації, rate-limiting, апеляцій
+│           │   ├── CatalogIntegrationTest.java       # Інтеграційні тести каталогу, фільтрації залишків, CSV
+│           │   ├── OrderIntegrationTest.java         # Інтеграційні тести життєвого циклу замовлень (FSM 4 статусів)
+│           │   ├── Slice4GamificationAndGiftSetIT.java # Інтеграційні тести лояльності, викликів та дарунків
 │           │   ├── ReadmaniaBackendApplicationTests.java # Тест завантаження контексту Spring Boot
 │           │   ├── domain/
 │           │   │   └── DomainRepositoryIT.java       # Інтеграційні тести JPA-сутностей, репозиторіїв та специфікацій G1
@@ -99,9 +138,10 @@ ReadMania/
 │   └── README.md                      # Документація клієнтської частини
 ├── docs/                              # Проєктна документація
 │   ├── API.md                         # Специфікація REST API ендпоінтів та контрактів
-│   ├── CURRENT_STATE.md               # Поточний стан системи, працюючий функціонал та дорожня карта
+│   ├── openapi.json                   # Експортована схема OpenAPI 3.1 для кодогенерації клієнта
+│   ├── CURRENT_STATE.md               # Поточний стан системи, матриця відповідності вимогам ТЗ/SRS
 │   ├── DATABASE_DECISIONS.md          # Реєстр архітектурних рішень щодо БД (M1, 3НФ, M5, лояльність тощо)
-│   ├── ERD.md                         # Діаграма сутностей і зв'язків (Mermaid ERD) та опис схеми (O2)
+│   ├── ERD.md                         # Діаграма сутностей і зв'язків (Mermaid ERD) та опис схеми
 │   ├── Технічне завдання розробки Вебзастосунку.pdf # ТЗ проєкту
 │   └── Cпецифікація вимог до Вебзастосунку.pdf       # SRS проєкту
 ├── docker-compose.yml                 # Локальне середовище бази даних PostgreSQL 17
@@ -115,28 +155,42 @@ ReadMania/
 
 ## Ключові архітектурні рішення
 
-### 1. Безпека (Spring Security)
-- **Розмежування доступу:** реалізовано правило *Default Deny* для всіх шляхів `/api/**`. Публічно відкриті лише `/api/auth/register`, `/api/auth/login`, `/api/catalog/**` та `/actuator/health`. Ендпоінти `/api/manager/**` суворо обмежені роллю `MANAGER`.
+### 1. Безпека та контроль доступу (Spring Security)
+- **Розмежування доступу:** реалізовано правило *Default Deny* для всіх шляхів `/api/**`. Публічно відкриті лише `/api/auth/register`, `/api/auth/login`, `/api/auth/password-reset/**`, `/api/auth/unblock-request`, `/api/catalog/**` та `/actuator/health`. Ендпоінти `/api/manager/**` суворо обмежені роллю `MANAGER`.
 - **Шифрування паролів:** `BCryptPasswordEncoder` (відкриті паролі ніде не зберігаються та не логуються).
 - **Сесії та Cookie:** `HttpOnly`, `SameSite=Lax`, автоматичний прапорець `Secure` у профілі `prod`.
-- **Активні сесії:** наявний `AccountStatusFilter` для перевірки блокування облікового запису на рівні кожного запиту у відкритій сесії.
-- **Документація:** Swagger/OpenAPI доступний виключно у профілі `local` та блокується на стадії production.
+- **CSRF-захист для SPA:** налаштовано `CookieCsrfTokenRepository.withHttpOnlyFalse()` та `SpaCsrfTokenRequestHandler`. Клієнтський застосунок отримує токен у cookie `XSRF-TOKEN` та передає його у заголовку `X-XSRF-TOKEN` під час запитів зі зміною стану (`POST`, `PUT`, `PATCH`, `DELETE`).
+- **Контроль активних сесій:** наявний `AccountStatusFilter` для миттєвої перевірки статусу блокування облікового запису на рівні кожного запиту у відкритій сесії.
+- **Захист від Brute-Force:** після 5 поспіль невдалих спроб входу обліковий запис тимчасово блокується на 15 хвилин з типізованою відповіддю `urn:readmania:error:login-rate-limited` та полем `retryAfter`.
+- **Ініціалізація Менеджера (Bootstrap):** компонент `ManagerBootstrapInitializer` (`ApplicationRunner`) створює першого менеджера на продакшні за наявності змінних середовища `APP_INITIAL_MANAGER_EMAIL` та `APP_INITIAL_MANAGER_PASSWORD`.
 
-### 2. Уніфікована обробка помилок (Problem Details)
-- Усі відповіді про помилки формуються за стандартом **RFC 9457 Problem Details** із MIME-типом `application/problem+json`.
+### 2. Сповіщення та фонові задачі
+- **Поштовий сервіс (`NotificationService`):** асинхронна відправка листів (`@Async`, `@EnableAsync`) про замовлення, зміну статусів, блокування/розблокування та скидання пароля.
+  - `@Profile("prod")` — `SmtpNotificationService` на базі JavaMailSender;
+  - `@Profile({"local", "test", "default"})` — `LoggingNotificationService` із логуванням тексту повідомлень та збереженням у пам'яті для інтеграційних тестів.
+- **Планувальник читацьких викликів (`@EnableScheduling`):** фонова задача періодично перевіряє активні виклики та автоматично завершує виклики з простроченим дедлайном (`deadline < now()`).
+
+### 3. Уніфікована обробка помилок (Problem Details RFC 9457)
+- Усі помилки формуються за стандартом **RFC 9457** із MIME-типом `application/problem+json`.
 - Коди відповідей:
-  - `400 Bad Request` — помилки валідації (з масивом `errors: [{ field, message }]`), невалідні параметри;
+  - `400 Bad Request` — помилки валідації (з масивом `errors: [{ field, message }]`), невалідні параметри (наприклад, `stockMin > stockMax`);
   - `401 Unauthorized` — спроба доступу без автентифікації;
-  - `403 Forbidden` — недостатньо прав або заблокований акаунт;
+  - `403 Forbidden` — недостатньо прав або заблокований акаунт (`urn:readmania:error:access-denied`, `urn:readmania:error:account-blocked`, `urn:readmania:error:login-rate-limited`);
   - `404 Not Found` — ресурс не знайдено;
-  - `409 Conflict` — порушення оптимістичного блокування або цілісності даних;
+  - `409 Conflict` — конфлікти статусів замовлень (`urn:readmania:error:order-status-conflict`), дублікати ISBN/авторів або спрацювання оптимістичного блокування (`@Version`);
   - `500 Internal Server Error` — непередбачені помилки з генерацією унікального `errorId` для безпечного аудиту без витоку стектрейсів.
 - Забезпечено сумісність із SPA: маршрутизація 404 у JSON діє лише для `/api/**`, тоді як невідомі статичні шляхи направляються на `index.html`.
 
-### 3. База даних та міграції
+### 4. База даних, міграції та схема
 - Використовується **PostgreSQL 17**.
-- Керування схемою здійснюється через **Flyway** (`db/migration/V1__init.sql` ... `V9__srs_alignment.sql`).
-- Hibernate налаштовано у режимі валідації схеми (`ddl-auto: validate`).
+- Керування схемою здійснюється через **Flyway** (`db/migration/V1__init.sql` ... `V9__schema_fixes.sql`).
+- Hibernate налаштовано у режимі суворої валідації схеми (`ddl-auto: validate`).
+- Машина станів замовлення (FSM) зведена до **4 актуальних статусів** згідно з SRS: `AWAITING_PAYMENT`, `PAID`, `DELIVERED`, `CANCELLED`.
+- Реалізовано 100% покриття зовнішніх ключів (FK) B-Tree індексами для високої швидкодії `JOIN` та каскадних операцій.
+
+### 5. Контракти API та OpenAPI 3.1
+- Інтеграційний тест `OpenApiExportIT` автоматично генерує та зберігає актуальну схему у `docs/openapi.json` під час збірки.
+- Swagger UI доступний за адресою `http://localhost:8080/swagger-ui.html` у профілях `local`/`test` та безпечно вимкнений у `prod`.
 
 ---
 
