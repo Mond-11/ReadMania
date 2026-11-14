@@ -6,6 +6,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import ua.readmania.common.ConflictException;
 import ua.readmania.common.NotFoundException;
+import ua.readmania.domain.gift.GiftLogRepository;
 import ua.readmania.domain.institution.Institution;
 import ua.readmania.domain.institution.InstitutionRepository;
 import ua.readmania.domain.institution.InstitutionType;
@@ -23,11 +24,14 @@ public class InstitutionService {
 
     private final InstitutionRepository institutionRepository;
     private final OrderRepository orderRepository;
+    private final GiftLogRepository giftLogRepository;
 
     public InstitutionService(InstitutionRepository institutionRepository,
-                              OrderRepository orderRepository) {
+                              OrderRepository orderRepository,
+                              GiftLogRepository giftLogRepository) {
         this.institutionRepository = institutionRepository;
         this.orderRepository = orderRepository;
+        this.giftLogRepository = giftLogRepository;
     }
 
     @Transactional(readOnly = true)
@@ -129,12 +133,17 @@ public class InstitutionService {
                     + String.join(", ", blockedInstitutions));
         }
 
+        // Відв'язуємо записи gift_log від закладів та замовлень перед їх видаленням
+        giftLogRepository.detachInstitutions(institutionIds);
+
         // Видалення завершених та скасованих замовлень у дар для цих закладів
         List<Order> finishedOrders = orderRepository.findByInstitutionIdInAndStatusIn(
                 institutionIds,
                 List.of(OrderStatus.DELIVERED, OrderStatus.CANCELLED)
         );
         if (!finishedOrders.isEmpty()) {
+            List<Long> orderIds = finishedOrders.stream().map(Order::getId).toList();
+            giftLogRepository.detachOrders(orderIds);
             orderRepository.deleteAll(finishedOrders);
         }
 

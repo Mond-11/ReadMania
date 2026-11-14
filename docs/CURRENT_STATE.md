@@ -317,12 +317,12 @@
    - Повністю реалізовано: `BonusTransaction`, `Rating`, `Challenge`, `ChallengeCompletion`, `GiftLog`, `LoyaltyService`, `ChallengeService`, `RatingService`, `GiftSetService`, `ChallengeController`, `ManagerChallengeController`, `RatingController`, `GiftSetController`, `InstitutionController`.
    - Нарахування балів, приватність оцінок (`PublicRatingResponse`), автоматичне завершення викликів планувальником (`@Scheduled`), генератор наборів.
 
-### Зріз 5: Адміністрування M5–M10 та розширена аналітика — ЧАСТКОВО (Модулі 1, 2, 3 завершено)
+### Зріз 5: Адміністрування M5–M10 та розширена аналітика — ЗАВЕРШЕНО (100%)
 - `M6/M7`: Пошук та фільтрація акаунтів (`GET /api/manager/users`), детальна картка з агрегацією замовлень (`GET /api/manager/users/{id}`), ручне блокування (`POST /api/manager/users/{id}/block`), перегляд апеляцій (`GET /api/manager/users/unblock-requests`) та масове розблокування (`POST /api/manager/users/unblock`) — **ГОТОВО (100%)**.
 - `M5`: Виявлення неактивних акаунтів (`GET /api/manager/users/inactive`) та пакетне видалення неактивних акаунтів (> 2 роки) з анонімізацією замовлень і оцінок (`DELETE /api/manager/users/inactive`) — **ГОТОВО (100%)**.
 - `M8`: CRUD-керування закладами-одержувачами для благодійних замовлень менеджером (`/api/manager/institutions`), включно з перевіркою активних замовлень `canDelete` та безпечним видаленням — **ГОТОВО (100%)**.
-- `M9`: Звітність та журнал благодійних передач (`gift_log`) — В ПЛАНАХ.
-- `M10`: Аналітичні звіти затребуваності книг/жанрів, залишків та рейтингів — В ПЛАНАХ.
+- `M9`: Автоматичне наповнення та перегляд журналу благодійних передач зі статистикою `totalDonatedBooks` (`GET /api/manager/gift-log`) — **ГОТОВО (100%)**.
+- `M10`: Аналітична панель: затребуваність книг і жанрів (`/api/manager/analytics/demand`), залишки на складі (`/api/manager/analytics/stock`) та рейтинги з точним підрахунком (`/api/manager/analytics/ratings`) — **ГОТОВО (100%)**.
 
 ---
 

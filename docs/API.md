@@ -646,6 +646,89 @@
 
 ---
 
+### 2.16. Менеджер: Журнал подарованих книг (`/api/manager/gift-log`)
+
+Доступ до ендпоінтів цього розділу вимагає ролі **`MANAGER`** (`403 Forbidden` для інших користувачів).
+
+| Метод | Ендпоінт | Доступ | Опис та параметри | Коди відповідей |
+|---|---|---|---|---|
+| `GET` | `/api/manager/gift-log` | `MANAGER` | **Перегляд журналу подарованих книг зі статистикою (M9)**<br>Фільтри: `institutionId` (Long), `institutionName` (String, підрядок назви навіть видалених закладів), `dateFrom` (LocalDate, `YYYY-MM-DD`), `dateTo` (LocalDate, `YYYY-MM-DD`).<br>Валідація: якщо `dateTo < dateFrom` — `400 Bad Request`. | `200 OK` (`GiftLogPageResponse`), `400`, `403` |
+
+#### Модель `GiftLogPageResponse`:
+```json
+{
+  "items": [
+    {
+      "id": 1,
+      "orderId": 105,
+      "institutionName": "Дитячий будинок «Сонечко»",
+      "bookTitle": "Кобзар",
+      "quantity": 3,
+      "deliveredAt": "2026-11-14"
+    }
+  ],
+  "totalDonatedBooks": 3
+}
+```
+
+---
+
+### 2.17. Менеджер: Аналітична панель (`/api/manager/analytics`)
+
+Доступ до ендпоінтів цього розділу вимагає ролі **`MANAGER`** (`403 Forbidden` для інших користувачів).
+
+Загальні правила періоду (`from`, `to`):
+- Якщо параметри не передані, за замовчуванням вибираються останні 3 місяці (`to = LocalDate.now()`, `from = to.minusMonths(3)`).
+- Якщо `to < from` або `to > LocalDate.now()` — повертається `400 Bad Request` (Problem Details).
+
+| Метод | Ендпоінт | Доступ | Опис та параметри | Коди відповідей |
+|---|---|---|---|---|
+| `GET` | `/api/manager/analytics/demand` | `MANAGER` | **Вкладка 1 — «Затребуваність» (M10)**<br>Параметри: `from`, `to`.<br>Підраховує суму замовлених примірників `SUM(quantity)` за період для незамовлень зі статусом `<> 'CANCELLED'`. Повертає згруповані списки `byGenres` та `byBooks`, відсортовані за спаданням кількості. | `200 OK` (`DemandAnalyticsResponse`), `400`, `403` |
+| `GET` | `/api/manager/analytics/stock` | `MANAGER` | **Вкладка 2 — «Залишки» (M10)**<br>Відображає поточну кількість примірників у каталозі для активних видань (`deleted_at IS NULL`). Повертає списки `byGenres` та `byBooks`. | `200 OK` (`StockAnalyticsResponse`), `403` |
+| `GET` | `/api/manager/analytics/ratings` | `MANAGER` | **Вкладка 3 — «Рейтинг» (M10)**<br>Параметри: `from`, `to`.<br>Обчислює середнє арифметичне оцінок для жанрів (`byGenres`) та окремих видань (`byBooks`), округлене до 2 знаків після коми, разом із кількістю оцінок `ratingsCount`. | `200 OK` (`RatingsAnalyticsResponse`), `400`, `403` |
+
+#### Модель `DemandAnalyticsResponse`:
+```json
+{
+  "byGenres": [
+    { "id": 1, "name": "Фентезі", "orderedQuantity": 45 },
+    { "id": 2, "name": "Наукова фантастика", "orderedQuantity": 30 }
+  ],
+  "byBooks": [
+    { "id": 10, "name": "Володар Перснів", "orderedQuantity": 25 },
+    { "id": 12, "name": "Дюна", "orderedQuantity": 20 }
+  ]
+}
+```
+
+#### Модель `StockAnalyticsResponse`:
+```json
+{
+  "byGenres": [
+    { "id": 1, "name": "Фентезі", "stock": 120 },
+    { "id": 2, "name": "Наукова фантастика", "stock": 85 }
+  ],
+  "byBooks": [
+    { "id": 10, "name": "Володар Перснів", "stock": 15 },
+    { "id": 12, "name": "Дюна", "stock": 30 }
+  ]
+}
+```
+
+#### Модель `RatingsAnalyticsResponse`:
+```json
+{
+  "byGenres": [
+    { "id": 1, "name": "Фентезі", "averageRating": 4.65, "ratingsCount": 20 }
+  ],
+  "byBooks": [
+    { "id": 10, "name": "Володар Перснів", "averageRating": 4.85, "ratingsCount": 14 }
+  ]
+}
+```
+
+---
+
 ## 3. Матриця переходів статусів замовлень (M3, A.1)
 
 Згідно з Таблицею 3 SRS (зведення до 4 значень відповідно до А.1), переходи статусів виконуються за такою логікою:
@@ -676,12 +759,6 @@
 
 ---
 
-## 4. Заплановані ендпоінти наступних етапів (Roadmap)
+## 4. Стан реалізації Бекенду
 
-Наступні ендпоінти узгоджені в SRS і будуть додані на відповідних етапах реалізації:
-
-### 4.1. Менеджер: Журнал дарунків та аналітика (M9, M10)
-- `GET /api/manager/gift-log?institutionId=&from=&to=` — журнал переданих книг.
-- `GET /api/manager/analytics/demand` — аналітика затребуваності книг і жанрів.
-- `GET /api/manager/analytics/stock` — аналітика залишків на складі.
-- `GET /api/manager/analytics/rating` — рейтинг жанрів і авторів за оцінками.
+Усі заплановані зрізи бекенд-системи (Зрізи 1–5, вимоги C1–C10, M1–M12, A.1–A.10, G1–G4) **повністю реалізовані та протестовані**. Поточний стан та схема доступні у `docs/CURRENT_STATE.md` та `docs/openapi.json`.

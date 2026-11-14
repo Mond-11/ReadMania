@@ -1625,6 +1625,144 @@
         }
       }
     },
+    "/api/manager/gift-log" : {
+      "get" : {
+        "tags" : [ "manager-gift-log-controller" ],
+        "operationId" : "getGiftLog",
+        "parameters" : [ {
+          "name" : "institutionId",
+          "in" : "query",
+          "required" : false,
+          "schema" : {
+            "type" : "integer",
+            "format" : "int64"
+          }
+        }, {
+          "name" : "institutionName",
+          "in" : "query",
+          "required" : false,
+          "schema" : {
+            "type" : "string"
+          }
+        }, {
+          "name" : "dateFrom",
+          "in" : "query",
+          "required" : false,
+          "schema" : {
+            "type" : "string",
+            "format" : "date"
+          }
+        }, {
+          "name" : "dateTo",
+          "in" : "query",
+          "required" : false,
+          "schema" : {
+            "type" : "string",
+            "format" : "date"
+          }
+        } ],
+        "responses" : {
+          "200" : {
+            "description" : "OK",
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/GiftLogPageResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/manager/analytics/stock" : {
+      "get" : {
+        "tags" : [ "manager-analytics-controller" ],
+        "operationId" : "getStockAnalytics",
+        "responses" : {
+          "200" : {
+            "description" : "OK",
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/StockAnalyticsResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/manager/analytics/ratings" : {
+      "get" : {
+        "tags" : [ "manager-analytics-controller" ],
+        "operationId" : "getRatingAnalytics",
+        "parameters" : [ {
+          "name" : "from",
+          "in" : "query",
+          "required" : false,
+          "schema" : {
+            "type" : "string",
+            "format" : "date"
+          }
+        }, {
+          "name" : "to",
+          "in" : "query",
+          "required" : false,
+          "schema" : {
+            "type" : "string",
+            "format" : "date"
+          }
+        } ],
+        "responses" : {
+          "200" : {
+            "description" : "OK",
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/RatingAnalyticsResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/manager/analytics/demand" : {
+      "get" : {
+        "tags" : [ "manager-analytics-controller" ],
+        "operationId" : "getDemandAnalytics",
+        "parameters" : [ {
+          "name" : "from",
+          "in" : "query",
+          "required" : false,
+          "schema" : {
+            "type" : "string",
+            "format" : "date"
+          }
+        }, {
+          "name" : "to",
+          "in" : "query",
+          "required" : false,
+          "schema" : {
+            "type" : "string",
+            "format" : "date"
+          }
+        } ],
+        "responses" : {
+          "200" : {
+            "description" : "OK",
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/DemandAnalyticsResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/loyalty/balance" : {
       "get" : {
         "tags" : [ "loyalty-controller" ],
@@ -3495,6 +3633,151 @@
           "referenceDate" : {
             "type" : "string",
             "format" : "date-time"
+          }
+        }
+      },
+      "GiftLogEntryResponse" : {
+        "type" : "object",
+        "properties" : {
+          "id" : {
+            "type" : "integer",
+            "format" : "int64"
+          },
+          "orderId" : {
+            "type" : "integer",
+            "format" : "int64"
+          },
+          "institutionName" : {
+            "type" : "string"
+          },
+          "bookTitle" : {
+            "type" : "string"
+          },
+          "quantity" : {
+            "type" : "integer",
+            "format" : "int32"
+          },
+          "deliveredAt" : {
+            "type" : "string",
+            "format" : "date"
+          }
+        }
+      },
+      "GiftLogPageResponse" : {
+        "type" : "object",
+        "properties" : {
+          "items" : {
+            "type" : "array",
+            "items" : {
+              "$ref" : "#/components/schemas/GiftLogEntryResponse"
+            }
+          },
+          "totalDonatedBooks" : {
+            "type" : "integer",
+            "format" : "int64"
+          }
+        }
+      },
+      "StockAnalyticsResponse" : {
+        "type" : "object",
+        "properties" : {
+          "byGenres" : {
+            "type" : "array",
+            "items" : {
+              "$ref" : "#/components/schemas/StockItemDto"
+            }
+          },
+          "byBooks" : {
+            "type" : "array",
+            "items" : {
+              "$ref" : "#/components/schemas/StockItemDto"
+            }
+          }
+        }
+      },
+      "StockItemDto" : {
+        "type" : "object",
+        "properties" : {
+          "id" : {
+            "type" : "integer",
+            "format" : "int64"
+          },
+          "name" : {
+            "type" : "string"
+          },
+          "stock" : {
+            "type" : "integer",
+            "format" : "int64"
+          }
+        }
+      },
+      "RatingAnalyticsResponse" : {
+        "type" : "object",
+        "properties" : {
+          "byGenres" : {
+            "type" : "array",
+            "items" : {
+              "$ref" : "#/components/schemas/RatingChartItemDto"
+            }
+          },
+          "byBooks" : {
+            "type" : "array",
+            "items" : {
+              "$ref" : "#/components/schemas/RatingChartItemDto"
+            }
+          }
+        }
+      },
+      "RatingChartItemDto" : {
+        "type" : "object",
+        "properties" : {
+          "id" : {
+            "type" : "integer",
+            "format" : "int64"
+          },
+          "name" : {
+            "type" : "string"
+          },
+          "averageRating" : {
+            "type" : "number",
+            "format" : "double"
+          },
+          "ratingsCount" : {
+            "type" : "integer",
+            "format" : "int64"
+          }
+        }
+      },
+      "ChartItemDto" : {
+        "type" : "object",
+        "properties" : {
+          "id" : {
+            "type" : "integer",
+            "format" : "int64"
+          },
+          "name" : {
+            "type" : "string"
+          },
+          "orderedQuantity" : {
+            "type" : "integer",
+            "format" : "int64"
+          }
+        }
+      },
+      "DemandAnalyticsResponse" : {
+        "type" : "object",
+        "properties" : {
+          "byGenres" : {
+            "type" : "array",
+            "items" : {
+              "$ref" : "#/components/schemas/ChartItemDto"
+            }
+          },
+          "byBooks" : {
+            "type" : "array",
+            "items" : {
+              "$ref" : "#/components/schemas/ChartItemDto"
+            }
           }
         }
       },
