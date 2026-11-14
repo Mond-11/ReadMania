@@ -55,6 +55,12 @@ public class Book {
     @Column(nullable = false)
     private int stock = 0;
 
+    @Column(nullable = false, length = 255)
+    private String publisher = "Невідоме видавництво";
+
+    @Column(name = "publication_year", nullable = false)
+    private Integer publicationYear = 2024;
+
     @Column(name = "deleted_at")
     private Instant deletedAt;
 
@@ -160,6 +166,22 @@ public class Book {
 
     public void setStock(int stock) {
         this.stock = stock;
+    }
+
+    public String getPublisher() {
+        return publisher;
+    }
+
+    public void setPublisher(String publisher) {
+        this.publisher = publisher != null ? publisher : "Невідоме видавництво";
+    }
+
+    public Integer getPublicationYear() {
+        return publicationYear;
+    }
+
+    public void setPublicationYear(Integer publicationYear) {
+        this.publicationYear = publicationYear != null ? publicationYear : 2024;
     }
 
     public Instant getDeletedAt() {

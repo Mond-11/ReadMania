@@ -2,9 +2,7 @@ package ua.readmania.domain.order;
 
 public enum OrderStatus {
     AWAITING_PAYMENT,
-    PROCESSING,
-    ASSEMBLED,
-    DELIVERING,
+    PAID,
     DELIVERED,
     CANCELLED
 }

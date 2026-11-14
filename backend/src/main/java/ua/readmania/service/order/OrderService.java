@@ -203,9 +203,7 @@ public class OrderService {
             userRepository.save(user);
         }
 
-        OrderStatus initialStatus = request.getPaymentMethod() == PaymentMethod.TRANSFER
-                ? OrderStatus.AWAITING_PAYMENT
-                : OrderStatus.PROCESSING;
+        OrderStatus initialStatus = OrderStatus.AWAITING_PAYMENT;
 
         Order order = new Order(
                 user,
@@ -329,6 +327,7 @@ public class OrderService {
         order.setDeliveryMethod(null);
         order.setInstitution(institution);
         order.setInstitutionName(institution.getName());
+        order.setInstitutionContactPerson(institution.getContactPerson());
         order.setAddress(institution.getAddress());
         order.setRecipientName(institution.getContactPerson());
 

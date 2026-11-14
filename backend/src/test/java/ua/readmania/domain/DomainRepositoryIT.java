@@ -268,6 +268,7 @@ class DomainRepositoryIT extends BaseIntegrationTest {
         Order order = new Order(user, OrderType.GIFT, PaymentMethod.TRANSFER, new BigDecimal("500.00"), BigDecimal.ZERO, 0, new BigDecimal("500.00"));
         order.setInstitution(orphanage);
         order.setInstitutionName(orphanage.getName());
+        order.setInstitutionContactPerson(orphanage.getContactPerson());
         order.setStatus(OrderStatus.AWAITING_PAYMENT);
 
         OrderItem item = new OrderItem(order, book, book.getTitle(), book.getPrice(), 2);

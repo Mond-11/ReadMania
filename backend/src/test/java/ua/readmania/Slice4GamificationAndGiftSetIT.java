@@ -210,11 +210,11 @@ public class Slice4GamificationAndGiftSetIT extends BaseIntegrationTest {
     void shouldFailRatingWhenOrderIsNotDeliveredOrUserDidNotBuyBook() throws Exception {
         MockHttpSession session = loginAs("reader@example.com", "Password123!");
 
-        // Замовлення ще у статусі PROCESSING
+        // Замовлення ще у статусі AWAITING_PAYMENT
         Order order = new Order();
         order.setUser(testUser);
         order.setType(OrderType.REGULAR);
-        order.setStatus(OrderStatus.PROCESSING);
+        order.setStatus(OrderStatus.AWAITING_PAYMENT);
         order.setDeliveryMethod(DeliveryMethod.COURIER);
         order.setPaymentMethod(PaymentMethod.ON_DELIVERY);
         order.setItemsTotal(new BigDecimal("250.00"));

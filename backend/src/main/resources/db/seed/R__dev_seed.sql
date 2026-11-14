@@ -26,28 +26,28 @@ INSERT INTO institutions (name, type, address, contact_person, phone) VALUES
 ON CONFLICT DO NOTHING;
 
 -- Додавання прикладів книг
-INSERT INTO books (title, description, isbn, genre_id, price, stock)
-SELECT 'Кобзар', 'Збірка поетичних творів українського генія', '978-966-03-7000-1', g.id, 350.00, 25
+INSERT INTO books (title, description, isbn, genre_id, price, stock, publisher, publication_year)
+SELECT 'Кобзар', 'Збірка поетичних творів українського генія', '978-966-03-7000-1', g.id, 350.00, 25, 'Фоліо', 2021
 FROM genres g WHERE g.name = 'Класика'
 ON CONFLICT DO NOTHING;
 
-INSERT INTO books (title, description, isbn, genre_id, price, stock)
-SELECT 'Лісова пісня', 'Драма-феєрія у трьох діях', '978-966-03-7000-2', g.id, 220.00, 15
+INSERT INTO books (title, description, isbn, genre_id, price, stock, publisher, publication_year)
+SELECT 'Лісова пісня', 'Драма-феєрія у трьох діях', '978-966-03-7000-2', g.id, 220.00, 15, 'А-ба-ба-га-ла-ма-га', 2022
 FROM genres g WHERE g.name = 'Драматургія'
 ON CONFLICT DO NOTHING;
 
-INSERT INTO books (title, description, isbn, genre_id, price, stock)
-SELECT 'Захар Беркут', 'Історична повість про боротьбу карпатських русинів проти монгольської навали', '978-966-03-7000-3', g.id, 280.00, 18
+INSERT INTO books (title, description, isbn, genre_id, price, stock, publisher, publication_year)
+SELECT 'Захар Беркут', 'Історична повість про боротьбу карпатських русинів проти монгольської навали', '978-966-03-7000-3', g.id, 280.00, 18, 'Видавництво Старого Лева', 2020
 FROM genres g WHERE g.name = 'Класика'
 ON CONFLICT DO NOTHING;
 
-INSERT INTO books (title, description, isbn, genre_id, price, stock)
-SELECT '1984', 'Культовий роман-антиутопія про тоталітаризм', '978-966-03-7000-4', g.id, 320.00, 30
+INSERT INTO books (title, description, isbn, genre_id, price, stock, publisher, publication_year)
+SELECT '1984', 'Культовий роман-антиутопія про тоталітаризм', '978-966-03-7000-4', g.id, 320.00, 30, 'Видавництво Жупанського', 2021
 FROM genres g WHERE g.name = 'Фантастика'
 ON CONFLICT DO NOTHING;
 
-INSERT INTO books (title, description, isbn, genre_id, price, stock)
-SELECT 'Вбивство у Східному експресі', 'Класичний детективний роман про розслідування Еркюля Пуаро', '978-966-03-7000-5', g.id, 300.00, 12
+INSERT INTO books (title, description, isbn, genre_id, price, stock, publisher, publication_year)
+SELECT 'Вбивство у Східному експресі', 'Класичний детективний роман про розслідування Еркюля Пуаро', '978-966-03-7000-5', g.id, 300.00, 12, 'Клуб Сімейного Дозвілля', 2023
 FROM genres g WHERE g.name = 'Детектив'
 ON CONFLICT DO NOTHING;
 

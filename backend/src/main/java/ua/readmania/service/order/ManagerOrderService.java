@@ -35,6 +35,7 @@ import ua.readmania.domain.order.OrderStatus;
 import ua.readmania.domain.order.OrderStatusHistory;
 import ua.readmania.domain.order.OrderStatusHistoryRepository;
 import ua.readmania.domain.order.OrderType;
+import ua.readmania.domain.order.PaymentMethod;
 import ua.readmania.domain.user.User;
 import ua.readmania.domain.user.UserRepository;
 import ua.readmania.dto.order.OrderDetailsResponse;
@@ -132,10 +133,10 @@ public class ManagerOrderService {
 
         // State Machine validation (SRS Table 3)
         boolean isValidTransition = switch (currentStatus) {
-            case AWAITING_PAYMENT -> targetStatus == OrderStatus.PROCESSING || targetStatus == OrderStatus.CANCELLED;
-            case PROCESSING -> targetStatus == OrderStatus.ASSEMBLED || targetStatus == OrderStatus.CANCELLED;
-            case ASSEMBLED -> targetStatus == OrderStatus.DELIVERING || targetStatus == OrderStatus.CANCELLED;
-            case DELIVERING -> targetStatus == OrderStatus.DELIVERED || targetStatus == OrderStatus.CANCELLED;
+            case AWAITING_PAYMENT -> (targetStatus == OrderStatus.PAID)
+                    || (targetStatus == OrderStatus.DELIVERED && order.getPaymentMethod() == PaymentMethod.ON_DELIVERY)
+                    || (targetStatus == OrderStatus.CANCELLED);
+            case PAID -> targetStatus == OrderStatus.DELIVERED || targetStatus == OrderStatus.CANCELLED;
             default -> false;
         };
 
