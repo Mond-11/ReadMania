@@ -73,6 +73,18 @@ public class GlobalExceptionHandler extends ResponseEntityExceptionHandler {
         return problemDetail;
     }
 
+    @ExceptionHandler(OrderStatusConflictException.class)
+    public ProblemDetail handleOrderStatusConflictException(OrderStatusConflictException ex, HttpServletRequest request) {
+        ProblemDetail problemDetail = ProblemDetail.forStatusAndDetail(HttpStatus.CONFLICT, ex.getMessage());
+        problemDetail.setTitle("Конфлікт статусу замовлення");
+        problemDetail.setType(URI.create("urn:readmania:error:order-status-conflict"));
+        problemDetail.setInstance(URI.create(request.getRequestURI()));
+        if (ex.getCurrentStatus() != null) {
+            problemDetail.setProperty("currentStatus", ex.getCurrentStatus());
+        }
+        return problemDetail;
+    }
+
     @ExceptionHandler(BusinessRuleException.class)
     public ProblemDetail handleBusinessRuleException(BusinessRuleException ex, HttpServletRequest request) {
         HttpStatus status = ex.getStatus() != null ? ex.getStatus() : HttpStatus.BAD_REQUEST;

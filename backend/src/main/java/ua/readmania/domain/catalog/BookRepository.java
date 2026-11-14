@@ -58,6 +58,9 @@ public interface BookRepository extends JpaRepository<Book, Long>, JpaSpecificat
     @Query(value = "SELECT COUNT(*) > 0 FROM books WHERE genre_id = :genreId", nativeQuery = true)
     boolean existsAnyByGenreIdIncludingDeleted(@Param("genreId") Long genreId);
 
+    @Query(value = "SELECT genre_id, COUNT(*) FROM books WHERE deleted_at IS NULL GROUP BY genre_id", nativeQuery = true)
+    List<Object[]> countActiveBooksByGenreGrouped();
+
     @Modifying
     @Query(value = "UPDATE books SET deleted_at = CURRENT_TIMESTAMP WHERE id = :id", nativeQuery = true)
     int softDeleteById(@Param("id") Long id);

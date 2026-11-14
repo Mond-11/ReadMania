@@ -71,6 +71,24 @@ public final class BookSpecifications {
         };
     }
 
+    public static Specification<Book> stockGreaterThanOrEqual(Integer minStock) {
+        return (root, cq, cb) -> {
+            if (minStock == null) {
+                return cb.conjunction();
+            }
+            return cb.greaterThanOrEqualTo(root.get("stock"), minStock);
+        };
+    }
+
+    public static Specification<Book> stockLessThanOrEqual(Integer maxStock) {
+        return (root, cq, cb) -> {
+            if (maxStock == null) {
+                return cb.conjunction();
+            }
+            return cb.lessThanOrEqualTo(root.get("stock"), maxStock);
+        };
+    }
+
     public static Specification<Book> inStockOnly(Boolean inStockOnly) {
         return (root, cq, cb) -> {
             if (inStockOnly == null || !inStockOnly) {
@@ -81,49 +99,14 @@ public final class BookSpecifications {
     }
 
     public static Specification<Book> filter(String query, Long genreId, Long authorId, BigDecimal minPrice, BigDecimal maxPrice, Boolean inStock) {
-        return (root, cq, cb) -> {
-            List<Predicate> predicates = new ArrayList<>();
-
-            if (query != null && !query.isBlank()) {
-                String pattern = "%" + query.trim().toLowerCase() + "%";
-                Join<Book, Author> authorsJoin = root.join("authors", JoinType.LEFT);
-                Predicate titleMatch = cb.like(cb.lower(root.get("title")), pattern);
-                Predicate authorMatch = cb.like(cb.lower(authorsJoin.get("name")), pattern);
-                predicates.add(cb.or(titleMatch, authorMatch));
-                if (cq != null) {
-                    cq.distinct(true);
-                }
-            }
-
-            if (genreId != null) {
-                predicates.add(cb.equal(root.get("genre").get("id"), genreId));
-            }
-
-            if (authorId != null) {
-                Join<Book, Author> authorsJoin = root.join("authors", JoinType.INNER);
-                predicates.add(cb.equal(authorsJoin.get("id"), authorId));
-                if (cq != null) {
-                    cq.distinct(true);
-                }
-            }
-
-            if (minPrice != null) {
-                predicates.add(cb.greaterThanOrEqualTo(root.get("price"), minPrice));
-            }
-
-            if (maxPrice != null) {
-                predicates.add(cb.lessThanOrEqualTo(root.get("price"), maxPrice));
-            }
-
-            if (inStock != null && inStock) {
-                predicates.add(cb.greaterThan(root.get("stock"), 0));
-            }
-
-            return cb.and(predicates.toArray(new Predicate[0]));
-        };
+        return filter(query, null, genreId, null, authorId, minPrice, maxPrice, null, null, inStock);
     }
 
     public static Specification<Book> filter(String query, String genreName, Long genreId, String authorName, Long authorId, BigDecimal minPrice, BigDecimal maxPrice, Boolean inStock) {
+        return filter(query, genreName, genreId, authorName, authorId, minPrice, maxPrice, null, null, inStock);
+    }
+
+    public static Specification<Book> filter(String query, String genreName, Long genreId, String authorName, Long authorId, BigDecimal minPrice, BigDecimal maxPrice, Integer stockMin, Integer stockMax, Boolean inStock) {
         return (root, cq, cb) -> {
             List<Predicate> predicates = new ArrayList<>();
 
@@ -165,6 +148,14 @@ public final class BookSpecifications {
 
             if (maxPrice != null) {
                 predicates.add(cb.lessThanOrEqualTo(root.get("price"), maxPrice));
+            }
+
+            if (stockMin != null) {
+                predicates.add(cb.greaterThanOrEqualTo(root.get("stock"), stockMin));
+            }
+
+            if (stockMax != null) {
+                predicates.add(cb.lessThanOrEqualTo(root.get("stock"), stockMax));
             }
 
             if (inStock != null && inStock) {

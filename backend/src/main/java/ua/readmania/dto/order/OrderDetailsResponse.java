@@ -4,6 +4,7 @@ import java.math.BigDecimal;
 import java.time.Instant;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Map;
 import ua.readmania.domain.order.DeliveryMethod;
 import ua.readmania.domain.order.Order;
 import ua.readmania.domain.order.OrderStatus;
@@ -38,6 +39,10 @@ public class OrderDetailsResponse {
     }
 
     public static OrderDetailsResponse fromEntity(Order order, List<OrderStatusHistoryResponse> statusHistory) {
+        return fromEntity(order, statusHistory, null);
+    }
+
+    public static OrderDetailsResponse fromEntity(Order order, List<OrderStatusHistoryResponse> statusHistory, Map<Long, Integer> bookRatings) {
         if (order == null) {
             return null;
         }
@@ -64,7 +69,11 @@ public class OrderDetailsResponse {
         response.setStatusChangedAt(order.getStatusChangedAt());
         response.setDeliveredAt(order.getDeliveredAt());
         if (order.getItems() != null) {
-            response.setItems(order.getItems().stream().map(OrderItemResponse::fromEntity).toList());
+            response.setItems(order.getItems().stream().map(item -> {
+                Long bookId = item.getBook() != null ? item.getBook().getId() : null;
+                Integer rating = (bookRatings != null && bookId != null) ? bookRatings.get(bookId) : null;
+                return OrderItemResponse.fromEntity(item, rating);
+            }).toList());
         }
         response.setStatusHistory(statusHistory != null ? statusHistory : new ArrayList<>());
         return response;

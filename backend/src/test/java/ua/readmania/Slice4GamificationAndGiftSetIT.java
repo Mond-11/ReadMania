@@ -312,11 +312,13 @@ public class Slice4GamificationAndGiftSetIT extends BaseIntegrationTest {
                 .andExpect(jsonPath("$", hasSize(1)))
                 .andExpect(jsonPath("$[0].bookTitle", is("Інтернат")));
 
-        // Публічний перегляд оцінок книги
+        // Публічний перегляд оцінок книги (без витоку userId та персональних даних)
         mockMvc.perform(get("/api/ratings/book/" + book1.getId()))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$", hasSize(1)))
-                .andExpect(jsonPath("$[0].value", is(5)));
+                .andExpect(jsonPath("$[0].value", is(5)))
+                .andExpect(jsonPath("$[0].userId").doesNotExist())
+                .andExpect(jsonPath("$[0].userFullName").doesNotExist());
     }
 
     // ==========================================

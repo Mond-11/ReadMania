@@ -11,11 +11,16 @@ public class OrderItemResponse {
     private BigDecimal priceSnapshot;
     private int quantity;
     private BigDecimal subtotal;
+    private Integer userRating;
 
     public OrderItemResponse() {
     }
 
     public static OrderItemResponse fromEntity(OrderItem item) {
+        return fromEntity(item, null);
+    }
+
+    public static OrderItemResponse fromEntity(OrderItem item, Integer userRating) {
         if (item == null) {
             return null;
         }
@@ -30,6 +35,7 @@ public class OrderItemResponse {
         if (item.getPriceSnapshot() != null) {
             response.setSubtotal(item.getPriceSnapshot().multiply(BigDecimal.valueOf(item.getQuantity())));
         }
+        response.setUserRating(userRating);
         return response;
     }
 
@@ -79,5 +85,13 @@ public class OrderItemResponse {
 
     public void setSubtotal(BigDecimal subtotal) {
         this.subtotal = subtotal;
+    }
+
+    public Integer getUserRating() {
+        return userRating;
+    }
+
+    public void setUserRating(Integer userRating) {
+        this.userRating = userRating;
     }
 }

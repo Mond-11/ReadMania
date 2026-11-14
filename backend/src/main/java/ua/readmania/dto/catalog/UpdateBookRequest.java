@@ -26,12 +26,14 @@ public class UpdateBookRequest {
     @Min(value = 0, message = "Кількість на складі не може бути від'ємною")
     private int stock = 0;
 
+    @NotBlank(message = "Видавництво не може бути порожнім. Приклад: А-БА-БА-ГА-ЛА-МА-ГА")
     @Size(max = 255, message = "Видавництво не повинно перевищувати 255 символів")
-    private String publisher;
+    private String publisher = "Невідоме видавництво";
 
+    @NotNull(message = "Рік видання обов'язковий. Приклад: 2024")
     @Min(value = 1450, message = "Рік видання не може бути раніше 1450")
     @jakarta.validation.constraints.Max(value = 2100, message = "Рік видання не може бути пізніше 2100")
-    private Integer publicationYear;
+    private Integer publicationYear = 2024;
 
     private String description;
 

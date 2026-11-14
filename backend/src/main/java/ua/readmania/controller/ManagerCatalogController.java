@@ -16,7 +16,9 @@ import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 import org.springframework.web.multipart.MultipartFile;
 import ua.readmania.common.BusinessRuleException;
+import ua.readmania.dto.catalog.AuthorResponse;
 import ua.readmania.dto.catalog.BookDetailsResponse;
+import ua.readmania.dto.catalog.CreateAuthorRequest;
 import ua.readmania.dto.catalog.CreateBookRequest;
 import ua.readmania.dto.catalog.CsvImportResponse;
 import ua.readmania.dto.catalog.GenreRequest;
@@ -96,6 +98,16 @@ public class ManagerCatalogController {
     public ResponseEntity<Void> deleteGenre(@PathVariable("id") Long id) {
         managerCatalogService.deleteGenre(id);
         return ResponseEntity.noContent().build();
+    }
+
+    // =========================================================================
+    // Authors Management
+    // =========================================================================
+
+    @PostMapping("/authors")
+    public ResponseEntity<AuthorResponse> createAuthor(@Valid @RequestBody CreateAuthorRequest request) {
+        AuthorResponse response = managerCatalogService.createAuthor(request);
+        return ResponseEntity.status(HttpStatus.CREATED).body(response);
     }
 
     // =========================================================================

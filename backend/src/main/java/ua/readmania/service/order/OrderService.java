@@ -4,16 +4,21 @@ import java.math.BigDecimal;
 import java.math.RoundingMode;
 import java.time.Instant;
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
+import java.util.Objects;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
+import org.springframework.orm.ObjectOptimisticLockingFailureException;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import ua.readmania.common.BusinessRuleException;
 import ua.readmania.common.ConflictException;
 import ua.readmania.common.NotFoundException;
+import ua.readmania.common.OrderStatusConflictException;
 import ua.readmania.domain.cart.CartItem;
 import ua.readmania.domain.cart.CartItemRepository;
 import ua.readmania.domain.catalog.Book;
@@ -23,6 +28,8 @@ import ua.readmania.domain.institution.InstitutionRepository;
 import ua.readmania.domain.loyalty.BonusTransaction;
 import ua.readmania.domain.loyalty.BonusTransactionRepository;
 import ua.readmania.domain.loyalty.BonusTransactionType;
+import ua.readmania.domain.loyalty.Rating;
+import ua.readmania.domain.loyalty.RatingRepository;
 import ua.readmania.domain.order.Order;
 import ua.readmania.domain.order.OrderItem;
 import ua.readmania.domain.order.OrderRepository;
@@ -55,6 +62,7 @@ public class OrderService {
     private final InstitutionRepository institutionRepository;
     private final UserRepository userRepository;
     private final BonusTransactionRepository bonusTransactionRepository;
+    private final RatingRepository ratingRepository;
     private final ua.readmania.service.notification.NotificationService notificationService;
 
     public OrderService(OrderRepository orderRepository,
@@ -64,6 +72,7 @@ public class OrderService {
                         InstitutionRepository institutionRepository,
                         UserRepository userRepository,
                         BonusTransactionRepository bonusTransactionRepository,
+                        RatingRepository ratingRepository,
                         ua.readmania.service.notification.NotificationService notificationService) {
         this.orderRepository = orderRepository;
         this.orderStatusHistoryRepository = orderStatusHistoryRepository;
@@ -72,6 +81,7 @@ public class OrderService {
         this.institutionRepository = institutionRepository;
         this.userRepository = userRepository;
         this.bonusTransactionRepository = bonusTransactionRepository;
+        this.ratingRepository = ratingRepository;
         this.notificationService = notificationService;
     }
 
@@ -246,7 +256,8 @@ public class OrderService {
 
         notificationService.sendNewOrderAlertToManagers(savedOrder);
 
-        return OrderDetailsResponse.fromEntity(savedOrder, List.of(OrderStatusHistoryResponse.fromEntity(history)));
+        Map<Long, Integer> bookRatings = getBookRatingsForUser(userId, savedOrder.getItems());
+        return OrderDetailsResponse.fromEntity(savedOrder, List.of(OrderStatusHistoryResponse.fromEntity(history)), bookRatings);
     }
 
     @Transactional
@@ -357,7 +368,8 @@ public class OrderService {
 
         notificationService.sendNewOrderAlertToManagers(savedOrder);
 
-        return OrderDetailsResponse.fromEntity(savedOrder, List.of(OrderStatusHistoryResponse.fromEntity(history)));
+        Map<Long, Integer> bookRatings = getBookRatingsForUser(userId, savedOrder.getItems());
+        return OrderDetailsResponse.fromEntity(savedOrder, List.of(OrderStatusHistoryResponse.fromEntity(history)), bookRatings);
     }
 
     @Transactional(readOnly = true)
@@ -380,7 +392,8 @@ public class OrderService {
                 .map(OrderStatusHistoryResponse::fromEntity)
                 .toList();
 
-        return OrderDetailsResponse.fromEntity(order, history);
+        Map<Long, Integer> bookRatings = getBookRatingsForUser(userId, order.getItems());
+        return OrderDetailsResponse.fromEntity(order, history, bookRatings);
     }
 
     @Transactional
@@ -393,8 +406,12 @@ public class OrderService {
         }
 
         // C3: Cancellation is permitted only for user's own orders in AWAITING_PAYMENT status with TRANSFER payment method
-        if (order.getStatus() != OrderStatus.AWAITING_PAYMENT || order.getPaymentMethod() != PaymentMethod.TRANSFER) {
-            throw new BusinessRuleException("Скасування користувачем дозволено лише для замовлень, які очікують на оплату переказом (AWAITING_PAYMENT)");
+        if (order.getStatus() != OrderStatus.AWAITING_PAYMENT) {
+            throw new OrderStatusConflictException("Неможливо скасувати замовлення у поточному статусі '" + order.getStatus() + "'", order.getStatus());
+        }
+
+        if (order.getPaymentMethod() != PaymentMethod.TRANSFER) {
+            throw new BusinessRuleException("Скасування користувачем дозволено лише для замовлень з оплатою переказом (TRANSFER)");
         }
 
         OrderStatus previousStatus = order.getStatus();
@@ -425,7 +442,13 @@ public class OrderService {
         OrderStatusHistory history = new OrderStatusHistory(order, previousStatus, OrderStatus.CANCELLED, order.getUser(), "Скасовано покупцем");
         orderStatusHistoryRepository.save(history);
 
-        Order savedOrder = orderRepository.save(order);
+        Order savedOrder;
+        try {
+            savedOrder = orderRepository.saveAndFlush(order);
+        } catch (ObjectOptimisticLockingFailureException | jakarta.persistence.OptimisticLockException e) {
+            Order actualOrder = orderRepository.findById(orderId).orElse(order);
+            throw new OrderStatusConflictException("Замовлення було змінено іншим процесом. Поточний статус: " + actualOrder.getStatus(), actualOrder.getStatus(), e);
+        }
 
         notificationService.sendOrderStatusChanged(savedOrder);
 
@@ -434,7 +457,29 @@ public class OrderService {
                 .map(OrderStatusHistoryResponse::fromEntity)
                 .toList();
 
-        return OrderDetailsResponse.fromEntity(savedOrder, historyList);
+        Map<Long, Integer> bookRatings = getBookRatingsForUser(userId, savedOrder.getItems());
+        return OrderDetailsResponse.fromEntity(savedOrder, historyList, bookRatings);
+    }
+
+    private Map<Long, Integer> getBookRatingsForUser(Long userId, List<OrderItem> items) {
+        if (userId == null || items == null || items.isEmpty()) {
+            return Map.of();
+        }
+        List<Long> bookIds = items.stream()
+                .map(item -> item.getBook() != null ? item.getBook().getId() : null)
+                .filter(Objects::nonNull)
+                .toList();
+        if (bookIds.isEmpty()) {
+            return Map.of();
+        }
+        List<Rating> ratings = ratingRepository.findByUserIdAndBookIdIn(userId, bookIds);
+        Map<Long, Integer> ratingMap = new HashMap<>();
+        for (Rating r : ratings) {
+            if (r.getBook() != null && r.getBook().getId() != null) {
+                ratingMap.put(r.getBook().getId(), (int) r.getValue());
+            }
+        }
+        return ratingMap;
     }
 
     private User getUserOrThrow(Long userId) {

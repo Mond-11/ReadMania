@@ -19,6 +19,7 @@ import ua.readmania.domain.order.OrderStatus;
 import ua.readmania.domain.user.User;
 import ua.readmania.domain.user.UserRepository;
 import ua.readmania.dto.rating.CreateRatingRequest;
+import ua.readmania.dto.rating.PublicRatingResponse;
 import ua.readmania.dto.rating.RatingResponse;
 
 @Service
@@ -106,9 +107,9 @@ public class RatingService {
     }
 
     @Transactional(readOnly = true)
-    public List<RatingResponse> getBookRatings(Long bookId) {
+    public List<PublicRatingResponse> getBookRatings(Long bookId) {
         return ratingRepository.findByBookIdOrderByCreatedAtDesc(bookId).stream()
-                .map(RatingResponse::fromEntity)
+                .map(PublicRatingResponse::fromEntity)
                 .toList();
     }
 }

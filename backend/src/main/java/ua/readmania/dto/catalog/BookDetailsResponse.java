@@ -18,6 +18,7 @@ public class BookDetailsResponse {
     private int stock;
     private String publisher;
     private Integer publicationYear;
+    private boolean canDelete;
     private Long version;
     private Double averageRating;
     private Integer ratingsCount;
@@ -30,6 +31,10 @@ public class BookDetailsResponse {
     }
 
     public static BookDetailsResponse fromEntity(Book book, Double averageRating, Integer ratingsCount, boolean hasCover) {
+        return fromEntity(book, averageRating, ratingsCount, hasCover, false);
+    }
+
+    public static BookDetailsResponse fromEntity(Book book, Double averageRating, Integer ratingsCount, boolean hasCover, boolean canDelete) {
         if (book == null) {
             return null;
         }
@@ -48,6 +53,7 @@ public class BookDetailsResponse {
         response.setStock(book.getStock());
         response.setPublisher(book.getPublisher());
         response.setPublicationYear(book.getPublicationYear());
+        response.setCanDelete(canDelete);
         response.setVersion(book.getVersion());
         response.setAverageRating(averageRating != null ? Math.round(averageRating * 10.0) / 10.0 : null);
         response.setRatingsCount(ratingsCount != null ? ratingsCount : 0);
@@ -138,6 +144,14 @@ public class BookDetailsResponse {
 
     public void setPublicationYear(Integer publicationYear) {
         this.publicationYear = publicationYear;
+    }
+
+    public boolean isCanDelete() {
+        return canDelete;
+    }
+
+    public void setCanDelete(boolean canDelete) {
+        this.canDelete = canDelete;
     }
 
     public Long getVersion() {
