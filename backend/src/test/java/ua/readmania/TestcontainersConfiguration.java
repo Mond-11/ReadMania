@@ -1,15 +1,16 @@
 package ua.readmania;
 
-import org.springframework.boot.test.context.TestConfiguration;
 import org.springframework.boot.testcontainers.service.connection.ServiceConnection;
+import org.springframework.boot.webmvc.test.autoconfigure.MockMvcBuilderCustomizer;
 import org.springframework.context.annotation.Bean;
+import org.springframework.context.annotation.Configuration;
 import org.springframework.test.web.servlet.setup.ConfigurableMockMvcBuilder;
 import org.springframework.test.web.servlet.setup.MockMvcConfigurer;
 import org.springframework.web.context.WebApplicationContext;
 import org.testcontainers.containers.PostgreSQLContainer;
 import org.testcontainers.utility.DockerImageName;
 
-@TestConfiguration(proxyBeanMethods = false)
+@Configuration(proxyBeanMethods = false)
 public class TestcontainersConfiguration {
 
     private static final PostgreSQLContainer<?> POSTGRES_CONTAINER =
@@ -29,7 +30,7 @@ public class TestcontainersConfiguration {
     }
 
     @Bean
-    org.springframework.boot.webmvc.test.autoconfigure.MockMvcBuilderCustomizer csrfMockMvcBuilderCustomizer() {
+    MockMvcBuilderCustomizer csrfMockMvcBuilderCustomizer() {
         return builder -> builder.apply(new MockMvcConfigurer() {
             @Override
             public org.springframework.test.web.servlet.request.RequestPostProcessor beforeMockMvcCreated(

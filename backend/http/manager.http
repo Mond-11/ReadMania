@@ -1,0 +1,116 @@
+### ==============================================================================
+### Домен: Адміністрування панелі менеджера (Зріз 5)
+### ==============================================================================
+
+### 1. Вхід менеджера (Manager Login)
+POST {{host}}/api/auth/login
+Content-Type: application/json
+
+{
+  "email": "{{managerEmail}}",
+  "password": "{{managerPassword}}"
+}
+
+### ==============================================================================
+### Модуль 1. Керування обліковими записами та розблокування
+### ==============================================================================
+
+### 2. Пошук та перегляд користувачів (GET /api/manager/users)
+GET {{host}}/api/manager/users?email=reader&status=ACTIVE&page=0&size=10&sort=createdAt,desc
+
+### 3. Детальна картка облікового запису користувача (GET /api/manager/users/{id})
+GET {{host}}/api/manager/users/2
+
+### 4. Блокування облікового запису (POST /api/manager/users/{id}/block)
+POST {{host}}/api/manager/users/2/block
+Content-Type: application/json
+
+{
+  "reason": "Систематичне порушення правил спільноти та зловживання відгуками"
+}
+
+### 5. Перегляд списку запитів на розблокування (GET /api/manager/users/unblock-requests)
+GET {{host}}/api/manager/users/unblock-requests
+
+### 6. Пакетне розблокування облікових записів (POST /api/manager/users/unblock)
+POST {{host}}/api/manager/users/unblock
+Content-Type: application/json
+
+{
+  "userIds": [2]
+}
+
+### ==============================================================================
+### Модуль 2. Виявлення та видалення неактивних облікових записів
+### ==============================================================================
+
+### 7. Перелік акаунтів, що підлягають видаленню (GET /api/manager/users/inactive)
+GET {{host}}/api/manager/users/inactive
+
+### 8. Пакетне видалення неактивних акаунтів з анонімізацією історії (DELETE /api/manager/users/inactive)
+DELETE {{host}}/api/manager/users/inactive
+Content-Type: application/json
+
+{
+  "userIds": [3]
+}
+
+### ==============================================================================
+### Модуль 3. Керування переліком закладів-одержувачів (CRUD)
+### ==============================================================================
+
+### 9. Перегляд списку закладів для менеджера (GET /api/manager/institutions)
+GET {{host}}/api/manager/institutions?query=дитячий&type=ORPHANAGE
+
+### 10. Додавання нового закладу (POST /api/manager/institutions)
+POST {{host}}/api/manager/institutions
+Content-Type: application/json
+
+{
+  "name": "Київський дитячий будинок «Сонечко»",
+  "type": "ORPHANAGE",
+  "address": "м. Київ, вул. Дегтярівська, 15",
+  "contactPerson": "Ковальчук Олена Вікторівна, тел. +380441234567"
+}
+
+### 11. Перегляд деталей закладу та прапорця canDelete (GET /api/manager/institutions/{id})
+GET {{host}}/api/manager/institutions/1
+
+### 12. Редагування даних закладу (PUT /api/manager/institutions/{id})
+PUT {{host}}/api/manager/institutions/1
+Content-Type: application/json
+
+{
+  "name": "Київський міський дитячий будинок «Сонечко»",
+  "type": "ORPHANAGE",
+  "address": "м. Київ, вул. Дегтярівська, 15-А",
+  "contactPerson": "Ковальчук Олена Вікторівна, директор"
+}
+
+### 13. Пакетне видалення закладів без активних замовлень (DELETE /api/manager/institutions)
+DELETE {{host}}/api/manager/institutions
+Content-Type: application/json
+
+{
+  "institutionIds": [2]
+}
+
+### ==============================================================================
+### Модуль 4. Журнал подарованих книг (Gift Log)
+### ==============================================================================
+
+### 14. Перегляд журналу подарованих книг зі статистикою (GET /api/manager/gift-log)
+GET {{host}}/api/manager/gift-log?dateFrom=2024-01-01&dateTo=2026-12-31
+
+### ==============================================================================
+### Модуль 5. Аналітична панель (Analytics)
+### ==============================================================================
+
+### 15. Вкладка 1: Затребуваність (GET /api/manager/analytics/demand)
+GET {{host}}/api/manager/analytics/demand?from=2026-08-01&to=2026-11-14
+
+### 16. Вкладка 2: Залишки на складі (GET /api/manager/analytics/stock)
+GET {{host}}/api/manager/analytics/stock
+
+### 17. Вкладка 3: Рейтинг видань та жанрів (GET /api/manager/analytics/ratings)
+GET {{host}}/api/manager/analytics/ratings?to=2026-11-14

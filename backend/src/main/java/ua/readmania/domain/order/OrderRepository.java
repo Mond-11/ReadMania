@@ -42,4 +42,23 @@ public interface OrderRepository extends JpaRepository<Order, Long>, JpaSpecific
 
     @Query("SELECT o FROM Order o WHERE o.status IN ('DELIVERED', 'CANCELLED') AND COALESCE(o.statusChangedAt, o.createdAt) < :before ORDER BY o.createdAt DESC")
     Page<Order> findArchivedOrdersOlderThanPaged(@Param("before") Instant before, Pageable pageable);
+
+    @Query("SELECT o.status, COUNT(o) FROM Order o WHERE o.user.id = :userId GROUP BY o.status")
+    List<Object[]> countOrdersByStatusForUser(@Param("userId") Long userId);
+
+    @org.springframework.data.jpa.repository.Modifying
+    @Query("UPDATE Order o SET o.user = null, o.recipientName = 'Видалений користувач', o.recipientPhone = null, o.deliveryAddress = null WHERE o.user.id IN :userIds")
+    int anonymizeOrdersForUsers(@Param("userIds") Collection<Long> userIds);
+
+    boolean existsByInstitutionIdAndStatusIn(Long institutionId, Collection<OrderStatus> statuses);
+
+    boolean existsByInstitutionIdInAndStatusIn(Collection<Long> institutionIds, Collection<OrderStatus> statuses);
+
+    List<Order> findByInstitutionIdInAndStatusIn(Collection<Long> institutionIds, Collection<OrderStatus> statuses);
+
+    long countByInstitutionId(Long institutionId);
+
+    @org.springframework.data.jpa.repository.Modifying
+    @Query("DELETE FROM Order o WHERE o.institution.id IN :institutionIds AND o.status IN :statuses")
+    int deleteByInstitutionIdInAndStatusIn(@Param("institutionIds") Collection<Long> institutionIds, @Param("statuses") Collection<OrderStatus> statuses);
 }
