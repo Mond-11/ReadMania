@@ -72,6 +72,7 @@ export const COMMON = {
   reset: 'Скинути',
   emptyDash: '—',
   skipToContent: 'Перейти до змісту',
+  breadcrumbs: 'Навігаційний ланцюжок',
 };
 
 export const PAGES = {

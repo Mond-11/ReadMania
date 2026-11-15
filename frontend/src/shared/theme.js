@@ -39,6 +39,10 @@ export const theme = createTheme({
   components: {
     Paper: { defaultProps: { withBorder: true } },
     Card: { defaultProps: { withBorder: true } },
+    Modal: { defaultProps: { centered: true } },
+    Tooltip: { defaultProps: { withArrow: true } },
+    ActionIcon: { defaultProps: { size: 'lg' } },
+    Table: { defaultProps: { verticalSpacing: 'sm', highlightOnHover: true, withTableBorder: true } },
   },
 });
 
