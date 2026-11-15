@@ -627,6 +627,126 @@ class SchemaIT extends BaseIntegrationTest {
         ).isInstanceOf(DataIntegrityViolationException.class);
     }
 
+    @Test
+    @DisplayName("V10: Дедуплікація закладів із переприв'язкою замовлень та збереженням найменшого id")
+    void shouldDeduplicateInstitutionsRetainingMinIdAndRelinkingOrders() {
+        // Тимчасово видаляємо індекс для емуляції стану старої бази з дублікатами
+        jdbcClient.sql("DROP INDEX IF EXISTS uk_institutions_lower_name").update();
+
+        Long id1 = jdbcClient.sql("""
+            INSERT INTO institutions (name, address, contact_person)
+            VALUES ('Лікарня "Надія"', 'Адреса 1', 'Контакт 1')
+            RETURNING id
+        """).query(Long.class).single();
+
+        Long id2 = jdbcClient.sql("""
+            INSERT INTO institutions (name, address, contact_person)
+            VALUES ('лікарня "надія"', 'Адреса 2', 'Контакт 2')
+            RETURNING id
+        """).query(Long.class).single();
+
+        Long userId = insertUser("giftuser@example.com");
+
+        // Замовлення, прив'язане до дубліката id2
+        Long orderId = jdbcClient.sql("""
+            INSERT INTO orders (user_id, type, status, payment_method, institution_id, institution_name, institution_contact_person, items_total, discount_amount, points_used, total_to_pay)
+            VALUES (:userId, 'GIFT', 'AWAITING_PAYMENT', 'ON_DELIVERY', :instId, 'Лікарня "Надія"', 'Контакт 2', 500.00, 0.00, 0, 500.00)
+            RETURNING id
+        """)
+                .param("userId", userId)
+                .param("instId", id2)
+                .query(Long.class)
+                .single();
+
+        // Виконання логіки міграції V10
+        jdbcClient.sql("""
+            UPDATE orders o
+            SET institution_id = canonical.min_id
+            FROM (
+                SELECT id, MIN(id) OVER (PARTITION BY LOWER(name)) AS min_id
+                FROM institutions
+            ) canonical
+            WHERE o.institution_id = canonical.id AND canonical.id != canonical.min_id
+        """).update();
+
+        jdbcClient.sql("""
+            DELETE FROM institutions
+            WHERE id NOT IN (
+                SELECT MIN(id)
+                FROM institutions
+                GROUP BY LOWER(name)
+            )
+        """).update();
+
+        jdbcClient.sql("CREATE UNIQUE INDEX IF NOT EXISTS uk_institutions_lower_name ON institutions (LOWER(name))").update();
+
+        // Перевірка: залишився тільки запис з id1 (найменший)
+        var remainingIds = jdbcClient.sql("SELECT id FROM institutions WHERE LOWER(name) = 'лікарня \"надія\"'")
+                .query(Long.class)
+                .list();
+        assertThat(remainingIds).containsExactly(id1);
+
+        // Перевірка: замовлення переприв'язалося на id1
+        Long updatedOrderInstId = jdbcClient.sql("SELECT institution_id FROM orders WHERE id = :orderId")
+                .param("orderId", orderId)
+                .query(Long.class)
+                .single();
+        assertThat(updatedOrderInstId).isEqualTo(id1);
+    }
+
+    @Test
+    @DisplayName("R__dev_seed: Ідемпотентне наповнення тестовими даними для всіх сутностей")
+    void shouldExecuteDevSeedIdempotentlyAndPopulateAllEntities() throws Exception {
+        org.springframework.core.io.Resource seedResource = new org.springframework.core.io.ClassPathResource("db/seed/R__dev_seed.sql");
+        String seedSql = new String(seedResource.getInputStream().readAllBytes(), java.nio.charset.StandardCharsets.UTF_8);
+
+        // Виконуємо seed перший раз
+        for (String statement : splitSqlStatements(seedSql)) {
+            if (!statement.isBlank()) {
+                jdbcClient.sql(statement).update();
+            }
+        }
+
+        // Перевірка наявності даних для всіх сутностей
+        assertThat(jdbcClient.sql("SELECT count(*) FROM users").query(Long.class).single()).isGreaterThanOrEqualTo(4);
+        assertThat(jdbcClient.sql("SELECT count(*) FROM unblock_requests").query(Long.class).single()).isGreaterThanOrEqualTo(1);
+        assertThat(jdbcClient.sql("SELECT count(*) FROM password_reset_tokens").query(Long.class).single()).isGreaterThanOrEqualTo(1);
+        assertThat(jdbcClient.sql("SELECT count(*) FROM genres").query(Long.class).single()).isGreaterThanOrEqualTo(7);
+        assertThat(jdbcClient.sql("SELECT count(*) FROM authors").query(Long.class).single()).isGreaterThanOrEqualTo(11);
+        assertThat(jdbcClient.sql("SELECT count(*) FROM institutions").query(Long.class).single()).isEqualTo(3);
+        assertThat(jdbcClient.sql("SELECT count(*) FROM books").query(Long.class).single()).isGreaterThanOrEqualTo(13);
+        assertThat(jdbcClient.sql("SELECT count(*) FROM book_authors").query(Long.class).single()).isGreaterThanOrEqualTo(13);
+        assertThat(jdbcClient.sql("SELECT count(*) FROM cart_items").query(Long.class).single()).isGreaterThanOrEqualTo(2);
+        assertThat(jdbcClient.sql("SELECT count(*) FROM challenges").query(Long.class).single()).isGreaterThanOrEqualTo(2);
+        assertThat(jdbcClient.sql("SELECT count(*) FROM challenge_completions").query(Long.class).single()).isGreaterThanOrEqualTo(1);
+        assertThat(jdbcClient.sql("SELECT count(*) FROM orders").query(Long.class).single()).isGreaterThanOrEqualTo(5);
+        assertThat(jdbcClient.sql("SELECT count(*) FROM order_items").query(Long.class).single()).isGreaterThanOrEqualTo(6);
+        assertThat(jdbcClient.sql("SELECT count(*) FROM order_status_history").query(Long.class).single()).isGreaterThanOrEqualTo(8);
+        assertThat(jdbcClient.sql("SELECT count(*) FROM gift_log").query(Long.class).single()).isGreaterThanOrEqualTo(1);
+        assertThat(jdbcClient.sql("SELECT count(*) FROM ratings").query(Long.class).single()).isGreaterThanOrEqualTo(2);
+        assertThat(jdbcClient.sql("SELECT count(*) FROM bonus_transactions").query(Long.class).single()).isGreaterThanOrEqualTo(4);
+
+        // Виконуємо seed другий раз для перевірки ідемпотентності (не повинно бути помилок або дублювання)
+        for (String statement : splitSqlStatements(seedSql)) {
+            if (!statement.isBlank()) {
+                jdbcClient.sql(statement).update();
+            }
+        }
+
+        assertThat(jdbcClient.sql("SELECT count(*) FROM institutions").query(Long.class).single()).isEqualTo(3);
+        assertThat(jdbcClient.sql("SELECT count(*) FROM challenges").query(Long.class).single()).isEqualTo(2);
+        assertThat(jdbcClient.sql("SELECT count(*) FROM orders").query(Long.class).single()).isEqualTo(5);
+    }
+
+    private java.util.List<String> splitSqlStatements(String sql) {
+        // Простий поділ за крапкою з комою
+        String cleaned = sql.replaceAll("--.*", "");
+        return java.util.Arrays.stream(cleaned.split(";"))
+                .map(String::trim)
+                .filter(s -> !s.isEmpty())
+                .toList();
+    }
+
     // Допоміжні методи для підготовки тестових даних
 
     private Long insertUser(String email) {
