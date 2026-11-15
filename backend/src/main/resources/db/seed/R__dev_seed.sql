@@ -187,5 +187,6 @@ ON CONFLICT DO NOTHING;
 -- Приклад активного читацького виклику
 INSERT INTO challenges (title, description, required_books, genre_id, deadline, reward_points, status)
 SELECT 'Осінній марафон класики', 'Прочитайте 3 книги класичної літератури до кінця року та отримайте бонуси', 3, g.id, TIMESTAMPTZ '2026-12-31 23:59:59+02', 150, 'ACTIVE'
-FROM genres g WHERE g.name = 'Класика'
-ON CONFLICT DO NOTHING;
+FROM genres g
+WHERE g.name = 'Класика'
+  AND NOT EXISTS (SELECT 1 FROM challenges WHERE title = 'Осінній марафон класики');
