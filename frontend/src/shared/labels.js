@@ -232,6 +232,7 @@ export const CHECKOUT = {
   requisitesIban: "Рахунок (IBAN)",
   requisitesPurpose: "Призначення платежу",
   requisitesPurposeValue: "Оплата замовлення (номер буде після оформлення)",
+  requisitesPurposeOrder: (id) => `Оплата замовлення №${id}`,
   unavailableTitle: "Деякі видання недоступні",
   unavailableText:
     "Вилучіть їх із кошика або зменшіть кількість, щоб оформити замовлення.",

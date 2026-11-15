@@ -8,7 +8,8 @@ const REQUISITES = {
   iban: 'UA00 0000 0000 0000 0000 0000 0000 0',
 };
 
-export function TransferRequisites() {
+// orderId: when the order already exists (its page in the personal account), the payment purpose names it.
+export function TransferRequisites({ orderId }) {
   return (
     <Section title={CHECKOUT.requisitesTitle}>
       <Alert variant="light" color="brand">{CHECKOUT.requisitesHint}</Alert>
@@ -22,7 +23,7 @@ export function TransferRequisites() {
       </Stack>
       <Stack gap={4}>
         <Text size="sm" c="dimmed">{CHECKOUT.requisitesPurpose}</Text>
-        <Text fw={600}>{CHECKOUT.requisitesPurposeValue}</Text>
+        <Text fw={600}>{orderId ? CHECKOUT.requisitesPurposeOrder(orderId) : CHECKOUT.requisitesPurposeValue}</Text>
       </Stack>
     </Section>
   );
