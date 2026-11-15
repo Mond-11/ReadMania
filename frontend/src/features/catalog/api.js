@@ -9,6 +9,14 @@ export function useBooks(params) {
   });
 }
 
+export function useBook(id) {
+  return useQuery({
+    queryKey: ['book', id],
+    queryFn: ({ signal }) => api.get(`/api/catalog/books/${id}`, { signal }),
+    enabled: id != null,
+  });
+}
+
 export function useAuthors() {
   return useQuery({
     queryKey: ['authors'],
