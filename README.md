@@ -133,6 +133,9 @@ ReadMania/
 │   │   ├── App.jsx, App.css           # Головний компонент та його стилі
 │   │   ├── main.jsx                   # Точка монтування React-застосунку
 │   │   └── index.css                  # Глобальні стилі
+│   ├── Dockerfile                     # Multi-stage збірка клієнта на базі Node 22 + Nginx Alpine
+│   ├── nginx.conf                     # Конфігурація веб-сервера Nginx (SPA-маршрутизація, gzip, проксі /api)
+│   ├── .dockerignore                  # Виключення директорій під час збірки Docker-образу фронтенду
 │   ├── index.html                     # HTML-шаблон сторінки
 │   ├── package.json                   # Залежності та npm-скрипти
 │   ├── vite.config.js                 # Конфігурація збирача Vite
@@ -146,7 +149,8 @@ ReadMania/
 │   ├── ERD.md                         # Діаграма сутностей і зв'язків (Mermaid ERD) та опис схеми
 │   ├── Технічне завдання розробки Вебзастосунку.pdf # ТЗ проєкту
 │   └── Cпецифікація вимог до Вебзастосунку.pdf       # SRS проєкту
-├── docker-compose.yml                 # Локальне середовище бази даних PostgreSQL 17
+├── docker-compose.yml                 # Оркестрація локального середовища: PostgreSQL 17, Backend та Frontend
+├── run-docker.sh                      # Скрипт швидкого керування повним стеком контейнерів Docker
 ├── .editorconfig                      # Стандарти форматування коду
 ├── .gitattributes                     # Нормалізація закінчень рядків у Git
 ├── .gitignore                         # Виключення тимчасових та згенерованих файлів
@@ -203,22 +207,30 @@ ReadMania/
 - **Node.js:** v20+ та npm
 - **Docker:** встановлений та запущений Docker Daemon
 
-### 1. Запуск через Docker (БД + Бекенд одним скриптом)
+### 1. Запуск через Docker (БД + Бекенд + Фронтенд одним скриптом)
 ```bash
-# Запуск усього стеку (PostgreSQL 17 + Spring Boot Backend):
+# Запуск усього стеку (PostgreSQL 17 + Spring Boot Backend + React Frontend):
 ./run-docker.sh up
 
 # Або напряму через Docker Compose:
 docker compose up -d --build
 ```
-- **Backend API:** `http://localhost:8080`
+- **Frontend UI:** `http://localhost:5173` (Nginx + SPA клієнт з автоматичним проксуванням API)
+- **Backend API:** `http://localhost:8080` (Spring Boot REST API)
+- **Swagger UI:** `http://localhost:8080/swagger-ui.html` (інтерактивна документація API)
 - **PostgreSQL 17:** `localhost:5432` (`readmania` / `readmania`)
-- **Статус / Логи / Зупинка:**
-  ```bash
-  ./run-docker.sh status   # перевірка стану контейнерів
-  ./run-docker.sh logs     # перегляд логів у реальному часі
-  ./run-docker.sh down     # зупинка контейнерів
-  ```
+- **Healthchecks:**
+  - Backend: `http://localhost:8080/actuator/health`
+  - Frontend: `http://localhost:5173`
+
+**Статус / Логи / Зупинка:**
+```bash
+./run-docker.sh status   # перевірка стану контейнерів
+./run-docker.sh logs     # перегляд логів у реальному часі
+./run-docker.sh restart  # перезапуск з перезбіркою образів
+./run-docker.sh down     # зупинка контейнерів
+./run-docker.sh clean    # повне очищення (контейнери + томи PostgreSQL)
+```
 
 ### 2. Запуск бекенду локально (без Docker для бекенду)
 ```bash
@@ -234,6 +246,18 @@ cd backend
 ./mvnw spring-boot:run -Dspring-boot.run.profiles=local
 ```
 Сервер буде доступний за адресою `http://localhost:8080`.
+
+### 3. Запуск фронтенду локально (без Docker для фронтенду)
+```bash
+cd frontend
+
+# Встановлення залежностей:
+npm install
+
+# Запуск Vite dev-сервера з HMR:
+npm run dev
+```
+Клієнтський застосунок буде доступний за адресою `http://localhost:5173`. Усі запити до `/api/**` автоматично проксуються через Vite dev server на локальний бекенд `http://localhost:8080`.
 
 ### 4. Тестові облікові записи (профіль `local`)
 

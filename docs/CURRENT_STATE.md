@@ -41,21 +41,28 @@
 ## 2. Працюючий функціонал за підсистемами
 
 ### 2.1. Інфраструктура, розгортання та CI/CD
-1. **Multi-stage Dockerfile (`backend/Dockerfile`):**
+1. **Multi-stage Dockerfile бекенду (`backend/Dockerfile`):**
    - Побудований на базі Eclipse Temurin JDK 21 (builder) та JRE 21 (runtime).
    - Запуск застосунку виконується від непривілейованого системного користувача `spring:spring` для захисту хоста.
-   - Вбудована перевірка здоров'я контейнера (`HEALTHCHECK`).
-2. **Оркестрація Docker Compose (`docker-compose.yml`):**
+   - Вбудована перевірка здоров'я контейнера (`HEALTHCHECK`) через Spring Actuator (`/actuator/health`).
+2. **Multi-stage Dockerfile фронтенду (`frontend/Dockerfile` + `frontend/nginx.conf`):**
+   - Побудований на базі Node 22 Alpine (builder) та Nginx Alpine (runtime).
+   - Оптимізована роздача статичних файлів із підтримкою gzip-стиснення.
+   - Клієнтська маршрутизація SPA (`try_files $uri $uri/ /index.html`).
+   - Зворотне проксування запитів `/api/**`, `/swagger-ui/**`, `/v3/api-docs/**` та `/actuator/**` до бекенд-сервісу `backend:8080`.
+   - Налаштовано базові заголовки безпеки (`X-Frame-Options`, `X-Content-Type-Options`, `X-XSS-Protection`) та `HEALTHCHECK`.
+3. **Оркестрація Docker Compose (`docker-compose.yml`):**
    - Контейнер `db` (PostgreSQL 17) з перевіркою `pg_isready` та збереженням даних у volume `pgdata`.
    - Контейнер `backend` із залежністю від здоров'я БД (`condition: service_healthy`) та конфігурацією профілю `local`.
-3. **Автоматизований скрипт керування (`run-docker.sh`):**
-   - Підтримує команди `up`, `down`, `restart`, `logs`, `status`, `clean`.
-4. **Конфігураційні профілі Spring Boot:**
+   - Контейнер `frontend` із залежністю від здоров'я бекенду (`condition: service_healthy`), відкритий на порт `5173`.
+4. **Автоматизований скрипт керування (`run-docker.sh`):**
+   - Підтримує команди `up`, `down`, `restart`, `logs`, `status`, `clean` для швидкого керування всіма сервісами стеку.
+5. **Конфігураційні профілі Spring Boot:**
    - `default` (`application.yml`): базові налаштування, валідація Hibernate (`ddl-auto: validate`), захист сесійних cookie (`HttpOnly`, `SameSite=Lax`).
    - `local` (`application-local.yml`): автоматичне підтягування міграцій `R__dev_seed.sql` та увімкнення документації Swagger.
    - `prod` (`application-prod.yml`): примусовий `Secure` прапорець для cookie, підтримка проксі (`server.forward-headers-strategy=framework`), мінімальний Actuator без деталей, вимкнений Swagger.
    - `test` (`application-test.yml`): оптимізований профіль для тестів із Flyway та вимкненими сторонніми сервісами.
-5. **Неперервна інтеграція (GitHub Actions CI):**
+6. **Неперервна інтеграція (GitHub Actions CI):**
    - Робочий процес `.github/workflows/backend-ci.yml` запускається на `push` та `pull_request` у `main` при зміні файлів `backend/**`.
    - Використовує Temurin JDK 21, кеш Maven, виконуваний біт `mvnw` та виконує `./mvnw -B verify` із запуском Testcontainers (PostgreSQL 17).
 
