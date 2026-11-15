@@ -3,7 +3,7 @@ import { useDocumentTitle, useMediaQuery } from '@mantine/hooks';
 import { useEffect, useMemo } from 'react';
 import { Link, useSearchParams } from 'react-router';
 import { formatCount, BOOK_FORMS } from '../../../shared/format.js';
-import { CATALOG, MANAGER_BOOK, TERMS } from '../../../shared/labels.js';
+import { CATALOG, MANAGER_BOOK, MANAGER_CATALOG, TERMS } from '../../../shared/labels.js';
 import { useCurrentUser } from '../../auth/index.js';
 import { EmptyState, ErrorState, PageHeader, PageLoader, Section } from '../../../shared/ui/index.js';
 import { useBooks } from '../api.js';
@@ -45,7 +45,12 @@ export default function CatalogPage() {
       <PageHeader
         title={CATALOG.title}
         description={CATALOG.description}
-        actions={isManager && <Button component={Link} to="/manager/books/new">{MANAGER_BOOK.addAction}</Button>}
+        actions={isManager && (
+          <Group gap="sm">
+            <Button component={Link} to="/manager/genres" variant="default">{MANAGER_CATALOG.genresAction}</Button>
+            <Button component={Link} to="/manager/books/new">{MANAGER_BOOK.addAction}</Button>
+          </Group>
+        )}
       />
       <Grid gap="md" align="flex-start">
         <Grid.Col span={{ base: 12, lg: 3 }} style={sidebar ? { position: 'sticky', top: 80 } : undefined}>

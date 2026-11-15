@@ -1,10 +1,11 @@
-import { AspectRatio, Badge, Button, Grid, Group, Image, Rating, Stack, Text, Title, VisuallyHidden } from '@mantine/core';
+import { ActionIcon, AspectRatio, Badge, Button, Grid, Group, Image, Rating, Stack, Text, Title, VisuallyHidden } from '@mantine/core';
 import { useDocumentTitle } from '@mantine/hooks';
 import { Link, useParams } from 'react-router';
 import { formatNumber } from '../../../shared/format.js';
 import { CATALOG, COMMON, MANAGER_BOOK, TERMS } from '../../../shared/labels.js';
 import { useCurrentUser } from '../../auth/index.js';
-import { EmptyState, ErrorState, Money, PageHeader, PageLoader, Section } from '../../../shared/ui/index.js';
+import { EmptyState, ErrorState, IconPencil, Money, PageHeader, PageLoader, Section } from '../../../shared/ui/index.js';
+import { DeleteBookButton } from '../../manager-books/index.js';
 import { useBook } from '../api.js';
 import { parseBookId } from '../bookSlug.js';
 import { AddToCartButton } from '../components/AddToCartButton.jsx';
@@ -75,7 +76,6 @@ export default function BookDetailsPage() {
       <PageHeader
         title={<VisuallyHidden>{data.title}</VisuallyHidden>}
         breadcrumbs={breadcrumbs}
-        actions={isManager && <Button component={Link} to={`/manager/books/${data.id}/edit`} variant="default">{MANAGER_BOOK.editAction}</Button>}
       />
       <Grid gap="lg" align="flex-start">
         <Grid.Col span={{ base: 12, sm: 4 }}>
@@ -95,7 +95,18 @@ export default function BookDetailsPage() {
 
         <Grid.Col span={{ base: 12, sm: 8 }}>
           <Stack gap="sm">
-            <Title order={2} size="h3">{data.title}</Title>
+            <Group justify="space-between" align="flex-start" gap="sm" wrap="nowrap">
+              <Title order={2} size="h3" style={{ flex: 1, minWidth: 0 }}>{data.title}</Title>
+              {isManager && (
+                <Group gap="xs" wrap="nowrap">
+                  <Button component={Link} to={`/manager/books/${data.id}/edit`} variant="default" visibleFrom="sm">{MANAGER_BOOK.editAction}</Button>
+                  <ActionIcon component={Link} to={`/manager/books/${data.id}/edit`} variant="default" size="lg" hiddenFrom="sm" aria-label={MANAGER_BOOK.editAction}>
+                    <IconPencil />
+                  </ActionIcon>
+                  <DeleteBookButton book={data} />
+                </Group>
+              )}
+            </Group>
             <Text size="lg">{authors}</Text>
 
             {data.genre?.name && (
