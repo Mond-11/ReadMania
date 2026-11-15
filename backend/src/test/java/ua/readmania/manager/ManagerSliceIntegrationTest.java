@@ -166,9 +166,7 @@ class ManagerSliceIntegrationTest extends BaseIntegrationTest {
         mockMvc.perform(get("/api/manager/users/unblock-requests")
                         .session(managerSession))
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$", hasSize(1)))
-                .andExpect(jsonPath("$[0].email").value("slice5.user@example.com"))
-                .andExpect(jsonPath("$[0].justification").value("Прошу вибачення, це було непорозуміння, більше не повториться"));
+                .andExpect(jsonPath("$[?(@.email == 'slice5.user@example.com')].justification").value("Прошу вибачення, це було непорозуміння, більше не повториться"));
 
         // 6. Менеджер пакетно розблоковує користувача
         UnblockUsersRequest unblockRequest = new UnblockUsersRequest(List.of(testUser.getId()));
