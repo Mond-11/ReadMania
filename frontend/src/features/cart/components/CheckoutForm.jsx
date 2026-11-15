@@ -1,4 +1,4 @@
-import { Alert, Button, Grid, NumberInput, Radio, SegmentedControl, Select, Stack, Text, TextInput } from '@mantine/core';
+import { Alert, Button, Checkbox, Grid, NumberInput, Radio, SegmentedControl, Select, Stack, Text, TextInput } from '@mantine/core';
 import { useForm } from '@mantine/form';
 import { useDebouncedValue } from '@mantine/hooks';
 import { useQueryClient } from '@tanstack/react-query';
@@ -12,7 +12,7 @@ import {
 import { notifyError, notifySuccess } from '../../../shared/notify.js';
 import { ErrorState, FormActions, PageLoader, Section } from '../../../shared/ui/index.js';
 import { myOrderPath } from '../../orders/index.js';
-import { CART_KEY, useCreateOrder, useOrderPreview } from '../api.js';
+import { CART_KEY, useCreateOrder, useDeliveryCities, useDeliveryWarehouses, useOrderPreview } from '../api.js';
 import { OrderSummary } from './OrderSummary.jsx';
 import { TransferRequisites } from './TransferRequisites.jsx';
 
@@ -24,6 +24,12 @@ export function CheckoutForm({ user }) {
   const queryClient = useQueryClient();
   const [blocked, setBlocked] = useState(null);
   const [conflict, setConflict] = useState(false);
+  const [selectedCityRef, setSelectedCityRef] = useState(null);
+  const [selectedWarehouseRef, setSelectedWarehouseRef] = useState(null);
+  const [manualPostOffice, setManualPostOffice] = useState(false);
+
+  const cities = useDeliveryCities();
+  const warehouses = useDeliveryWarehouses(selectedCityRef);
 
   const form = useForm({
     initialValues: {
@@ -163,13 +169,78 @@ export function CheckoutForm({ user }) {
                   data={toOptions(DELIVERY_METHOD)}
                   {...form.getInputProps('deliveryMethod')}
                 />
-                {/* TODO(post-office-list): for POST_OFFICE consider city + branch selects instead of free text; see progress.md, open question 9. */}
-                <TextInput
-                  label={CHECKOUT.address}
-                  placeholder={CHECKOUT.addressPlaceholder}
-                  autoComplete="street-address"
-                  {...form.getInputProps('address')}
-                />
+                {form.values.deliveryMethod === 'COURIER' ? (
+                  <TextInput
+                    label={CHECKOUT.address}
+                    placeholder={CHECKOUT.addressPlaceholder}
+                    autoComplete="street-address"
+                    {...form.getInputProps('address')}
+                  />
+                ) : (
+                  <>
+                    {!manualPostOffice ? (
+                      <>
+                        <Select
+                          label={CHECKOUT.city}
+                          placeholder={CHECKOUT.cityPlaceholder}
+                          searchable
+                          clearable
+                          data={(cities.data ?? []).map((c) => ({
+                            value: c.ref,
+                            label: c.displayName,
+                          }))}
+                          value={selectedCityRef}
+                          onChange={(cityRef) => {
+                            setSelectedCityRef(cityRef);
+                            setSelectedWarehouseRef(null);
+                            form.setFieldValue('address', '');
+                          }}
+                        />
+                        <Select
+                          label={CHECKOUT.warehouse}
+                          placeholder={selectedCityRef ? CHECKOUT.warehousePlaceholder : CHECKOUT.warehouseSelectCityFirst}
+                          searchable
+                          clearable
+                          disabled={!selectedCityRef || warehouses.isPending}
+                          data={(warehouses.data ?? []).map((w) => ({
+                            value: w.ref,
+                            label: w.label,
+                          }))}
+                          value={selectedWarehouseRef}
+                          onChange={(warehouseRef) => {
+                            setSelectedWarehouseRef(warehouseRef);
+                            const found = warehouses.data?.find((w) => w.ref === warehouseRef);
+                            if (found) {
+                              form.setFieldValue('address', found.formattedAddress || found.label);
+                            } else {
+                              form.setFieldValue('address', '');
+                            }
+                          }}
+                          error={form.errors.address}
+                        />
+                      </>
+                    ) : (
+                      <TextInput
+                        label={CHECKOUT.address}
+                        placeholder={CHECKOUT.manualAddressPlaceholder}
+                        {...form.getInputProps('address')}
+                      />
+                    )}
+                    <Checkbox
+                      label={CHECKOUT.manualAddressToggle}
+                      description={CHECKOUT.manualAddressHint}
+                      checked={manualPostOffice}
+                      onChange={(e) => {
+                        const checked = e.currentTarget.checked;
+                        setManualPostOffice(checked);
+                        if (!checked) {
+                          const found = warehouses.data?.find((w) => w.ref === selectedWarehouseRef);
+                          form.setFieldValue('address', found ? (found.formattedAddress || found.label) : '');
+                        }
+                      }}
+                    />
+                  </>
+                )}
               </Section>
               <Section title={CHECKOUT.contactsSection}>
                 <TextInput

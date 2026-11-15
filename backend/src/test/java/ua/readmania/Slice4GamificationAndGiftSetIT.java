@@ -52,6 +52,8 @@ import ua.readmania.dto.auth.LoginRequest;
 import ua.readmania.dto.challenge.CreateChallengeRequest;
 import ua.readmania.dto.challenge.UpdateChallengeRequest;
 import ua.readmania.dto.giftset.GenerateGiftSetRequest;
+import ua.readmania.dto.giftset.GiftSetBookItem;
+import ua.readmania.dto.giftset.GiftSetResponse;
 import ua.readmania.dto.giftset.ReplaceGiftSetBookRequest;
 import ua.readmania.dto.rating.CreateRatingRequest;
 
@@ -576,5 +578,81 @@ public class Slice4GamificationAndGiftSetIT extends BaseIntegrationTest {
                 .andExpect(jsonPath("$.items", hasSize(2)))
                 .andExpect(jsonPath("$.totalPrice", is(550.00)))
                 .andExpect(jsonPath("$.remainingBudget", is(0.00)));
+    }
+
+    @Test
+    @DisplayName("C9: Повторна генерація з excludeBookIds повертає відмінний набір книг (bookCount = 1 та bookCount = 2)")
+    void shouldRegenerateDifferentGiftSetWhenExcludeBookIdsProvided() throws Exception {
+        // Тест для bookCount = 1
+        GenerateGiftSetRequest firstRequest1 = new GenerateGiftSetRequest(
+                new BigDecimal("700.00"),
+                List.of(fictionGenre.getId(), fantasyGenre.getId()),
+                1
+        );
+
+        var firstResult1 = mockMvc.perform(post("/api/gift-sets/generate")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(firstRequest1)))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.items", hasSize(1)))
+                .andReturn();
+
+        GiftSetResponse firstSet1 = objectMapper.readValue(firstResult1.getResponse().getContentAsString(), GiftSetResponse.class);
+        List<Long> firstSet1Ids = firstSet1.getItems().stream().map(GiftSetBookItem::getId).toList();
+
+        GenerateGiftSetRequest secondRequest1 = new GenerateGiftSetRequest(
+                new BigDecimal("700.00"),
+                List.of(fictionGenre.getId(), fantasyGenre.getId()),
+                1,
+                firstSet1Ids
+        );
+
+        var secondResult1 = mockMvc.perform(post("/api/gift-sets/generate")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(secondRequest1)))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.items", hasSize(1)))
+                .andReturn();
+
+        GiftSetResponse secondSet1 = objectMapper.readValue(secondResult1.getResponse().getContentAsString(), GiftSetResponse.class);
+        List<Long> secondSet1Ids = secondSet1.getItems().stream().map(GiftSetBookItem::getId).toList();
+
+        assertThat(secondSet1Ids).isNotEqualTo(firstSet1Ids);
+
+        // Тест для bookCount = 2
+        GenerateGiftSetRequest firstRequest2 = new GenerateGiftSetRequest(
+                new BigDecimal("700.00"),
+                List.of(fictionGenre.getId(), fantasyGenre.getId()),
+                2
+        );
+
+        var firstResult2 = mockMvc.perform(post("/api/gift-sets/generate")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(firstRequest2)))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.items", hasSize(2)))
+                .andReturn();
+
+        GiftSetResponse firstSet2 = objectMapper.readValue(firstResult2.getResponse().getContentAsString(), GiftSetResponse.class);
+        List<Long> firstSet2Ids = firstSet2.getItems().stream().map(GiftSetBookItem::getId).toList();
+
+        GenerateGiftSetRequest secondRequest2 = new GenerateGiftSetRequest(
+                new BigDecimal("700.00"),
+                List.of(fictionGenre.getId(), fantasyGenre.getId()),
+                2,
+                firstSet2Ids
+        );
+
+        var secondResult2 = mockMvc.perform(post("/api/gift-sets/generate")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(secondRequest2)))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.items", hasSize(2)))
+                .andReturn();
+
+        GiftSetResponse secondSet2 = objectMapper.readValue(secondResult2.getResponse().getContentAsString(), GiftSetResponse.class);
+        List<Long> secondSet2Ids = secondSet2.getItems().stream().map(GiftSetBookItem::getId).toList();
+
+        assertThat(secondSet2Ids).isNotEqualTo(firstSet2Ids);
     }
 }

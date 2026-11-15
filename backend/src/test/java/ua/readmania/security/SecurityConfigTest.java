@@ -81,9 +81,13 @@ class SecurityConfigTest {
     }
 
     @Test
-    @DisplayName("Anonymous access to /api/catalog/books is permitted (not 401)")
+    @DisplayName("Anonymous access to /api/catalog/books and /api/delivery/cities is permitted (not 401)")
     void anonymousAccessToCatalogBooksIsPermitted() throws Exception {
         mockMvc.perform(get("/api/catalog/books"))
+                .andExpect(status().is(not(401)))
+                .andExpect(status().is(not(403)));
+
+        mockMvc.perform(get("/api/delivery/cities"))
                 .andExpect(status().is(not(401)))
                 .andExpect(status().is(not(403)));
     }
