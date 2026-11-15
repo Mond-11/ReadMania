@@ -7,6 +7,7 @@ import { formatCount, formatDate, formatNumber, toApiDate, BOOK_FORMS } from '..
 import { useInstitutions } from '../../../shared/hooks/useInstitutions.js';
 import { COMMON, MANAGER_GIFT_LOG as L, TERMS } from '../../../shared/labels.js';
 import { EmptyState, ErrorState, PageLoader } from '../../../shared/ui/index.js';
+import { managerOrderPath } from '../../orders/index.js';
 import { useGiftLog } from '../api.js';
 
 const DATE_RE = /^\d{4}-\d{2}-\d{2}$/;
@@ -86,7 +87,7 @@ export default function GiftLogPage() {
                 <Table.Td>{row.bookTitle}</Table.Td>
                 <Table.Td ta="right">{formatNumber(row.quantity)}</Table.Td>
                 <Table.Td>
-                  <Link to={`/orders/${row.orderId}`}>№{row.orderId}</Link>
+                  <Link to={managerOrderPath(row.orderId)}>№{row.orderId}</Link>
                 </Table.Td>
               </Table.Tr>
             ))}
