@@ -60,3 +60,47 @@ body {
     transition-duration: 0.01ms !important;
   }
 }
+
+/* Person B: header navigation (dark header and the mobile drawer share these styles). */
+.rm-nav-link {
+  display: inline-flex;
+  align-items: center;
+  min-height: 40px;
+  padding: 6px 12px;
+  border-radius: 4px;
+  color: var(--rm-header-text);
+  font-size: 0.95rem;
+  text-decoration: none;
+  white-space: nowrap;
+  cursor: pointer;
+}
+.rm-nav-link:hover {
+  background-color: rgba(246, 246, 246, 0.12);
+  color: var(--rm-header-text);
+  text-decoration: none;
+}
+.rm-nav-link[aria-current='page'] {
+  font-weight: 700;
+  box-shadow: inset 0 -2px 0 var(--rm-header-text);
+}
+.rm-nav-link[data-disabled] {
+  opacity: 0.7;
+  cursor: not-allowed;
+}
+.rm-nav-link[data-disabled]:hover {
+  background-color: transparent;
+}
+
+.rm-drawer {
+  background-color: var(--rm-header);
+  color: var(--rm-header-text);
+}
+.rm-drawer :focus-visible {
+  outline-color: var(--rm-header-text) !important;
+}
+.rm-drawer .mantine-Drawer-close {
+  color: var(--rm-header-text);
+}
+.rm-drawer .mantine-Drawer-close:hover {
+  background-color: rgba(246, 246, 246, 0.12);
+}

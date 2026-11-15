@@ -60,6 +60,14 @@ export function setUnauthorizedHandler(fn) {
   unauthorizedHandler = fn;
 }
 
+// Set by the auth feature (person B): the account was blocked during an open session (M6).
+// Login and the unblock request answer `account-blocked` themselves, so their forms handle it.
+const BLOCKED_HANDLED_BY_FORM = new Set(['/api/auth/login', '/api/auth/unblock-request']);
+let accountBlockedHandler = null;
+export function setAccountBlockedHandler(fn) {
+  accountBlockedHandler = fn;
+}
+
 async function request(method, path, { query, body, signal, retried = false } = {}) {
   const headers = { Accept: 'application/json, application/problem+json' };
   let payload;
@@ -96,6 +104,7 @@ async function request(method, path, { query, body, signal, retried = false } = 
   }
 
   if (res.status === 401 && path !== PRIME_URL) unauthorizedHandler?.(error);
+  if (error.is('account-blocked') && !BLOCKED_HANDLED_BY_FORM.has(path)) accountBlockedHandler?.(error);
   throw error;
 }
 

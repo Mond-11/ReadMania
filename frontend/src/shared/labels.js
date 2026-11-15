@@ -235,3 +235,91 @@ export const toOptions = (map) =>
 
 // Falls back to the raw key so an unknown enum value stays visible instead of hiding a bug.
 export const labelOf = (map, key) => (key == null ? COMMON.emptyDash : (map[key] ?? String(key)));
+
+// Person B: header, access, authentication (G2, G3, M7).
+export const NAV = {
+  main: 'Основна навігація',
+  catalog: 'Каталог',
+  giftSet: 'Подарунковий набір',
+  cart: 'Кошик',
+  cartWithCount: 'Кошик, примірників:',
+  account: 'Особистий кабінет',
+  managerPanel: 'Панель менеджера',
+  help: 'Довідка',
+  helpSoon: 'Настанова користувача готується',
+  login: 'Увійти',
+  logout: 'Вийти',
+  loggedOut: 'Ви вийшли з облікового запису',
+  accountMenu: 'Меню облікового запису',
+  openMenu: 'Відкрити меню',
+  closeMenu: 'Закрити меню',
+  menu: 'Меню',
+};
+
+export const ACCESS = {
+  forbiddenTitle: 'Немає доступу',
+  forbiddenText: 'Ця сторінка доступна лише для іншої ролі.',
+  sessionExpired: 'Сеанс завершено. Увійдіть знову.',
+};
+
+export const AUTH = {
+  pageTitle: 'Вхід і реєстрація',
+  loginTab: 'Вхід',
+  registerTab: 'Реєстрація',
+  email: 'Email',
+  emailPlaceholder: 'user@example.com',
+  password: 'Пароль',
+  newPassword: 'Новий пароль',
+  confirmPassword: 'Підтвердження пароля',
+  passwordHint: 'Щонайменше 6 символів.',
+  loginSubmit: 'Увійти',
+  registerSubmit: 'Зареєструватися',
+  forgotLink: 'Забули пароль?',
+  registered: 'Обліковий запис створено. Ласкаво просимо!',
+  welcome: 'Ви увійшли до облікового запису',
+
+  emailRequired: 'Вкажіть email. Приклад: user@example.com',
+  emailInvalid: 'Невірний формат email: потрібні «@» і домен. Приклад: user@example.com',
+  passwordRequired: 'Вкажіть пароль.',
+  passwordTooShort: 'Пароль закороткий: потрібно щонайменше 6 символів. Приклад: Pass123!',
+  confirmMismatch: 'Паролі не збігаються. Введіть той самий пароль ще раз.',
+  emailTaken: 'Обліковий запис із цим email уже існує. Увійдіть або скористайтеся «Забули пароль?».',
+
+  invalidCredentialsTitle: 'Не вдалося увійти',
+  invalidCredentials: 'Невірний email або пароль. Перевірте розкладку клавіатури та Caps Lock.',
+  rateLimitedTitle: 'Вхід тимчасово недоступний',
+  rateLimited: 'Після 5 невдалих спроб вхід для цього email призупинено на 15 хвилин.',
+  retryAt: 'Повторіть спробу після',
+
+  blockedTitle: 'Обліковий запис заблоковано',
+  blockedReason: 'Причина:',
+  blockedAt: 'Дата блокування:',
+  blockedHint: 'Каталог можна переглядати без входу. Щоб відновити доступ, надішліть запит Менеджеру.',
+  unblockButton: 'Запит на розблокування',
+
+  forgotTitle: 'Відновлення пароля',
+  forgotDescription: 'Вкажіть email облікового запису — ми надішлемо посилання для зміни пароля. Посилання діє 1 годину й лише один раз.',
+  forgotSubmit: 'Надіслати посилання',
+  forgotSent: 'Якщо обліковий запис існує, лист надіслано. Перевірте пошту, зокрема теку «Спам».',
+  backToLogin: 'Повернутися до входу',
+
+  resetTitle: 'Новий пароль',
+  resetDescription: 'Придумайте новий пароль для облікового запису.',
+  resetSubmit: 'Змінити пароль',
+  resetDone: 'Пароль змінено. Увійдіть із новим паролем.',
+  resetNoToken: 'Посилання для зміни пароля недійсне',
+  resetNoTokenHint: 'Відкрийте посилання з листа повністю або запросіть новий лист.',
+  resetFailedTitle: 'Не вдалося змінити пароль',
+  requestNewLink: 'Запросити нове посилання',
+
+  unblockTitle: 'Запит на розблокування',
+  unblockDescription: 'Підтвердьте, що це ваш обліковий запис, і поясніть, чому його варто розблокувати. Менеджер розгляне запит і надішле відповідь на email.',
+  reason: 'Обґрунтування',
+  reasonPlaceholder: 'Наприклад: Прошу вибачення, надалі вчасно оплачуватиму замовлення.',
+  reasonRequired: 'Опишіть причину розблокування. Приклад: «Надалі вчасно оплачуватиму замовлення».',
+  reasonTooLong: 'Обґрунтування задовге: максимум 1000 символів. Скоротіть текст.',
+  unblockSubmit: 'Надіслати запит',
+  unblockSentTitle: 'Запит надіслано',
+  unblockSent: 'Менеджер розгляне запит. Після розблокування ви отримаєте лист і зможете увійти.',
+  unblockFailedTitle: 'Запит не надіслано',
+};

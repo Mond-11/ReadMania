@@ -4,22 +4,23 @@ import { Link, Navigate, useLocation } from 'react-router';
 import { useSession } from '../../../shared/hooks/useSession.js';
 import { CART, CHECKOUT, TERMS } from '../../../shared/labels.js';
 import { EmptyState, ErrorState, Money, PageHeader, PageLoader } from '../../../shared/ui/index.js';
+import { AUTH_PATHS, useCurrentUser } from '../../auth/index.js';
 import { useCart, useRemoveCartItem, useUpdateCartItem } from '../api.js';
 import { CartItemRow } from '../components/CartItemRow.jsx';
 
 export default function CartPage() {
   useDocumentTitle(`${CART.title} — ${TERMS.appName}`);
   const location = useLocation();
-  const session = useSession();
+  const session = useCurrentUser();
   const cart = useCart({ enabled: session.isUser });
   const updateItem = useUpdateCartItem();
   const removeItem = useRemoveCartItem();
 
   if (session.isLoading) return <PageLoader />;
 
-  // TODO(B-auth): confirm the login route and the `from` state name with B.
+  // After login the user returns to `from` (see features/auth ProtectedRoute).
   if (session.isGuest) {
-    return <Navigate to="/login" state={{ from: location.pathname }} replace />;
+    return <Navigate to={AUTH_PATHS.login} state={{ from: location.pathname }} replace />;
   }
 
   // Assumption: Менеджер has no cart (unconfirmed).
