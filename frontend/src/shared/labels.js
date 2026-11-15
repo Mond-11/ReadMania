@@ -153,6 +153,22 @@ export const CART = {
   added: 'Додано до кошика',
   loginHint: 'Увійдіть, щоб додати видання до кошика.',
   outOfStockHint: 'Видання відсутнє в наявності.',
+  title: 'Кошик',
+  emptyTitle: 'Кошик порожній',
+  emptyHint: 'Додайте видання з каталогу.',
+  backToCatalog: 'До каталогу',
+  decreaseQuantity: 'Зменшити кількість',
+  increaseQuantity: 'Збільшити кількість',
+  quantity: 'Кількість',
+  remove: 'Вилучити',
+  removeConfirmTitle: 'Вилучити з кошика?',
+  removeConfirmMessage: (title) => `Видання «${title}» буде вилучено з кошика.`,
+  removed: 'Вилучено з кошика',
+  unavailable: 'Видання стало недоступним',
+  subtotal: 'Сума',
+  totalItems: 'Позицій у кошику',
+  totalCopies: 'Усього примірників',
+  totalPrice: 'Разом до сплати',
 };
 
 export const toOptions = (map) =>
