@@ -9,10 +9,9 @@ export const AUTH_PATHS = {
 
 const AUTH_PAGES = new Set(Object.values(AUTH_PATHS));
 
-// Where to go after login when there is no page to return to.
-// TODO(B-manager): '/manager' for Менеджер once the manager panel exists.
-export function homeFor() {
-  return '/';
+// Where to go after login when there is no page to return to: Менеджер starts in the manager panel.
+export function homeFor(user) {
+  return user?.role === 'MANAGER' ? '/manager' : '/';
 }
 
 // `from` comes from history state: accept only an internal path and never send the user back to an auth page.
