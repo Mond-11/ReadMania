@@ -323,3 +323,129 @@ export const AUTH = {
   unblockSent: 'Менеджер розгляне запит. Після розблокування ви отримаєте лист і зможете увійти.',
   unblockFailedTitle: 'Запит не надіслано',
 };
+
+// Accessible names of Pagination controls, for any paged list.
+export const PAGINATION_CONTROLS = {
+  first: 'Перша сторінка',
+  previous: 'Попередня сторінка',
+  next: 'Наступна сторінка',
+  last: 'Остання сторінка',
+};
+
+// Person B: personal account (C3–C7).
+export const ACCOUNT = {
+  title: 'Особистий кабінет',
+  tabs: 'Розділи особистого кабінету',
+  ordersTab: 'Замовлення',
+  profileTab: 'Профіль',
+  challengesTab: 'Виклики і бали',
+};
+
+export const ORDERS = {
+  listTitle: 'Мої замовлення',
+  emptyTitle: 'Замовлень ще немає',
+  emptyHint: 'Оберіть видання в каталозі й оформіть перше замовлення.',
+  pagination: 'Сторінки замовлень',
+  number: 'Номер',
+  numberShort: '№',
+  orderTitle: 'Замовлення №',
+  date: 'Дата',
+  type: 'Тип',
+  status: 'Статус',
+  totalToPay: 'До сплати',
+  open: 'Відкрити',
+  openOrder: 'Відкрити замовлення №',
+  backToList: 'До всіх замовлень',
+  notFoundTitle: 'Замовлення не знайдено',
+  notFoundHint: 'Можливо, номер указано з помилкою.',
+
+  itemsTitle: 'Склад замовлення',
+  book: 'Видання',
+  price: 'Ціна',
+  quantity: 'Кількість',
+  subtotal: 'Сума',
+  rating: 'Оцінка',
+
+  summaryTitle: 'Вартість',
+  itemsTotal: 'Вартість замовлення',
+  discount: 'Знижка за бонусні бали',
+  pointsUsed: 'Використано балів',
+
+  deliveryTitle: 'Доставка й оплата',
+  deliveryMethod: 'Спосіб доставки',
+  giftDelivery: 'У дар закладу',
+  address: 'Адреса',
+  recipient: 'Отримувач',
+  phone: 'Телефон',
+  institution: 'Заклад-одержувач',
+  contactPerson: 'Контактна особа',
+  paymentMethod: 'Спосіб оплати',
+  createdAt: 'Створено',
+  statusChangedAt: 'Статус змінено',
+  deliveredAt: 'Доставлено',
+
+  historyTitle: 'Історія статусів',
+  historyChangedBy: 'Змінив(-ла)',
+  historyComment: 'Коментар',
+
+  cancel: 'Скасувати замовлення',
+  cancelConfirmTitle: 'Скасувати замовлення?',
+  cancelConfirmMessage: (id) =>
+    `Замовлення №${id} буде скасовано. Примірники повернуться до каталогу, а використані бонусні бали — на ваш рахунок.`,
+  cancelDone: 'Замовлення скасовано',
+  cancelHint: 'Скасувати можна лише неоплачене замовлення з оплатою переказом. Від замовлення з оплатою під час отримання можна відмовитися при отриманні.',
+  statusChanged: 'Статус замовлення вже змінився. Показано актуальний стан.',
+
+  rateLabel: (title) => `Оцінка видання «${title}»`,
+  rateSubmit: 'Оцінити',
+  rateDone: 'Дякуємо за оцінку! Нараховано 1 бонусний бал.',
+  rateHint: 'Оцініть видання від 1 до 5 і натисніть «Оцінити». За кожну оцінку — 1 бонусний бал.',
+  rated: 'Ваша оцінка',
+  notRated: 'Без оцінки',
+
+  myRatingsTitle: 'Мої оцінки',
+  myRatingsEmpty: 'Ви ще не оцінювали видання',
+  myRatingsHint: 'Оцінити можна видання з доставленого замовлення.',
+};
+
+export const PROFILE = {
+  dataTitle: 'Дані облікового запису',
+  registeredAt: 'Дата реєстрації',
+  lastLoginAt: 'Останній вхід',
+  emailTitle: 'Змінити email',
+  newEmail: 'Новий email',
+  emailSame: 'Новий email збігається з поточним. Вкажіть іншу адресу.',
+  emailSaved: 'Email змінено',
+  passwordTitle: 'Змінити пароль',
+  currentPassword: 'Поточний пароль',
+  currentPasswordHint: 'Потрібен для підтвердження будь-якої зміни.',
+  passwordSaved: 'Пароль змінено',
+  saveEmail: 'Зберегти email',
+  savePassword: 'Змінити пароль',
+};
+
+export const LOYALTY = {
+  balanceTitle: 'Бонусні бали',
+  balance: 'Баланс',
+  balanceHint: '1 бал = 10 грн знижки; бали можна використати на оформленні замовлення (до 30% вартості).',
+  activeTitle: 'Активні читацькі виклики',
+  activeEmpty: 'Зараз немає активних викликів',
+  activeEmptyHint: 'Нові виклики з’являться тут — ви берете участь у них автоматично.',
+  completedTitle: 'Виконані виклики',
+  completedEmpty: 'Ви ще не виконали жодного виклику',
+  condition: 'Умова',
+  // `count` is already formatted with the right plural form: «5 видань».
+  conditionText: (count, genre) => (genre ? `Придбати ${count} жанру «${genre}»` : `Придбати ${count} будь-якого жанру`),
+  progress: (done, total) => `Виконано ${done} з ${total} видань`,
+  deadline: 'Строк',
+  reward: 'Нагорода',
+  completedAt: 'Виконано',
+  progressHint: 'Зараховуються видання з доставлених замовлень.',
+  historyTitle: 'Журнал бонусних балів',
+  historyEmpty: 'Операцій з балами ще не було',
+  operation: 'Операція',
+  date: 'Дата',
+  points: 'Бали',
+  details: 'Деталі',
+  orderRef: 'Замовлення №',
+};

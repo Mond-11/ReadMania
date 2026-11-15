@@ -11,6 +11,7 @@ import {
 } from '../../../shared/labels.js';
 import { notifyError, notifySuccess } from '../../../shared/notify.js';
 import { ErrorState, FormActions, PageLoader, Section } from '../../../shared/ui/index.js';
+import { myOrderPath } from '../../orders/index.js';
 import { CART_KEY, useCreateOrder, useOrderPreview } from '../api.js';
 import { OrderSummary } from './OrderSummary.jsx';
 import { TransferRequisites } from './TransferRequisites.jsx';
@@ -87,7 +88,7 @@ export function CheckoutForm({ user }) {
     createOrder.mutate(body, {
       onSuccess: (order) => {
         notifySuccess(CHECKOUT.created);
-        navigate(`/orders/${order.id}`);
+        navigate(myOrderPath(order.id));
       },
       onError: handleError,
     });
