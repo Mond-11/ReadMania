@@ -1,3 +1,9 @@
 export { PageLoader } from './PageLoader.jsx';
 export { ErrorState } from './ErrorState.jsx';
 export { EmptyState } from './EmptyState.jsx';
+export { PageHeader } from './PageHeader.jsx';
+export { Section } from './Section.jsx';
+export { ConfirmModal } from './ConfirmModal.jsx';
+export { StatusBadge } from './StatusBadge.jsx';
+export { Money } from './Money.jsx';
+export { FormActions } from './FormActions.jsx';
