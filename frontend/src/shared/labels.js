@@ -407,6 +407,52 @@ export const MANAGER_CATALOG = {
   toCatalog: "До каталогу",
 };
 
+export const MANAGER_INSTITUTION = {
+  title: "Заклади-одержувачі",
+  search: "Пошук за назвою або адресою",
+  searchPlaceholder: "Наприклад: Сонечко",
+  typeFilter: "Тип закладу",
+  typeFilterPlaceholder: "Усі типи",
+  emptyTitle: "Закладів ще немає",
+  emptyHint: "Додайте перший заклад.",
+  emptyFilteredTitle: "Закладів за цими умовами не знайдено",
+  emptyFilteredHint: "Змініть пошуковий запит або тип закладу.",
+  resetFilters: "Скинути умови",
+  add: "Додати заклад",
+  name: "Назва",
+  type: "Тип",
+  address: "Адреса",
+  contactPerson: "Контактна особа",
+  giftOrdersCount: "Благодійних замовлень",
+  selectAll: "Обрати всі заклади в списку",
+  selectOne: (name) => `Обрати заклад «${name}»`,
+  editOne: (name) => `Редагувати заклад «${name}»`,
+  selected: (n) => `Обрано: ${n}`,
+  deleteSelected: "Видалити обрані заклади",
+  deleteOne: (name) => `Видалити заклад «${name}»`,
+  deleteBlocked:
+    "Видалити заклад не можна: є замовлення, що очікують оплати або вже оплачені. Дочекайтеся їх завершення.",
+  deleteTitle: "Видалити заклад?",
+  deleteSelectedTitle: "Видалити обрані заклади?",
+  deleteMessage: (name) =>
+    `Заклад «${name}» буде видалено разом із його завершеними замовленнями. Цю дію не можна скасувати.`,
+  deleteSelectedMessage: (n) =>
+    `Буде видалено закладів: ${n}, разом із їхніми завершеними замовленнями. Цю дію не можна скасувати.`,
+  deleted: "Заклад видалено",
+  deletedMany: (n) => `Закладів видалено: ${n}`,
+  createTitle: "Новий заклад",
+  editTitle: "Редагування закладу",
+  created: "Заклад додано",
+  updated: "Заклад збережено",
+  nameError: "Назва: вкажіть назву закладу. Наприклад: Дитячий будинок «Сонечко».",
+  typeError: "Тип закладу: оберіть зі списку. Наприклад: Дитячий будинок.",
+  addressError: "Адреса: вкажіть адресу закладу. Наприклад: м. Київ, вул. Лісова, 10.",
+  contactPersonError: "Контактна особа: вкажіть ім’я. Наприклад: Олена Петрівна.",
+  namePlaceholder: "Дитячий будинок «Сонечко»",
+  addressPlaceholder: "м. Київ, вул. Лісова, 10",
+  contactPersonPlaceholder: "Олена Петрівна",
+};
+
 export const toOptions = (map) =>
   Object.entries(map).map(([value, label]) => ({ value, label }));
 
