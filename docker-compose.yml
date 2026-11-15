@@ -31,10 +31,36 @@ services:
       DB_PASSWORD: readmania
       APP_INITIAL_MANAGER_EMAIL: manager@readmania.ua
       APP_INITIAL_MANAGER_PASSWORD: Manager123!
+      APP_NOVAPOSHTA_API_KEY: ${APP_NOVAPOSHTA_API_KEY:-}
     ports:
       - "8080:8080"
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8080/actuator/health"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 25s
     depends_on:
       db:
+        condition: service_healthy
+    networks:
+      - readmania-net
+
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+    container_name: readmania-frontend
+    ports:
+      - "5173:80"
+    healthcheck:
+      test: ["CMD-SHELL", "wget -qO- http://localhost:80/ || exit 1"]
+      interval: 10s
+      timeout: 5s
+      retries: 3
+      start_period: 5s
+    depends_on:
+      backend:
         condition: service_healthy
     networks:
       - readmania-net

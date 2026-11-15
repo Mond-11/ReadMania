@@ -86,3 +86,24 @@ export function useCartCount(enabled = true) {
   const { data } = useCart({ enabled });
   return data?.totalItems ?? 0;
 }
+
+export function useDeliveryCities(query = '') {
+  return useQuery({
+    queryKey: ['delivery', 'cities', query],
+    queryFn: ({ signal }) => api.get('/api/delivery/cities', { query: query ? { query } : undefined, signal }),
+    staleTime: 1000 * 60 * 10,
+  });
+}
+
+export function useDeliveryWarehouses(cityRef, query = '') {
+  return useQuery({
+    queryKey: ['delivery', 'warehouses', cityRef, query],
+    queryFn: ({ signal }) =>
+      api.get('/api/delivery/warehouses', {
+        query: { cityRef, ...(query ? { query } : {}) },
+        signal,
+      }),
+    enabled: Boolean(cityRef),
+    staleTime: 1000 * 60 * 10,
+  });
+}

@@ -19,13 +19,20 @@ public class GenerateGiftSetRequest {
     @Min(value = 1, message = "Кількість книг повинна бути щонайменше 1")
     private Integer bookCount;
 
+    private List<Long> excludeBookIds = List.of();
+
     public GenerateGiftSetRequest() {
     }
 
     public GenerateGiftSetRequest(BigDecimal budget, List<Long> genreIds, Integer bookCount) {
+        this(budget, genreIds, bookCount, List.of());
+    }
+
+    public GenerateGiftSetRequest(BigDecimal budget, List<Long> genreIds, Integer bookCount, List<Long> excludeBookIds) {
         this.budget = budget;
         this.genreIds = genreIds;
         this.bookCount = bookCount;
+        this.excludeBookIds = excludeBookIds != null ? excludeBookIds : List.of();
     }
 
     public BigDecimal getBudget() {
@@ -50,5 +57,13 @@ public class GenerateGiftSetRequest {
 
     public void setBookCount(Integer bookCount) {
         this.bookCount = bookCount;
+    }
+
+    public List<Long> getExcludeBookIds() {
+        return excludeBookIds != null ? excludeBookIds : List.of();
+    }
+
+    public void setExcludeBookIds(List<Long> excludeBookIds) {
+        this.excludeBookIds = excludeBookIds != null ? excludeBookIds : List.of();
     }
 }

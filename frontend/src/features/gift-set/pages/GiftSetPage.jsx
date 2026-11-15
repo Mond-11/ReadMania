@@ -124,7 +124,12 @@ export default function GiftSetPage() {
                 <Button onClick={handleAddToCart} loading={addToCart.isPending} disabled={addedToCart}>
                   {GIFT_SET.addToCart}
                 </Button>
-                <Button variant="default" onClick={() => run(params)} loading={generate.isPending} disabled={busy}>
+                <Button
+                  variant="default"
+                  onClick={() => run({ ...params, excludeBookIds: items.map((item) => item.id) })}
+                  loading={generate.isPending}
+                  disabled={busy}
+                >
                   {GIFT_SET.retry}
                 </Button>
                 {addedToCart && <Button component={Link} to="/cart" variant="subtle">{GIFT_SET.goToCart}</Button>}

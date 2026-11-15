@@ -29,6 +29,34 @@ npm run build
 
 ---
 
+## Запуск у Docker
+
+Фронтенд контейнеризовано за допомогою multi-stage Dockerfile (Node 22 для збірки бандла + Nginx Alpine для роздачі статики та зворотного проксі до бекенду).
+
+### 1. Запуск у складі всього проєкту (рекомендовано)
+З кореня репозиторію:
+```bash
+./run-docker.sh up
+```
+Фронтенд буде доступний за адресою `http://localhost:5173`.
+
+### 2. Окреме збирання та запуск Docker-образу фронтенду
+```bash
+# Збірка образу
+docker build -t readmania-frontend .
+
+# Запуск контейнера (за умови працюючого бекенду)
+docker run -d -p 5173:80 --name readmania-frontend readmania-frontend
+```
+
+Конфігурація `nginx.conf` забезпечує:
+- Роздачу статичних файлів із gzip-стисненням.
+- Клієнтський роутинг SPA (`try_files $uri $uri/ /index.html`).
+- Зворотне проксування запитів `/api/**` та `/swagger-ui/**` на бекенд-сервіс `http://backend:8080`.
+- Базові заголовки безпеки (`X-Frame-Options`, `X-Content-Type-Options`, `X-XSS-Protection`).
+
+---
+
 ## Інтеграція з Backend REST API
 
 ### 1. Проксі для локальної розробки (Vite Dev Server)

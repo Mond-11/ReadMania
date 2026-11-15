@@ -538,7 +538,7 @@
 
 | Метод | Ендпоінт | Доступ | Опис та параметри | Коди відповідей |
 |---|---|---|---|---|
-| `POST` | `/api/gift-sets/generate` | Публічний | **Автоматичний підбір випадкового набору книг у наявності (C9)**<br>Тіло (`GenerateGiftSetRequest`): `{ budget, genreIds: [...], bookCount? }`<br>Вимоги: бюджет кратний 50 грн, книги в наявності (`stock > 0`). При неможливості зібрати набір повертає одну з двох чітких бізнес-причин відмови. | `200 OK` (`GiftSetResponse`), `400 Bad Request` |
+| `POST` | `/api/gift-sets/generate` | Публічний | **Автоматичний підбір випадкового набору книг у наявності (C9)**<br>Тіло (`GenerateGiftSetRequest`): `{ budget, genreIds: [...], bookCount?, excludeBookIds?: [...] }`<br>Вимоги: бюджет кратний 50 грн, книги в наявності (`stock > 0`). Опціональне поле `excludeBookIds` містить ідентифікатори книг попереднього набору для уникнення повторів при повторній генерації. При неможливості зібрати набір повертає одну з двох чітких бізнес-причин відмови. | `200 OK` (`GiftSetResponse`), `400 Bad Request` |
 | `POST` | `/api/gift-sets/replace` | Публічний | **Заміна книги в наборі на іншу альтернативну в межах залишкового бюджету (C9)**<br>Тіло (`ReplaceGiftSetBookRequest`): `{ bookIdToReplace, budget, currentBookIds: [...], genreIds: [...] }` | `200 OK` (`GiftSetResponse`), `400 Bad Request`, `404` |
 | `POST` | `/api/gift-sets/replace-candidates` | Публічний | **Отримання переліку всіх доступних книг-кандидатів для заміни позиції**<br>Тіло (`ReplaceGiftSetBookRequest`): `{ bookIdToReplace, budget, currentBookIds: [...], genreIds: [...] }` | `200 OK` (`ReplaceCandidatesResponse`), `400` |
 
@@ -833,6 +833,37 @@
   "byBooks": [
     { "id": 10, "name": "Володар Перснів", "averageRating": 4.85, "ratingsCount": 14 }
   ]
+}
+```
+
+---
+
+### 2.18. Довідники доставки (/api/delivery)
+
+Публічні ендпоінти для отримання та пошуку міст та відділень/поштоматів Нової Пошти через бекенд-проксі з кешуванням у пам'яті та захисним fallback-довідником.
+
+| Метод | Ендпоінт | Доступ | Опис та параметри | Коди відповідей |
+|---|---|---|---|---|
+| `GET` | `/api/delivery/cities` | `GUEST`, `USER`, `MANAGER` | **Пошук міст та населених пунктів**<br>Параметри: `query` (String, необов'язковий). Якщо порожній — повертає топ-міста України (Київ, Львів, Харків, Дніпро, Одеса тощо). | `200 OK` (`List<DeliveryCityResponse>`) |
+| `GET` | `/api/delivery/warehouses` | `GUEST`, `USER`, `MANAGER` | **Отримання відділень та поштоматів для обраного міста**<br>Параметри: `cityRef` (String, обов'язковий — Ref міста), `query` (String, необов'язковий — пошук за номером або описом). | `200 OK` (`List<DeliveryWarehouseResponse>`), `400 Bad Request` |
+
+#### Модель `DeliveryCityResponse`:
+```json
+{
+  "ref": "8d5a980d-391c-11dd-90d9-001a92567626",
+  "name": "Київ",
+  "area": "Київська область",
+  "displayName": "м. Київ (Київська обл.)"
+}
+```
+
+#### Модель `DeliveryWarehouseResponse`:
+```json
+{
+  "ref": "e718c652-4b33-11e4-ab6d-005056801329",
+  "number": "15",
+  "label": "Відділення №15 (до 30 кг): вул. Малинська, 20-А",
+  "formattedAddress": "м. Київ, Відділення №15: вул. Малинська, 20-А"
 }
 ```
 

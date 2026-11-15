@@ -1,0 +1,58 @@
+### ==============================================================================
+### Домен: Довідники доставки Нової Пошти (Delivery)
+### ==============================================================================
+
+### 1. Щасливий сценарій: Отримання списку топ-міст (без query)
+GET {{host}}/api/delivery/cities
+Accept: application/json
+
+> {%
+    client.test("Отримано список топ-міст (200 OK)", function() {
+        client.assert(response.status === 200, "Очікувався статус 200");
+        client.assert(response.body.length > 0, "Список міст не повинен бути порожнім");
+    });
+%}
+
+### 2. Щасливий сценарій: Пошук міста за назвою
+GET {{host}}/api/delivery/cities?query=Київ
+Accept: application/json
+
+> {%
+    client.test("Знайдено місто Київ (200 OK)", function() {
+        client.assert(response.status === 200, "Очікувався статус 200");
+        client.assert(response.body[0].name === "Київ", "Першим містом має бути Київ");
+    });
+%}
+
+### 3. Щасливий сценарій: Отримання відділень та поштоматів для міста (Київ)
+GET {{host}}/api/delivery/warehouses?cityRef=8d5a980d-391c-11dd-90d9-001a92567626
+Accept: application/json
+
+> {%
+    client.test("Отримано список відділень (200 OK)", function() {
+        client.assert(response.status === 200, "Очікувався статус 200");
+        client.assert(response.body.length > 0, "Список відділень не повинен бути порожнім");
+        client.assert(response.body[0].formattedAddress.length > 0, "formattedAddress має бути заповнений");
+    });
+%}
+
+### 4. Щасливий сценарій: Пошук відділення за номером
+GET {{host}}/api/delivery/warehouses?cityRef=8d5a980d-391c-11dd-90d9-001a92567626&query=15
+Accept: application/json
+
+> {%
+    client.test("Знайдено відділення №15 (200 OK)", function() {
+        client.assert(response.status === 200, "Очікувався статус 200");
+        client.assert(response.body.some(w => w.number === "15"), "Має бути присутнє відділення 15");
+    });
+%}
+
+### 5. Негативний сценарій: Запит відділень без обов'язкового параметра cityRef
+GET {{host}}/api/delivery/warehouses
+Accept: application/json
+
+> {%
+    client.test("Помилка відсутності обов'язкового параметра (400 Bad Request)", function() {
+        client.assert(response.status === 400, "Очікувався статус 400");
+    });
+%}

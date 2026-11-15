@@ -8,14 +8,17 @@ COMMAND="${1:-up}"
 case "$COMMAND" in
   up|start)
     echo "=================================================="
-    echo "Запуск ReadMania (PostgreSQL 17 + Spring Boot Backend)..."
+    echo "Запуск ReadMania (PostgreSQL 17 + Spring Boot Backend + React Frontend)..."
     echo "=================================================="
     docker compose up -d --build
     echo ""
     echo "✅ Контейнери запущені у фоновому режимі!"
-    echo "Backend: http://localhost:8080"
+    echo "Frontend:   http://localhost:5173"
+    echo "Backend:    http://localhost:8080"
+    echo "Swagger UI: http://localhost:8080/swagger-ui.html"
     echo "PostgreSQL: localhost:5432 (db: readmania, user: readmania)"
-    echo "Healthcheck: http://localhost:8080/actuator/health"
+    echo "Healthcheck (Backend):  http://localhost:8080/actuator/health"
+    echo "Healthcheck (Frontend): http://localhost:5173"
     echo ""
     echo "Для перегляду логів виконайте: ./run-docker.sh logs"
     ;;
