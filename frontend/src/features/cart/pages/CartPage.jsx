@@ -1,7 +1,6 @@
 import { Button, Divider, Group, SimpleGrid, Stack, Text } from '@mantine/core';
 import { useDocumentTitle } from '@mantine/hooks';
 import { Link, Navigate, useLocation } from 'react-router';
-import { useSession } from '../../../shared/hooks/useSession.js';
 import { CART, CHECKOUT, TERMS } from '../../../shared/labels.js';
 import { EmptyState, ErrorState, Money, PageHeader, PageLoader } from '../../../shared/ui/index.js';
 import { AUTH_PATHS, useCurrentUser } from '../../auth/index.js';
