@@ -44,6 +44,23 @@ export function useSaveGenre() {
   });
 }
 
+export function useImportBooksCsv() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (file) => {
+      const form = new FormData();
+      form.append('file', file);
+      return api.post('/api/manager/books/import-csv', form);
+    },
+    onSettled: () => {
+      queryClient.invalidateQueries({ queryKey: ['books'] });
+      queryClient.invalidateQueries({ queryKey: ['book'] });
+      queryClient.invalidateQueries({ queryKey: GENRES_KEY });
+      queryClient.invalidateQueries({ queryKey: ['authors'] });
+    },
+  });
+}
+
 export function useDeleteGenre() {
   const queryClient = useQueryClient();
   return useMutation({
