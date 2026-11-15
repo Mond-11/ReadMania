@@ -13,6 +13,7 @@ Use these instead of rebuilding the same block. Anything not listed: use Mantine
 | `StatusBadge` | status, role, order type | `map` (from labels), `value`, `tone` (`success`/`danger`/`info`/`neutral`) |
 | `Money` | price | `value` + any `Text` prop |
 | `FormActions` | bottom of a form | `submitLabel`, `onCancel`, `loading`, `disabled`, `disabledReason` |
+| `IconTrash` | icon for a delete/remove `ActionIcon` | any `svg` prop |
 
 ## Page skeleton
 ```jsx

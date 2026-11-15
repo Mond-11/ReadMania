@@ -7,3 +7,4 @@ export { ConfirmModal } from './ConfirmModal.jsx';
 export { StatusBadge } from './StatusBadge.jsx';
 export { Money } from './Money.jsx';
 export { FormActions } from './FormActions.jsx';
+export { IconTrash } from './IconTrash.jsx';
