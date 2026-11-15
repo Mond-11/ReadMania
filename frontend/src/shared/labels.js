@@ -230,6 +230,43 @@ export const CHECKOUT = {
   previewError: 'Не вдалося розрахувати знижку. Спробуйте ще раз.',
 };
 
+export const GIFT_SET = {
+  title: 'Подарунковий набір',
+  description: 'Оберіть жанри та бюджет — ми випадково підберемо видання, які є в наявності.',
+  paramsSection: 'Параметри набору',
+  genres: 'Жанри',
+  genresPlaceholder: 'Оберіть жанри',
+  budget: 'Бюджет, грн',
+  budgetHint: 'Кратний 50 грн. Наприклад: 300.',
+  bookCount: 'Кількість видань (необов’язково)',
+  bookCountHint: 'Якщо не вказано, кількість підбере система.',
+  generate: 'Підібрати набір',
+  retry: 'Підібрати інший набір',
+  resultSection: 'Ваш набір',
+  total: 'Вартість набору',
+  budgetLabel: 'Бюджет',
+  remaining: 'Залишок бюджету',
+  replace: 'Замінити',
+  replaceTitle: 'Замінити видання',
+  replaceHint: (title, maxPrice) => `Замість «${title}». Показано видання, які коштують не більше ніж ${maxPrice}.`,
+  replaceRandom: 'Підібрати випадкове',
+  replaceNone: 'Альтернатив немає',
+  replaceNoneHint: 'У межах залишкового бюджету та обраних жанрів інших видань у наявності немає.',
+  replaced: 'Видання замінено',
+  removeBook: (title) => `Вилучити «${title}» з набору`,
+  removed: 'Вилучено з набору',
+  showMore: 'Показати більше',
+  addToCart: 'Додати набір до кошика',
+  addedToCart: 'Набір додано до кошика',
+  partialAdd: (done, total) => `Додано ${done} із ${total} видань. Решту не вдалося додати: спробуйте ще раз.`,
+  goToCart: 'До кошика',
+  failTitle: 'Не вдалося скласти набір',
+  genresRequired: 'Жанри: оберіть хоча б один жанр. Наприклад: «Класика».',
+  budgetInvalid: 'Бюджет: вкажіть суму від 50 грн, кратну 50. Наприклад: 300.',
+  bookCountInvalid: 'Кількість видань: вкажіть ціле число від 1. Наприклад: 3.',
+  inStock: 'У наявності:',
+};
+
 export const toOptions = (map) =>
   Object.entries(map).map(([value, label]) => ({ value, label }));
 
