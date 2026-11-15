@@ -56,6 +56,31 @@ export function useRemoveCartItem() {
   });
 }
 
+// A read-only POST: recalculates the discount for the cart contents and the requested bonus points.
+export function useOrderPreview({ bonusPoints, enabled = true }) {
+  return useQuery({
+    queryKey: ['orderPreview', bonusPoints],
+    queryFn: ({ signal }) => api.post('/api/orders/preview', { bonusPoints }, { signal }),
+    enabled,
+    placeholderData: (previous) => previous,
+    staleTime: 0,
+  });
+}
+
+// Creates a regular or gift order from the current cart; both clear the cart and spend bonus points.
+export function useCreateOrder({ gift }) {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (body) => api.post(gift ? '/api/orders/gift' : '/api/orders', body),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: CART_KEY });
+      queryClient.invalidateQueries({ queryKey: ['orderPreview'] });
+      queryClient.invalidateQueries({ queryKey: ['auth', 'me'] });
+      queryClient.invalidateQueries({ queryKey: ['orders'] });
+    },
+  });
+}
+
 // For the header (B). Zero for Guest/Менеджер, who have no cart.
 export function useCartCount(enabled = true) {
   const { data } = useCart({ enabled });

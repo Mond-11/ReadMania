@@ -1,7 +1,8 @@
 import { Button, Divider, Group, SimpleGrid, Stack, Text } from '@mantine/core';
 import { useDocumentTitle } from '@mantine/hooks';
 import { Link, Navigate, useLocation } from 'react-router';
-import { CART, TERMS } from '../../../shared/labels.js';
+import { useSession } from '../../../shared/hooks/useSession.js';
+import { CART, CHECKOUT, TERMS } from '../../../shared/labels.js';
 import { EmptyState, ErrorState, Money, PageHeader, PageLoader } from '../../../shared/ui/index.js';
 import { AUTH_PATHS, useCurrentUser } from '../../auth/index.js';
 import { useCart, useRemoveCartItem, useUpdateCartItem } from '../api.js';
@@ -76,7 +77,8 @@ export default function CartPage() {
 
       <Divider my="md" />
 
-      <Group justify="flex-end" gap="xl">
+      <Group justify="space-between" gap="xl" align="flex-end">
+        <Button component={Link} to="/checkout">{CHECKOUT.checkoutAction}</Button>
         <Stack gap={0} align="flex-end">
           <Text c="dimmed" size="sm">{CART.totalItems}: {items.length}</Text>
           <Text c="dimmed" size="sm">{CART.totalCopies}: {cart.data.totalItems}</Text>
