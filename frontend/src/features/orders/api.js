@@ -8,6 +8,9 @@ export const myOrderKey = (id) => ['orders', 'my', 'detail', id];
 export const MY_RATINGS_KEY = ['ratings', 'me'];
 export const ORDERS_PAGE_SIZE = 10;
 
+// Page of the Користувач's own order in the personal account.
+export const myOrderPath = (id) => `/account/orders/${id}`;
+
 export function useMyOrders(page) {
   return useQuery({
     queryKey: [...MY_ORDERS_KEY, 'list', page],

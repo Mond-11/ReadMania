@@ -5,6 +5,7 @@ export {
   useRateBook,
   useMyRatings,
   canUserCancel,
+  myOrderPath,
   ORDERS_PAGE_SIZE,
 } from './api.js';
 export {
