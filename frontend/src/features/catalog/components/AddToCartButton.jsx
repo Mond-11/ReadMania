@@ -2,7 +2,7 @@ import { Button, Tooltip } from '@mantine/core';
 import { useLocation, useNavigate } from 'react-router';
 import { CART } from '../../../shared/labels.js';
 import { useAddToCart, useCart } from '../../cart/index.js';
-import { useSession } from '../api.js';
+import { useSession } from '../../../shared/hooks/useSession.js';
 
 export function AddToCartButton({ book, fullWidth = true }) {
   const navigate = useNavigate();
