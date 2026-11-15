@@ -25,7 +25,7 @@ export default [{ path: '/cart', ...lazyPage(() => import('./pages/CartPage.jsx'
 - Загальні хуки: `useGenres()`, `useInstitutions({ type, query })` — в `shared/hooks`.
 
 ## Стани й форми
-- Кожна сторінка має 3 стани: завантаження (`PageLoader`), помилка (`ErrorState` + `onRetry`), порожньо (`EmptyState`) — з `shared/ui`.
+- Кожна сторінка має 3 стани: завантаження (`PageLoader`), помилка (`ErrorState` + `onRetry`), порожньо (`EmptyState`) — з `shared/ui`. Інші спільні блоки (`PageHeader`, `Section`, `ConfirmModal`, `StatusBadge`, `Money`, `FormActions`) і правила кнопок — у `shared/ui/README.md`; не дублюйте їх локально.
 - Форми — `@mantine/form`. Помилки бекенду біля полів: `onError: (e) => { if (!applyFormErrors(form, e)) notifyError(e); }`. Назви полів форми = назви полів запиту (вкладені — `contacts.recipientName`). Клієнтські перевірки (U3): поле, причина, приклад.
 - Сповіщення: `notifySuccess('Збережено')`, `notifyError(error)` (`shared/notify.js`).
 
