@@ -34,15 +34,19 @@ export function CheckoutForm({ user }) {
   const form = useForm({
     initialValues: {
       mode: REGULAR,
-      deliveryMethod: 'COURIER',
-      address: user.deliveryAddress ?? '',
+      deliveryMethod: 'POST_OFFICE',
+      // Filled by the city/branch pickers; the saved address belongs to courier delivery.
+      address: '',
       contacts: { recipientName: user.fullName ?? '', phone: user.phone ?? '' },
       paymentMethod: 'ON_DELIVERY',
       institutionId: null,
       bonusPoints: 0,
     },
     validate: {
-      address: (v, values) => (values.mode === REGULAR && !v.trim() ? CHECKOUT.required.address : null),
+      address: (v, values) => {
+        if (values.mode !== REGULAR || v.trim()) return null;
+        return values.deliveryMethod === 'COURIER' ? CHECKOUT.required.address : CHECKOUT.required.postOffice;
+      },
       contacts: {
         recipientName: (v, values) => (values.mode === REGULAR && !v.trim() ? CHECKOUT.required.recipientName : null),
         // Same pattern as the backend contract (openapi.json, contacts.phone).
@@ -168,6 +172,12 @@ export function CheckoutForm({ user }) {
                   allowDeselect={false}
                   data={toOptions(DELIVERY_METHOD)}
                   {...form.getInputProps('deliveryMethod')}
+                  onChange={(method) => {
+                    form.setFieldValue('deliveryMethod', method);
+                    // The two methods use different address formats: never carry one over to the other.
+                    form.setFieldValue('address', method === 'COURIER' ? (user.deliveryAddress ?? '') : '');
+                    form.clearFieldError('address');
+                  }}
                 />
                 {form.values.deliveryMethod === 'COURIER' ? (
                   <TextInput
