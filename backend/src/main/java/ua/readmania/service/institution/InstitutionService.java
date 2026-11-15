@@ -77,8 +77,13 @@ public class InstitutionService {
     }
 
     public InstitutionDetailsResponse createInstitution(InstitutionUpsertRequest request) {
+        String cleanName = request.getName().trim();
+        if (institutionRepository.existsByNameIgnoreCase(cleanName)) {
+            throw new ConflictException("Заклад з назвою '" + cleanName + "' вже існує");
+        }
+
         Institution institution = new Institution();
-        institution.setName(request.getName().trim());
+        institution.setName(cleanName);
         institution.setType(request.getType());
         institution.setAddress(request.getAddress().trim());
         institution.setContactPerson(request.getContactPerson().trim());
@@ -91,7 +96,14 @@ public class InstitutionService {
         Institution institution = institutionRepository.findById(id)
                 .orElseThrow(() -> new NotFoundException("Заклад з ідентифікатором " + id + " не знайдено"));
 
-        institution.setName(request.getName().trim());
+        String cleanName = request.getName().trim();
+        institutionRepository.findByNameIgnoreCase(cleanName)
+                .filter(existing -> !existing.getId().equals(id))
+                .ifPresent(existing -> {
+                    throw new ConflictException("Заклад з назвою '" + cleanName + "' вже існує");
+                });
+
+        institution.setName(cleanName);
         institution.setType(request.getType());
         institution.setAddress(request.getAddress().trim());
         institution.setContactPerson(request.getContactPerson().trim());

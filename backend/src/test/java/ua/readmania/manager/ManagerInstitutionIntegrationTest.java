@@ -254,4 +254,100 @@ class ManagerInstitutionIntegrationTest extends BaseIntegrationTest {
         assertThat(institutionRepository.findById(instId)).isEmpty();
         assertThat(orderRepository.findById(orderId)).isEmpty();
     }
+
+    @Test
+    @DisplayName("POST /api/manager/institutions - відхилення 409 Conflict при спробі створити заклад з дублікатом назви")
+    void testCreateInstitution_DuplicateNameConflict() throws Exception {
+        MockHttpSession session = loginAsManager();
+
+        InstitutionUpsertRequest duplicateRequest = new InstitutionUpsertRequest(
+                "дитячий будинок 'сонечко'",
+                InstitutionType.ORPHANAGE,
+                "вул. Інша, 1, Київ",
+                "Інша Особа"
+        );
+
+        mockMvc.perform(post("/api/manager/institutions")
+                        .session(session)
+                        .with(csrf())
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(duplicateRequest)))
+                .andExpect(status().isConflict())
+                .andExpect(jsonPath("$.detail").value("Заклад з назвою 'дитячий будинок 'сонечко'' вже існує"));
+    }
+
+    @Test
+    @DisplayName("PUT /api/manager/institutions/{id} - відхилення 409 Conflict при зміні назви на назву іншого закладу")
+    void testUpdateInstitution_DuplicateNameConflict() throws Exception {
+        MockHttpSession session = loginAsManager();
+
+        InstitutionUpsertRequest updateRequest = new InstitutionUpsertRequest(
+                "Інтернат №5",
+                InstitutionType.ORPHANAGE,
+                "вул. Лісова, 10, Київ",
+                "Олена Петрівна"
+        );
+
+        mockMvc.perform(put("/api/manager/institutions/" + institution1.getId())
+                        .session(session)
+                        .with(csrf())
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(updateRequest)))
+                .andExpect(status().isConflict())
+                .andExpect(jsonPath("$.detail").value("Заклад з назвою 'Інтернат №5' вже існує"));
+    }
+
+    @Test
+    @DisplayName("PUT /api/manager/institutions/{id} - успішне збереження без конфлікту при незмінній назві")
+    void testUpdateInstitution_SameNameSuccess() throws Exception {
+        MockHttpSession session = loginAsManager();
+
+        InstitutionUpsertRequest updateRequest = new InstitutionUpsertRequest(
+                "Дитячий будинок 'Сонечко'",
+                InstitutionType.ORPHANAGE,
+                "вул. Лісова, 12, Київ (Оновлено адресу)",
+                "Олена Петрівна"
+        );
+
+        mockMvc.perform(put("/api/manager/institutions/" + institution1.getId())
+                        .session(session)
+                        .with(csrf())
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(updateRequest)))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.address", is("вул. Лісова, 12, Київ (Оновлено адресу)")));
+    }
+
+    @Test
+    @DisplayName("POST /api/manager/institutions - успішне створення закладу з назвою раніше видаленого закладу")
+    void testRecreateInstitutionAfterDelete_Success() throws Exception {
+        MockHttpSession session = loginAsManager();
+
+        String deletedName = institution2.getName();
+        DeleteInstitutionsRequest deleteRequest = new DeleteInstitutionsRequest(List.of(institution2.getId()));
+
+        mockMvc.perform(delete("/api/manager/institutions")
+                        .session(session)
+                        .with(csrf())
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(deleteRequest)))
+                .andExpect(status().isOk());
+
+        assertThat(institutionRepository.existsById(institution2.getId())).isFalse();
+
+        InstitutionUpsertRequest createRequest = new InstitutionUpsertRequest(
+                deletedName,
+                InstitutionType.BOARDING_SCHOOL,
+                "вул. Нова, 1, Львів",
+                "Новий Керівник"
+        );
+
+        mockMvc.perform(post("/api/manager/institutions")
+                        .session(session)
+                        .with(csrf())
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(createRequest)))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.name", is(deletedName)));
+    }
 }
