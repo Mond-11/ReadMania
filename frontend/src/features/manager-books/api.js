@@ -19,6 +19,39 @@ async function resolveByName(queryClient, { name, key, listPath, createPath, bod
   }
 }
 
+export function useDeleteBook() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (id) => api.delete(`/api/manager/books/${id}`),
+    onSettled: () => {
+      queryClient.invalidateQueries({ queryKey: ['books'] });
+      queryClient.invalidateQueries({ queryKey: ['book'] });
+      queryClient.invalidateQueries({ queryKey: GENRES_KEY });
+    },
+  });
+}
+
+export function useSaveGenre() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: ({ id, name }) =>
+      id ? api.put(`/api/manager/genres/${id}`, { name }) : api.post('/api/manager/genres', { name }),
+    onSettled: () => {
+      queryClient.invalidateQueries({ queryKey: GENRES_KEY });
+      queryClient.invalidateQueries({ queryKey: ['books'] });
+      queryClient.invalidateQueries({ queryKey: ['book'] });
+    },
+  });
+}
+
+export function useDeleteGenre() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (id) => api.delete(`/api/manager/genres/${id}`),
+    onSettled: () => queryClient.invalidateQueries({ queryKey: GENRES_KEY }),
+  });
+}
+
 // The cover goes as a separate multipart request after the book exists. Its failure must not hide that the book was saved.
 export function useSaveBook(bookId) {
   const queryClient = useQueryClient();
