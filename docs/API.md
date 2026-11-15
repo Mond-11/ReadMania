@@ -538,7 +538,7 @@
 
 | Метод | Ендпоінт | Доступ | Опис та параметри | Коди відповідей |
 |---|---|---|---|---|
-| `POST` | `/api/gift-sets/generate` | Публічний | **Автоматичний підбір випадкового набору книг у наявності (C9)**<br>Тіло (`GenerateGiftSetRequest`): `{ budget, genreIds: [...], bookCount? }`<br>Вимоги: бюджет кратний 50 грн, книги в наявності (`stock > 0`). При неможливості зібрати набір повертає одну з двох чітких бізнес-причин відмови. | `200 OK` (`GiftSetResponse`), `400 Bad Request` |
+| `POST` | `/api/gift-sets/generate` | Публічний | **Автоматичний підбір випадкового набору книг у наявності (C9)**<br>Тіло (`GenerateGiftSetRequest`): `{ budget, genreIds: [...], bookCount?, excludeBookIds?: [...] }`<br>Вимоги: бюджет кратний 50 грн, книги в наявності (`stock > 0`). Опціональне поле `excludeBookIds` містить ідентифікатори книг попереднього набору для уникнення повторів при повторній генерації. При неможливості зібрати набір повертає одну з двох чітких бізнес-причин відмови. | `200 OK` (`GiftSetResponse`), `400 Bad Request` |
 | `POST` | `/api/gift-sets/replace` | Публічний | **Заміна книги в наборі на іншу альтернативну в межах залишкового бюджету (C9)**<br>Тіло (`ReplaceGiftSetBookRequest`): `{ bookIdToReplace, budget, currentBookIds: [...], genreIds: [...] }` | `200 OK` (`GiftSetResponse`), `400 Bad Request`, `404` |
 | `POST` | `/api/gift-sets/replace-candidates` | Публічний | **Отримання переліку всіх доступних книг-кандидатів для заміни позиції**<br>Тіло (`ReplaceGiftSetBookRequest`): `{ bookIdToReplace, budget, currentBookIds: [...], genreIds: [...] }` | `200 OK` (`ReplaceCandidatesResponse`), `400` |
 

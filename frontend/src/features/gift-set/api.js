@@ -5,8 +5,13 @@ import { CART_KEY } from '../cart/index.js';
 // Business failures (budget too low / not enough books) come back as 400 with a Ukrainian `detail`; the page shows it as is.
 export function useGenerateGiftSet() {
   return useMutation({
-    mutationFn: ({ budget, genreIds, bookCount }) =>
-      api.post('/api/gift-sets/generate', { budget, genreIds, ...(bookCount ? { bookCount } : {}) }),
+    mutationFn: ({ budget, genreIds, bookCount, excludeBookIds }) =>
+      api.post('/api/gift-sets/generate', {
+        budget,
+        genreIds,
+        ...(bookCount ? { bookCount } : {}),
+        ...(excludeBookIds && excludeBookIds.length > 0 ? { excludeBookIds } : {}),
+      }),
   });
 }
 

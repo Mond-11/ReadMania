@@ -3398,6 +3398,13 @@
             "type" : "integer",
             "format" : "int32",
             "minimum" : 1
+          },
+          "excludeBookIds" : {
+            "type" : "array",
+            "items" : {
+              "type" : "integer",
+              "format" : "int64"
+            }
           }
         },
         "required" : [ "budget", "genreIds" ]
