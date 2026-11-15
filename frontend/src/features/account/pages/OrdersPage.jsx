@@ -13,7 +13,7 @@ import {
   TERMS,
 } from '../../../shared/labels.js';
 import { EmptyState, ErrorState, Money, PageLoader, Section, StatusBadge } from '../../../shared/ui/index.js';
-import { useMyOrders, useMyRatings } from '../../orders/index.js';
+import { myOrderPath, useMyOrders, useMyRatings } from '../../orders/index.js';
 
 // C4: own orders (including gift ones) newest first, plus own ratings.
 export default function OrdersPage() {
@@ -55,7 +55,7 @@ export default function OrdersPage() {
                   {orders.data.content.map((o) => (
                     <Table.Tr key={o.id}>
                       <Table.Td>
-                        <Anchor component={Link} to={`/account/orders/${o.id}`} fw={600} aria-label={`${ORDERS.openOrder}${o.id}`}>
+                        <Anchor component={Link} to={myOrderPath(o.id)} fw={600} aria-label={`${ORDERS.openOrder}${o.id}`}>
                           {ORDERS.numberShort}{o.id}
                         </Anchor>
                       </Table.Td>
