@@ -48,8 +48,7 @@ export default function CatalogPage() {
         actions={isManager && (
           <Group gap="sm">
             <Button component={Link} to="/manager/books/import" variant="default">{MANAGER_CATALOG.importAction}</Button>
-            <Button component={Link} to="/manager/genres" variant="default">{MANAGER_CATALOG.genresAction}</Button>
-            <Button component={Link} to="/manager/books/new">{MANAGER_BOOK.addAction}</Button>
+            <Button component={Link} to="/manager/genres" variant="default">{MANAGER_CATALOG.genresAction}</Button>            <Button component={Link} to="/manager/books/new">{MANAGER_BOOK.addAction}</Button>
           </Group>
         )}
       />
