@@ -137,6 +137,14 @@ export const CATALOG = {
   ratingOf: 'Середня оцінка',
   coverMissing: 'Без обкладинки',
   authorUnknown: 'Автор не вказаний',
+  annotationTitle: 'Опис',
+  detailsTitle: 'Деталі видання',
+  publisher: 'Видавництво',
+  publicationYear: 'Рік видання',
+  isbn: 'ISBN',
+  notFoundTitle: 'Видання не знайдено',
+  notFoundHint: 'Можливо, його вилучили з каталогу.',
+  backToCatalog: 'До каталогу',
 };
 
 export const CART = {

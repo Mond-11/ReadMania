@@ -2,13 +2,14 @@ import { AspectRatio, Badge, Card, Group, Image, Rating, Stack, Text, VisuallyHi
 import { Link } from 'react-router';
 import { CATALOG } from '../../../shared/labels.js';
 import { Money } from '../../../shared/ui/index.js';
+import { bookHref } from '../bookSlug.js';
 import { AddToCartButton } from './AddToCartButton.jsx';
 
 export function BookCard({ book }) {
   const outOfStock = book.stock <= 0;
   const authors = book.authors?.length ? book.authors.map((a) => a.name).join(', ') : CATALOG.authorUnknown;
   const hasRating = book.ratingsCount > 0 && book.averageRating != null;
-  const href = `/books/${book.id}`;
+  const href = bookHref(book);
 
   return (
     <Card component="article" padding="sm" h="100%" style={{ display: 'flex', flexDirection: 'column' }}>
