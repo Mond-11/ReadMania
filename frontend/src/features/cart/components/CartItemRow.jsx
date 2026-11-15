@@ -1,7 +1,10 @@
-import { ActionIcon, Badge, Card, Group, Image, Stack, Text } from '@mantine/core';
+import { ActionIcon, Badge, Card, Group, Stack, Text } from '@mantine/core';
 import { Link } from 'react-router';
 import { CART, CATALOG } from '../../../shared/labels.js';
 import { IconTrash, Money } from '../../../shared/ui/index.js';
+
+const COVER_W = 96;
+const COVER_H = 144;
 
 export function CartItemRow({ item, onChangeQuantity, onRemove, updating, removing }) {
   const href = `/books/${item.bookId}`;
@@ -21,16 +24,17 @@ export function CartItemRow({ item, onChangeQuantity, onRemove, updating, removi
         <IconTrash />
       </ActionIcon>
 
-      <Group align="stretch" wrap="nowrap" gap="sm">
-        <div style={{ aspectRatio: '2 / 3', minWidth: 56, flexShrink: 0, background: 'var(--rm-bg)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+      <div style={{ display: 'flex', alignItems: 'flex-start', gap: 'var(--mantine-spacing-sm)' }}>
+        {/* Hard size (width and height) so a real cover can never stretch the box and squeeze the text out. */}
+        <div style={{ width: COVER_W, height: COVER_H, flex: `0 0 ${COVER_W}px`, overflow: 'hidden', background: 'var(--rm-bg)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
           {item.hasCover && item.coverUrl ? (
-            <Image src={item.coverUrl} alt="" loading="lazy" fit="cover" h="100%" w="100%" />
+            <img src={item.coverUrl} alt="" loading="lazy" width={COVER_W} height={COVER_H} style={{ width: COVER_W, height: COVER_H, objectFit: 'cover', display: 'block' }} />
           ) : (
             <Text c="dimmed" size="xs" ta="center" p={4}>{CATALOG.coverMissing}</Text>
           )}
         </div>
 
-        <Stack justify="space-between" gap="sm" style={{ flex: 1, minWidth: 0 }}>
+        <Stack justify="space-between" gap="sm" style={{ flex: 1, minWidth: 0, alignSelf: 'stretch' }}>
           <Stack gap={4}>
             <Text component={Link} to={href} fw={600} td="none" c="inherit" style={{ paddingRight: 40 }}>
               {item.title}
@@ -72,7 +76,7 @@ export function CartItemRow({ item, onChangeQuantity, onRemove, updating, removi
             </Group>
           </Group>
         </Stack>
-      </Group>
+      </div>
     </Card>
   );
 }
