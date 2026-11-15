@@ -1,4 +1,4 @@
-import { Button, Grid, Group, Pagination, SimpleGrid, Stack, Text } from '@mantine/core';
+import { Button, Grid, Group, Pagination, Select, SimpleGrid, Stack, Text } from '@mantine/core';
 import { useDocumentTitle, useMediaQuery } from '@mantine/hooks';
 import { useEffect, useMemo } from 'react';
 import { Link, useSearchParams } from 'react-router';
@@ -9,7 +9,7 @@ import { EmptyState, ErrorState, PageHeader, PageLoader, Section } from '../../.
 import { useBooks } from '../api.js';
 import { BookCard } from '../components/BookCard.jsx';
 import { CatalogFilters } from '../components/CatalogFilters.jsx';
-import { hasActiveFilters, parseFilters, toApiQuery, toSearchParams } from '../filters.js';
+import { PAGE_SIZES, hasActiveFilters, parseFilters, toApiQuery, toSearchParams } from '../filters.js';
 
 export default function CatalogPage() {
   useDocumentTitle(`${CATALOG.title} — ${TERMS.appName}`);
@@ -24,7 +24,8 @@ export default function CatalogPage() {
     const next = { ...filters, page: 1, ...patch };
     setSearchParams(toSearchParams(next));
   };
-  const reset = () => setSearchParams(new URLSearchParams());
+  // Page size is a view setting, not a filter: reset keeps it.
+  const reset = () => setSearchParams(toSearchParams({ ...parseFilters(new URLSearchParams()), size: filters.size }));
 
   const page = books.data?.page;
   const totalPages = page?.totalPages ?? 0;
@@ -71,9 +72,23 @@ export default function CatalogPage() {
           />
         ) : (
           <>
-            <Text size="sm" c="dimmed" aria-live="polite">
-              {CATALOG.found} {formatCount(page.totalElements, BOOK_FORMS)}
-            </Text>
+            <Group justify="space-between" align="center" gap="sm">
+              <Text size="sm" c="dimmed" aria-live="polite">
+                {CATALOG.found} {formatCount(page.totalElements, BOOK_FORMS)}
+              </Text>
+              <Group gap="xs" wrap="nowrap">
+                <Text component="label" htmlFor="catalog-page-size" size="sm" c="dimmed">{CATALOG.pageSize}:</Text>
+                <Select
+                  id="catalog-page-size"
+                  aria-label={CATALOG.pageSize}
+                  data={PAGE_SIZES.map(String)}
+                  value={String(filters.size)}
+                  onChange={(value) => value && update({ size: Number(value) })}
+                  allowDeselect={false}
+                  w={84}
+                />
+              </Group>
+            </Group>
             <SimpleGrid cols={{ base: 1, xs: 2, md: 3 }} spacing="md" style={{ opacity: books.isPlaceholderData ? 0.6 : 1 }}>
               {books.data.content.map((book) => (
                 <BookCard key={book.id} book={book} />
