@@ -1,6 +1,8 @@
 import { BOOK_SORT, DEFAULT_BOOK_SORT } from '../../shared/labels.js';
 
-export const PAGE_SIZE = 12;
+// All divisible by 1, 2 and 3 (grid columns), so the last row is never ragged.
+export const PAGE_SIZES = [12, 24, 48];
+export const PAGE_SIZE = PAGE_SIZES[0];
 
 const num = (v) => (v === null || v === '' || Number.isNaN(Number(v)) ? '' : v);
 
@@ -8,7 +10,9 @@ const num = (v) => (v === null || v === '' || Number.isNaN(Number(v)) ? '' : v);
 export function parseFilters(sp) {
   const sort = sp.get('sort');
   const page = Number.parseInt(sp.get('page') ?? '1', 10);
+  const size = Number.parseInt(sp.get('size') ?? '', 10);
   return {
+    size: PAGE_SIZES.includes(size) ? size : PAGE_SIZE,
     q: sp.get('q') ?? '',
     genreId: sp.get('genreId') ?? '',
     authorId: sp.get('authorId') ?? '',
@@ -30,6 +34,7 @@ export function toSearchParams(filters) {
   }
   if (filters.inStock) sp.set('inStock', 'true');
   if (filters.sort !== DEFAULT_BOOK_SORT) sp.set('sort', filters.sort);
+  if (filters.size !== PAGE_SIZE) sp.set('size', String(filters.size));
   if (filters.page > 1) sp.set('page', String(filters.page));
   return sp;
 }
@@ -51,7 +56,7 @@ export function toApiQuery(f) {
     inStock: f.inStock ? true : '',
     sort: f.sort,
     page: f.page - 1,
-    size: PAGE_SIZE,
+    size: f.size,
   };
 }
 
