@@ -436,6 +436,23 @@ class SchemaIT extends BaseIntegrationTest {
     }
 
     @Test
+    @DisplayName("V10: Відхилення дублікатів назв закладів без урахування регістру")
+    void shouldRejectDuplicateInstitutionNameCaseInsensitive() {
+        jdbcClient.sql("""
+                    INSERT INTO institutions (name, type, address, contact_person)
+                    VALUES ('Дитячий будинок "Сонечко"', 'ORPHANAGE', 'вул. Лісова, 10', 'Директор')
+                """)
+                .update();
+
+        assertThatThrownBy(() ->
+                jdbcClient.sql("""
+                    INSERT INTO institutions (name, type, address, contact_person)
+                    VALUES ('ДИТЯЧИЙ БУДИНОК "СОНЕЧКО"', 'LIBRARY', 'вул. Інша, 20', 'Інший директор')
+                """).update()
+        ).isInstanceOf(DataIntegrityViolationException.class);
+    }
+
+    @Test
     @DisplayName("M3/7.2.2.7/V9: Збереження записів gift_log при повному видаленні архівного замовлення")
     void shouldPreserveGiftLogWhenOrderIsDeleted() {
         Long userId = insertUser("donor@example.com");

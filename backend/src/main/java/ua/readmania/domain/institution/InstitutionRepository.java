@@ -1,6 +1,7 @@
 package ua.readmania.domain.institution;
 
 import java.util.List;
+import java.util.Optional;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
@@ -12,6 +13,10 @@ public interface InstitutionRepository extends JpaRepository<Institution, Long> 
     List<Institution> findByType(InstitutionType type);
 
     List<Institution> findByNameContainingIgnoreCase(String name);
+
+    boolean existsByNameIgnoreCase(String name);
+
+    Optional<Institution> findByNameIgnoreCase(String name);
 
     @Query("SELECT i FROM Institution i WHERE " +
            "(:type IS NULL OR i.type = :type) AND " +

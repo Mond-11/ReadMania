@@ -41,7 +41,8 @@ export function InstitutionFormModal({ opened, onClose, institution }) {
           onClose();
         },
         onError: (error) => {
-          if (!applyFormErrors(form, error)) notifyError(error);
+          if (error?.status === 409) form.setFieldError('name', L.nameDuplicate);
+          else if (!applyFormErrors(form, error)) notifyError(error);
         },
       },
     ),
