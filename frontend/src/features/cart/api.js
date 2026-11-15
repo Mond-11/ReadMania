@@ -28,3 +28,36 @@ export function useAddToCart() {
     },
   });
 }
+
+export function useUpdateCartItem() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: ({ bookId, quantity }) => api.put(`/api/cart/items/${bookId}`, { quantity }),
+    onSuccess: (cart) => queryClient.setQueryData(CART_KEY, cart),
+    onError: (error) => {
+      notifyError(error);
+      queryClient.invalidateQueries({ queryKey: CART_KEY });
+    },
+  });
+}
+
+export function useRemoveCartItem() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: ({ bookId }) => api.delete(`/api/cart/items/${bookId}`),
+    onSuccess: (cart) => {
+      queryClient.setQueryData(CART_KEY, cart);
+      notifySuccess(CART.removed);
+    },
+    onError: (error) => {
+      notifyError(error);
+      queryClient.invalidateQueries({ queryKey: CART_KEY });
+    },
+  });
+}
+
+// For the header (B). Zero for Guest/Менеджер, who have no cart.
+export function useCartCount(enabled = true) {
+  const { data } = useCart({ enabled });
+  return data?.totalItems ?? 0;
+}

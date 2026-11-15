@@ -1,1 +1,1 @@
-export { useCart, useAddToCart, CART_KEY } from './api.js';
+export { useCart, useAddToCart, useUpdateCartItem, useRemoveCartItem, useCartCount, CART_KEY } from './api.js';
