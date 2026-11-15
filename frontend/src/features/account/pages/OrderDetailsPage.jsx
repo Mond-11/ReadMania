@@ -15,6 +15,7 @@ import {
   useCancelOrder,
   useMyOrder,
 } from '../../orders/index.js';
+import { TransferRequisites } from '../../cart/index.js';
 import { RateBook } from '../components/RateBook.jsx';
 
 const parseId = (param) => {
@@ -117,6 +118,8 @@ export default function OrderDetailsPage() {
           <OrderDeliverySection order={data} />
         </Grid.Col>
       </Grid>
+      {/* An unpaid transfer order: the user needs the bank details to pay it (C2), also after leaving the checkout. */}
+      {data.status === 'AWAITING_PAYMENT' && data.paymentMethod === 'TRANSFER' && <TransferRequisites orderId={data.id} />}
       <OrderHistorySection order={data} />
 
       <ConfirmModal

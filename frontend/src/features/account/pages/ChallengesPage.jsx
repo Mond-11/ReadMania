@@ -4,6 +4,7 @@ import { Link } from 'react-router';
 import { BOOK_FORMS, formatCount, formatDate, formatDateTime, formatNumber, POINT_FORMS } from '../../../shared/format.js';
 import { ACCOUNT, BONUS_TRANSACTION_TYPE, labelOf, LOYALTY, TERMS } from '../../../shared/labels.js';
 import { EmptyState, ErrorState, InfoList, PageLoader, Section } from '../../../shared/ui/index.js';
+import { myOrderPath } from '../../orders/index.js';
 import { useChallenges, useLoyalty } from '../api.js';
 
 // C7: active challenges with own progress, completed challenges and the bonus balance with its log.
@@ -92,7 +93,7 @@ export default function ChallengesPage() {
                     <Table.Td>{labelOf(BONUS_TRANSACTION_TYPE, t.type)}</Table.Td>
                     <Table.Td>
                       {t.orderId ? (
-                        <Anchor component={Link} to={`/account/orders/${t.orderId}`} size="sm">
+                        <Anchor component={Link} to={myOrderPath(t.orderId)} size="sm">
                           {LOYALTY.orderRef}{t.orderId}
                         </Anchor>
                       ) : (
