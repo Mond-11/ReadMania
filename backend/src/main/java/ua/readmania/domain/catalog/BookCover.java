@@ -8,12 +8,15 @@ import jakarta.persistence.JoinColumn;
 import jakarta.persistence.MapsId;
 import jakarta.persistence.OneToOne;
 import jakarta.persistence.Table;
+import jakarta.persistence.Transient;
+import org.springframework.data.domain.Persistable;
+
 import java.time.Instant;
 import java.util.Objects;
 
 @Entity
 @Table(name = "book_covers")
-public class BookCover {
+public class BookCover implements Persistable<Long> {
 
     @Id
     @Column(name = "book_id")
@@ -33,13 +36,32 @@ public class BookCover {
     @Column(name = "created_at", nullable = false, updatable = false)
     private Instant createdAt = Instant.now();
 
+    @Transient
+    private boolean isNew = false;
+
     public BookCover() {
     }
 
     public BookCover(Book book, String contentType, byte[] data) {
         this.book = book;
+        this.bookId = book != null ? book.getId() : null;
         this.contentType = contentType;
         this.data = data;
+        this.isNew = true;
+    }
+
+    @Override
+    public Long getId() {
+        return bookId;
+    }
+
+    @Override
+    public boolean isNew() {
+        return isNew;
+    }
+
+    public void setNew(boolean isNew) {
+        this.isNew = isNew;
     }
 
     public Long getBookId() {
