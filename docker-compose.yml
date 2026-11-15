@@ -29,6 +29,8 @@ services:
       DB_URL: jdbc:postgresql://db:5432/readmania
       DB_USERNAME: readmania
       DB_PASSWORD: readmania
+      APP_INITIAL_MANAGER_EMAIL: manager@readmania.ua
+      APP_INITIAL_MANAGER_PASSWORD: Manager123!
     ports:
       - "8080:8080"
     depends_on:

@@ -91,6 +91,7 @@ class ManagerUserIntegrationTest extends BaseIntegrationTest {
         unblockRequestRepository.deleteAll();
         orderRepository.deleteAll();
         userRepository.deleteAll();
+        userRepository.flush();
 
         managerUser = new User("manager@readmania.ua", passwordEncoder.encode("ManagerPass123!"), Role.MANAGER, "Головний Менеджер");
         managerUser = userRepository.save(managerUser);

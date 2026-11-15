@@ -1,6 +1,14 @@
 -- R__dev_seed.sql
 -- Початкове наповнення тестовими даними для локальної розробки (профіль local)
 
+-- Тестові користувачі для локального середовища
+-- Менеджер: manager@readmania.ua / Manager123!
+-- Покупець: user@readmania.ua / User123!
+INSERT INTO users (email, password_hash, full_name, role, status, bonus_balance) VALUES
+    ('manager@readmania.ua', '$2a$10$8bfpwagFWI9BqEtBHk2bMeAopSArM3YhEUCa46DJX5k8DKquyyPYm', 'Тестовий Менеджер', 'MANAGER', 'ACTIVE', 0),
+    ('user@readmania.ua', '$2a$10$oFEL5AgyKCKHuAfkwdTN3ukXwBSeJKZTdHcqwuPakaC1duPxMMBV2', 'Тестовий Покупець', 'USER', 'ACTIVE', 100)
+ON CONFLICT DO NOTHING;
+
 INSERT INTO genres (name) VALUES
     ('Класика'),
     ('Поезія'),

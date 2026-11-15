@@ -328,10 +328,10 @@ class ManagerSliceIntegrationTest extends BaseIntegrationTest {
 
         // Створюємо другу книгу того ж жанру
         Book secondBook = bookRepository.save(new Book(
-                "Гобіт", "978-617-12-9999-2", testGenre, BigDecimal.valueOf(300), 15, "А-БА-БА-ГА-ЛА-МА-ГА", 2022
+                "Гобіт Слайс", "978-617-12-9999-2", testGenre, BigDecimal.valueOf(300), 15, "А-БА-БА-ГА-ЛА-МА-ГА", 2022
         ));
 
-        // 1. Demand: створюємо виконане замовлення (2 книги Володар Перснів + 3 книги Гобіт)
+        // 1. Demand: створюємо виконане замовлення (2 книги Володар Перснів + 3 книги Гобіт Слайс)
         Order paidOrder = new Order(testUser, OrderType.REGULAR, PaymentMethod.TRANSFER, BigDecimal.valueOf(1800), BigDecimal.ZERO, 0, BigDecimal.valueOf(1800));
         paidOrder.setStatus(OrderStatus.PAID);
         paidOrder.addItem(new OrderItem(paidOrder, testBook, testBook.getTitle(), BigDecimal.valueOf(450), 2));
@@ -350,7 +350,7 @@ class ManagerSliceIntegrationTest extends BaseIntegrationTest {
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.byGenres[?(@.name == 'Фентезі Слайс')].orderedQuantity").value(5))
                 .andExpect(jsonPath("$.byBooks[?(@.name == 'Володар Перснів')].orderedQuantity").value(2))
-                .andExpect(jsonPath("$.byBooks[?(@.name == 'Гобіт')].orderedQuantity").value(3));
+                .andExpect(jsonPath("$.byBooks[?(@.name == 'Гобіт Слайс')].orderedQuantity").value(3));
 
         // 2. Stock: testBook має 20, secondBook має 15 -> Жанр має 35
         mockMvc.perform(get("/api/manager/analytics/stock")
@@ -358,7 +358,7 @@ class ManagerSliceIntegrationTest extends BaseIntegrationTest {
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.byGenres[?(@.name == 'Фентезі Слайс')].stock").value(35))
                 .andExpect(jsonPath("$.byBooks[?(@.name == 'Володар Перснів')].stock").value(20))
-                .andExpect(jsonPath("$.byBooks[?(@.name == 'Гобіт')].stock").value(15));
+                .andExpect(jsonPath("$.byBooks[?(@.name == 'Гобіт Слайс')].stock").value(15));
 
         // 3. Ratings: Book 1 має оцінки 5 та 4 (середнє 4.5); Book 2 має оцінку 3 (середнє 3.0)
         // Середнє для жанру: (5 + 4 + 3) / 3 = 4.0; кількість оцінок = 3
@@ -372,8 +372,8 @@ class ManagerSliceIntegrationTest extends BaseIntegrationTest {
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.byBooks[?(@.name == 'Володар Перснів')].averageRating").value(4.5))
                 .andExpect(jsonPath("$.byBooks[?(@.name == 'Володар Перснів')].ratingsCount").value(2))
-                .andExpect(jsonPath("$.byBooks[?(@.name == 'Гобіт')].averageRating").value(3.0))
-                .andExpect(jsonPath("$.byBooks[?(@.name == 'Гобіт')].ratingsCount").value(1))
+                .andExpect(jsonPath("$.byBooks[?(@.name == 'Гобіт Слайс')].averageRating").value(3.0))
+                .andExpect(jsonPath("$.byBooks[?(@.name == 'Гобіт Слайс')].ratingsCount").value(1))
                 .andExpect(jsonPath("$.byGenres[?(@.name == 'Фентезі Слайс')].averageRating").value(4.0))
                 .andExpect(jsonPath("$.byGenres[?(@.name == 'Фентезі Слайс')].ratingsCount").value(3));
     }
