@@ -96,6 +96,57 @@ export const ERRORS = {
   title: 'Помилка',
 };
 
+export const BOOK_SORT = {
+  'createdAt,desc': 'Дата внесення: нові спочатку',
+  'publicationYear,desc': 'Рік видання: нові спочатку',
+  'publicationYear,asc': 'Рік видання: старі спочатку',
+  'price,asc': 'Ціна: від найдешевших',
+  'price,desc': 'Ціна: від найдорожчих',
+};
+export const DEFAULT_BOOK_SORT = 'createdAt,desc';
+
+export const CATALOG = {
+  title: 'Каталог',
+  description: 'Видання з нашого асортименту',
+  filters: 'Фільтри',
+  showFilters: 'Більше фільтрів',
+  hideFilters: 'Менше фільтрів',
+  search: 'Пошук за назвою або автором',
+  searchPlaceholder: 'Наприклад: Кобзар',
+  genre: 'Жанр',
+  genrePlaceholder: 'Усі жанри',
+  author: 'Автор',
+  authorPlaceholder: 'Усі автори',
+  priceMin: 'Ціна від, грн',
+  priceMax: 'Ціна до, грн',
+  stockMin: 'Залишок від, шт.',
+  stockMax: 'Залишок до, шт.',
+  inStock: 'Лише ті, що є в наявності',
+  sort: 'Сортування',
+  resetFilters: 'Скинути фільтри',
+  priceRangeError: 'Ціна: «від» не може бути більшою за «до». Наприклад: від 100 до 300.',
+  stockRangeError: 'Залишок: «від» не може бути більшим за «до». Наприклад: від 1 до 20.',
+  emptyTitle: 'Видань за критеріями не знайдено',
+  emptyHint: 'Змініть або скиньте фільтри.',
+  found: 'Знайдено:',
+  pagination: 'Сторінки каталогу',
+  outOfStock: 'Відсутнє в наявності',
+  inStockCount: 'У наявності:',
+  pcs: 'шт.',
+  noRatings: 'Оцінок ще немає',
+  ratingOf: 'Середня оцінка',
+  coverMissing: 'Без обкладинки',
+  authorUnknown: 'Автор не вказаний',
+};
+
+export const CART = {
+  add: 'Додати до кошика',
+  inCart: 'У кошику',
+  added: 'Додано до кошика',
+  loginHint: 'Увійдіть, щоб додати видання до кошика.',
+  outOfStockHint: 'Видання відсутнє в наявності.',
+};
+
 export const toOptions = (map) =>
   Object.entries(map).map(([value, label]) => ({ value, label }));
 
