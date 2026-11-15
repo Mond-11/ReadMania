@@ -1,9 +1,10 @@
-import { Grid, Group, Pagination, SimpleGrid, Stack, Text } from '@mantine/core';
+import { Button, Grid, Group, Pagination, SimpleGrid, Stack, Text } from '@mantine/core';
 import { useDocumentTitle, useMediaQuery } from '@mantine/hooks';
 import { useEffect, useMemo } from 'react';
-import { useSearchParams } from 'react-router';
+import { Link, useSearchParams } from 'react-router';
 import { formatCount, BOOK_FORMS } from '../../../shared/format.js';
-import { CATALOG, TERMS } from '../../../shared/labels.js';
+import { CATALOG, MANAGER_BOOK, TERMS } from '../../../shared/labels.js';
+import { useCurrentUser } from '../../auth/index.js';
 import { EmptyState, ErrorState, PageHeader, PageLoader, Section } from '../../../shared/ui/index.js';
 import { useBooks } from '../api.js';
 import { BookCard } from '../components/BookCard.jsx';
@@ -12,6 +13,7 @@ import { hasActiveFilters, parseFilters, toApiQuery, toSearchParams } from '../f
 
 export default function CatalogPage() {
   useDocumentTitle(`${CATALOG.title} — ${TERMS.appName}`);
+  const { isManager } = useCurrentUser();
   const sidebar = useMediaQuery('(min-width: 75em)');
   const [searchParams, setSearchParams] = useSearchParams();
   const filters = useMemo(() => parseFilters(searchParams), [searchParams]);
@@ -40,7 +42,11 @@ export default function CatalogPage() {
 
   return (
     <>
-      <PageHeader title={CATALOG.title} description={CATALOG.description} />
+      <PageHeader
+        title={CATALOG.title}
+        description={CATALOG.description}
+        actions={isManager && <Button component={Link} to="/manager/books/new">{MANAGER_BOOK.addAction}</Button>}
+      />
       <Grid gap="md" align="flex-start">
         <Grid.Col span={{ base: 12, lg: 3 }} style={sidebar ? { position: 'sticky', top: 80 } : undefined}>
           <Section title={CATALOG.filters}>

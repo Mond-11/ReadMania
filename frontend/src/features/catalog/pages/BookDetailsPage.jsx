@@ -2,7 +2,8 @@ import { AspectRatio, Badge, Button, Grid, Group, Image, Rating, Stack, Text, Ti
 import { useDocumentTitle } from '@mantine/hooks';
 import { Link, useParams } from 'react-router';
 import { formatNumber } from '../../../shared/format.js';
-import { CATALOG, COMMON, TERMS } from '../../../shared/labels.js';
+import { CATALOG, COMMON, MANAGER_BOOK, TERMS } from '../../../shared/labels.js';
+import { useCurrentUser } from '../../auth/index.js';
 import { EmptyState, ErrorState, Money, PageHeader, PageLoader, Section } from '../../../shared/ui/index.js';
 import { useBook } from '../api.js';
 import { parseBookId } from '../bookSlug.js';
@@ -12,6 +13,7 @@ export default function BookDetailsPage() {
   const { slug } = useParams();
   const id = parseBookId(slug);
   const book = useBook(id);
+  const { isManager } = useCurrentUser();
 
   useDocumentTitle(book.data ? `${book.data.title} — ${TERMS.appName}` : TERMS.appName);
 
@@ -70,7 +72,11 @@ export default function BookDetailsPage() {
 
   return (
     <>
-      <PageHeader title={<VisuallyHidden>{data.title}</VisuallyHidden>} breadcrumbs={breadcrumbs} />
+      <PageHeader
+        title={<VisuallyHidden>{data.title}</VisuallyHidden>}
+        breadcrumbs={breadcrumbs}
+        actions={isManager && <Button component={Link} to={`/manager/books/${data.id}/edit`} variant="default">{MANAGER_BOOK.editAction}</Button>}
+      />
       <Grid gap="lg" align="flex-start">
         <Grid.Col span={{ base: 12, sm: 4 }}>
           <AspectRatio ratio={2 / 3} maw={320} mx={{ base: 'auto', sm: 0 }} style={{ background: 'var(--rm-bg)' }}>
