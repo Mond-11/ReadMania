@@ -34,7 +34,8 @@ ReadMania/
 │       ├── main/
 │       │   ├── java/ua/readmania/
 │       │   │   ├── ReadmaniaBackendApplication.java  # Головна точка входу Spring Boot застосунку (@EnableAsync, @EnableScheduling)
-│       │   │   ├── ManagerBootstrapInitializer.java  # Автоматичне створення першого менеджера при старті на продакшні
+│       │   │   ├── ManagerBootstrapInitializer.java  # Автоматичне створення першого менеджера при старті
+│       │   │   ├── LocalCoverSeeder.java             # Автоматичне засівання обкладинок книг у профілі local
 │       │   │   ├── common/            # Загальносистемні компоненти та обробка винятків
 │       │   │   │   ├── GlobalExceptionHandler.java   # Централізований обробник помилок (Problem Details RFC 9457)
 │       │   │   │   ├── NotFoundException.java        # Доменний виняток для ресурсів, що не знайдено (404)
@@ -100,8 +101,9 @@ ReadMania/
 │       │       │   ├── V7__challenges.sql  # Читацькі виклики
 │       │       │   ├── V8__gift_log.sql    # Журнал благодійних дарунків
 │       │       │   └── V9__schema_fixes.sql # Фікси SRS: 4 статуси, видавництво, рік, контакти закладу
-│       │       └── db/seed/
-│       │           └── R__dev_seed.sql     # Початкові дані для локальної розробки (profile local)
+│       │       ├── db/seed/
+│       │       │   └── R__dev_seed.sql     # Початкові дані для локальної розробки (profile local)
+│       │       └── seed-covers/            # Зразки обкладинок книг (.png) для локального каталогу
 │       └── test/
 │           ├── java/ua/readmania/
 │           │   ├── BaseIntegrationTest.java          # Базовий клас інтеграційних тестів (@Transactional, Flyway, validate)
@@ -233,13 +235,16 @@ cd backend
 ```
 Сервер буде доступний за адресою `http://localhost:8080`.
 
-### 3. Запуск фронтенду
-```bash
-cd frontend
-npm install
-npm run dev
-```
-Клієнтський застосунок буде доступний за адресою `http://localhost:5173`.
+### 4. Тестові облікові записи (профіль `local`)
+
+У профілі `local` за замовчуванням доступні такі попередньо створені тестові облікові записи:
+
+| Роль | Email | Пароль | Призначення |
+|---|---|---|---|
+| **Менеджер** (`MANAGER`) | `manager@readmania.ua` | `Manager123!` | Керування каталогом, замовленнями, користувачами, аналітикою |
+| **Покупець** (`USER`) | `user@readmania.ua` | `User123!` | Перегляд каталогу, кошик, оформлення замовлень, виклики |
+
+> **Примітка:** Менеджер також гарантовано ініціалізується компонентом `ManagerBootstrapInitializer` за налаштуваннями `app.initial-manager.*` або змінними `APP_INITIAL_MANAGER_EMAIL` та `APP_INITIAL_MANAGER_PASSWORD`.
 
 ---
 

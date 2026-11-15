@@ -3,3 +3,8 @@ spring:
     locations:
       - classpath:db/migration
       - classpath:db/seed
+
+app:
+  initial-manager:
+    email: manager@readmania.ua
+    password: Manager123!
