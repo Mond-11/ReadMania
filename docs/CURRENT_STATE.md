@@ -294,7 +294,7 @@
 | **Cron**| Автоматичне завершення прострочених читацьких викликів | **Повністю закрито** | `ReadmaniaBackendApplication` (@EnableScheduling), `ChallengeService` (@Scheduled) |
 | **Boot**| Ініціалізація початкового менеджера через змінні середовища | **Повністю закрито** | `ManagerBootstrapInitializer` (`app.initial-manager.*`) |
 | **OpenAPI**| Експорт актуальної схеми OpenAPI у `docs/openapi.json` | **Повністю закрито** | `springdoc-openapi`, `OpenApiExportIT`, `docs/openapi.json` |
-| **Mail**| Поштовий сервіс сповіщень (`NotificationService`: SMTP / Logging) | **Повністю закрито** | `SmtpNotificationService`, `LoggingNotificationService`, `@EnableAsync` |
+| **Mail**| Поштовий сервіс сповіщень (`NotificationService`: SMTP / Logging) | **Повністю закрито** | `SmtpNotificationService`, `LoggingNotificationService`, `docs/EMAIL_NOTIFICATIONS.md` |
 | **O2** | Діаграма сутностей і зв'язків (ERD) | **Повністю закрито** | `docs/ERD.md`, `docs/DATABASE_DECISIONS.md` |
 
 ---

@@ -18,7 +18,7 @@ import java.io.InputStream;
 import java.util.Optional;
 
 @Component
-@Profile("local")
+@Profile({"local", "dev", "default"})
 public class LocalCoverSeeder implements ApplicationRunner {
 
     private static final Logger log = LoggerFactory.getLogger(LocalCoverSeeder.class);
@@ -36,10 +36,14 @@ public class LocalCoverSeeder implements ApplicationRunner {
     public void run(ApplicationArguments args) {
         try {
             PathMatchingResourcePatternResolver resolver = new PathMatchingResourcePatternResolver();
-            Resource[] resources = resolver.getResources("classpath:seed-covers/*.*");
+            Resource[] resources = resolver.getResources("classpath*:seed-covers/*.*");
 
             if (resources.length == 0) {
-                log.info("No seed cover images found in classpath:seed-covers/");
+                resources = resolver.getResources("classpath*:seed-covers/*");
+            }
+
+            if (resources.length == 0) {
+                log.info("No seed cover images found in classpath*:seed-covers/");
                 return;
             }
 
