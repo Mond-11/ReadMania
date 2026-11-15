@@ -30,3 +30,9 @@ management:
   endpoint:
     health:
       show-details: never
+
+app:
+  novaposhta:
+    api-url: https://api.novaposhta.ua/v2.0/json/
+    api-key: your_novaposhta_api_key_optional
+    timeout-ms: 3000

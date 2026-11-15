@@ -1863,6 +1863,73 @@
         }
       }
     },
+    "/api/delivery/warehouses" : {
+      "get" : {
+        "tags" : [ "delivery-controller" ],
+        "operationId" : "getWarehouses",
+        "parameters" : [ {
+          "name" : "cityRef",
+          "in" : "query",
+          "required" : true,
+          "schema" : {
+            "type" : "string"
+          }
+        }, {
+          "name" : "query",
+          "in" : "query",
+          "required" : false,
+          "schema" : {
+            "type" : "string",
+            "default" : ""
+          }
+        } ],
+        "responses" : {
+          "200" : {
+            "description" : "OK",
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "type" : "array",
+                  "items" : {
+                    "$ref" : "#/components/schemas/DeliveryWarehouseResponse"
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/delivery/cities" : {
+      "get" : {
+        "tags" : [ "delivery-controller" ],
+        "operationId" : "getCities",
+        "parameters" : [ {
+          "name" : "query",
+          "in" : "query",
+          "required" : false,
+          "schema" : {
+            "type" : "string",
+            "default" : ""
+          }
+        } ],
+        "responses" : {
+          "200" : {
+            "description" : "OK",
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "type" : "array",
+                  "items" : {
+                    "$ref" : "#/components/schemas/DeliveryCityResponse"
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/challenges" : {
       "get" : {
         "tags" : [ "challenge-controller" ],
@@ -3854,6 +3921,40 @@
           "type" : {
             "type" : "string",
             "enum" : [ "ORPHANAGE", "BOARDING_SCHOOL", "LIBRARY" ]
+          }
+        }
+      },
+      "DeliveryWarehouseResponse" : {
+        "type" : "object",
+        "properties" : {
+          "ref" : {
+            "type" : "string"
+          },
+          "number" : {
+            "type" : "string"
+          },
+          "label" : {
+            "type" : "string"
+          },
+          "formattedAddress" : {
+            "type" : "string"
+          }
+        }
+      },
+      "DeliveryCityResponse" : {
+        "type" : "object",
+        "properties" : {
+          "ref" : {
+            "type" : "string"
+          },
+          "name" : {
+            "type" : "string"
+          },
+          "area" : {
+            "type" : "string"
+          },
+          "displayName" : {
+            "type" : "string"
           }
         }
       },
