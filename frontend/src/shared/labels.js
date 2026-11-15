@@ -28,8 +28,8 @@ export const PAYMENT_METHOD = {
 };
 
 export const DELIVERY_METHOD = {
-  COURIER: "Кур’єр",
   POST_OFFICE: "Відділення пошти",
+  COURIER: "Кур’єр",
 };
 
 export const INSTITUTION_TYPE = {
@@ -131,6 +131,7 @@ export const CATALOG = {
   emptyHint: "Змініть або скиньте фільтри.",
   found: "Знайдено:",
   pagination: "Сторінки каталогу",
+  pageSize: "Видань на сторінці",
   outOfStock: "Відсутнє в наявності",
   inStockCount: "У наявності:",
   pcs: "шт.",
@@ -219,6 +220,7 @@ export const CHECKOUT = {
     recipientName:
       "Ім’я одержувача: вкажіть повне ім’я. Наприклад: Тарас Шевченко.",
     phone: "Телефон: вкажіть номер у форматі +380501234567.",
+    postOffice: "Відділення пошти: оберіть місто та відділення зі списку. Наприклад: Київ, відділення №1.",
     address:
       "Адреса доставки: вкажіть місто, вулицю й будинок. Наприклад: м. Київ, вул. Хрещатик, 1.",
     institution: "Заклад: оберіть заклад-одержувач зі списку.",
@@ -451,6 +453,28 @@ export const MANAGER_INSTITUTION = {
   namePlaceholder: "Дитячий будинок «Сонечко»",
   addressPlaceholder: "м. Київ, вул. Лісова, 10",
   contactPersonPlaceholder: "Олена Петрівна",
+};
+
+export const MANAGER_GIFT_LOG = {
+  title: "Журнал подарованих видань",
+  institution: "Заклад",
+  institutionPlaceholder: "Усі заклади",
+  dateFrom: "Доставлено від",
+  dateTo: "Доставлено до",
+  datePlaceholder: "дд.мм.рррр",
+  rangeError: "Період: дата «до» не може бути раніше за дату «від». Наприклад: від 01.11.2026 до 15.11.2026.",
+  futureError: "Період: дата не може бути з майбутнього. Вкажіть сьогоднішню або ранішу дату, наприклад 15.11.2026.",
+  totalDonated: "Усього подаровано видань",
+  deliveredAt: "Дата доставки",
+  order: "Замовлення",
+  institutionName: "Заклад",
+  bookTitle: "Видання",
+  quantity: "Кількість",
+  emptyTitle: "Подарованих видань ще немає",
+  emptyHint: "Записи з’являться після доставки благодійних замовлень.",
+  emptyFilteredTitle: "За цими умовами записів не знайдено",
+  emptyFilteredHint: "Змініть заклад або період.",
+  resetFilters: "Скинути умови",
 };
 
 export const toOptions = (map) =>
