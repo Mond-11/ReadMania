@@ -15,6 +15,7 @@ Use these instead of rebuilding the same block. Anything not listed: use Mantine
 | `FormActions` | bottom of a form | `submitLabel`, `onCancel`, `loading`, `disabled`, `disabledReason` |
 | `InfoList` | label/value rows (order, profile details); empty values are skipped | `rows=[{label,value}]` |
 | `IconTrash` | icon for a delete/remove `ActionIcon` | any `svg` prop |
+| `IconPencil` | icon for an edit/rename `ActionIcon` | any `svg` prop |
 
 ## Page skeleton
 ```jsx

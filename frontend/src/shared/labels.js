@@ -317,6 +317,36 @@ export const MANAGER_BOOK = {
   },
 };
 
+export const MANAGER_CATALOG = {
+  deleteBook: 'Видалити видання',
+  deleteBookTitle: 'Видалити видання?',
+  deleteBookMessage: (title) => `Видання «${title}» буде видалено з каталогу. Цю дію не можна скасувати.`,
+  deleteBookBlocked: 'Видалити видання не можна: є залишок або воно є в активних замовленнях. Спершу обнуліть залишок і дочекайтеся завершення замовлень.',
+  bookDeleted: 'Видання видалено',
+  genresAction: 'Керувати жанрами',
+  genresTitle: 'Жанри',
+  genresDescription: 'Створення, перейменування й видалення жанрів каталогу.',
+  genresList: 'Список жанрів',
+  genresEmptyTitle: 'Жанрів ще немає',
+  genresEmptyHint: 'Додайте перший жанр.',
+  booksCount: 'Видань',
+  addGenre: 'Додати жанр',
+  genreName: 'Назва жанру',
+  genreNamePlaceholder: 'Наприклад: Поезія',
+  genreNameError: 'Назва жанру: вкажіть назву до 100 символів. Наприклад: Поезія.',
+  genreDuplicate: 'Назва жанру: такий жанр уже існує. Оберіть іншу назву.',
+  createGenreTitle: 'Новий жанр',
+  renameGenreTitle: 'Перейменування жанру',
+  renameGenre: (name) => `Перейменувати жанр «${name}»`,
+  deleteGenre: (name) => `Видалити жанр «${name}»`,
+  deleteGenreBlocked: 'Видалити жанр не можна: до нього прив’язані видання.',
+  deleteGenreTitle: 'Видалити жанр?',
+  deleteGenreMessage: (name) => `Жанр «${name}» буде видалено. Цю дію не можна скасувати.`,
+  genreCreated: 'Жанр додано',
+  genreRenamed: 'Жанр перейменовано',
+  genreDeleted: 'Жанр видалено',
+};
+
 export const toOptions = (map) =>
   Object.entries(map).map(([value, label]) => ({ value, label }));
 
