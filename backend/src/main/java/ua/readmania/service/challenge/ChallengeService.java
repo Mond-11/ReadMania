@@ -2,6 +2,7 @@ package ua.readmania.service.challenge;
 
 import java.time.Instant;
 import java.util.ArrayList;
+import java.util.Comparator;
 import java.util.List;
 import java.util.Map;
 import java.util.stream.Collectors;
@@ -89,6 +90,18 @@ public class ChallengeService {
                     isCompleted ? completion.getCompletedAt() : null
             ));
         }
+
+        // SRS C7: the user also sees the challenges they have completed, even after the challenge itself ended
+        // (expired or finished early). Active completed ones are already in the list above.
+        completionsMap.values().stream()
+                .filter(c -> c.getChallenge().getStatus() != ChallengeStatus.ACTIVE)
+                .sorted(Comparator.comparing(ChallengeCompletion::getCompletedAt, Comparator.nullsLast(Comparator.reverseOrder())))
+                .forEach(c -> result.add(ChallengeResponse.fromEntity(
+                        c.getChallenge(),
+                        c.getChallenge().getRequiredBooks(),
+                        true,
+                        c.getCompletedAt()
+                )));
 
         return result;
     }
