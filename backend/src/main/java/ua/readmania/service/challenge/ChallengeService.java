@@ -8,6 +8,7 @@ import java.util.Map;
 import java.util.stream.Collectors;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import ua.readmania.common.BusinessRuleException;
@@ -53,9 +54,37 @@ public class ChallengeService {
         this.notificationService = notificationService;
     }
 
+    /**
+     * M4: after the deadline the challenge ends automatically. Runs every minute; an overdue ACTIVE challenge
+     * becomes EXPIRED with finishedAt = its deadline. Rewards are not affected: they are granted on delivery
+     * (ManagerOrderService) and only for orders delivered before the deadline.
+     *
+     * @return how many challenges were expired
+     */
+    @Scheduled(fixedDelayString = "PT1M", initialDelayString = "PT10S")
+    @Transactional
+    public int expireOverdueChallenges() {
+        List<Challenge> overdue = challengeRepository.findByStatusAndDeadlineBefore(ChallengeStatus.ACTIVE, Instant.now());
+        for (Challenge challenge : overdue) {
+            challenge.setStatus(ChallengeStatus.EXPIRED);
+            challenge.setFinishedAt(challenge.getDeadline());
+            log.info("Читацький виклик '{}' (ID: {}) завершено автоматично: строк минув {}",
+                    challenge.getTitle(), challenge.getId(), challenge.getDeadline());
+        }
+        challengeRepository.saveAll(overdue);
+        return overdue.size();
+    }
+
+    // The scheduler runs once a minute, so between the deadline and the next run a challenge is still ACTIVE in the DB.
+    private static boolean isOverdue(Challenge challenge) {
+        return challenge.getDeadline() != null && challenge.getDeadline().isBefore(Instant.now());
+    }
+
     @Transactional(readOnly = true)
     public List<ChallengeResponse> getActiveChallenges(Long userId) {
-        List<Challenge> challenges = challengeRepository.findByStatusOrderByDeadlineAsc(ChallengeStatus.ACTIVE);
+        List<Challenge> challenges = challengeRepository.findByStatusOrderByDeadlineAsc(ChallengeStatus.ACTIVE).stream()
+                .filter(c -> !isOverdue(c))
+                .toList();
         Map<Long, ChallengeCompletion> completionsMap = Map.of();
 
         if (userId != null) {
@@ -187,6 +216,9 @@ public class ChallengeService {
         if (challenge.getStatus() != ChallengeStatus.ACTIVE) {
             throw new BusinessRuleException("Можна редагувати лише активні виклики");
         }
+        if (isOverdue(challenge)) {
+            throw new BusinessRuleException("Строк виклику минув: його завершено автоматично, змінювати його не можна");
+        }
 
         Genre genre = null;
         if (request.getGenreId() != null) {
@@ -213,6 +245,9 @@ public class ChallengeService {
 
         if (challenge.getStatus() != ChallengeStatus.ACTIVE) {
             throw new BusinessRuleException("Можна достроково завершити лише активний виклик");
+        }
+        if (isOverdue(challenge)) {
+            throw new BusinessRuleException("Строк виклику минув: його завершено автоматично, дострокове завершення неможливе");
         }
 
         // C7 / M4.3: сповіщення користувачів, у яких прогрес > 0
