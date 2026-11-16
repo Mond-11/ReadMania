@@ -2,6 +2,8 @@
 
 Цей документ описує архітектуру, налаштування та особливості роботи підсистеми відправлення електронних листів у проєкті **ReadMania** на різних середовищах виконання (Production, Development, Local, Test).
 
+> **Детальна документація:** Повний опис поштової підсистеми, взаємодії з сервісами та шаблонів листів наведено в розділах 7.13 та 12.4 [Настанови розробника (DEVELOPER_GUIDE.md)](DEVELOPER_GUIDE.md).
+
 ---
 
 ## 1. Загальна архітектура та ключові принципи
@@ -9,7 +11,9 @@
 Підсистема сповіщень спроєктована за принципом інверсії залежностей (Dependency Inversion Principle) та забезпечує повну ізоляцію середовищ:
 
 - **Єдиний інтерфейс:** Усі бізнес-сервіси (`AuthService`, `OrderService`, `ManagerOrderService`, `ManagerUserService`, `ChallengeService`) взаємодіють виключно з інтерфейсом `ua.readmania.service.notification.NotificationService`.
-- **Асинхронне виконання:** У точці входу `ReadmaniaBackendApplication` увімкнено `@EnableAsync`. Усі методи надсилання пошти виконуються в окремому пулі потоків (background task executor), тому процес формування та надсилання листів не блокує HTTP-запити користувача або менеджера та не сповільнює роботу SPA.
+- **Асинхронність та ізоляція:**
+  - У продуктивному профілі `SmtpNotificationService` (`@Profile("prod")`) методи позначено `@Async` (активовано `@EnableAsync` у `ReadmaniaBackendApplication`). Відправка виконується в окремому пулі потоків і не блокує HTTP-запити.
+  - У профілях `local`, `test`, `default` реалізація `LoggingNotificationService` працює **синхронно**, що дозволяє автоматизованим тестам одразу перевіряти список надісланих повідомлень через `getSentEmails()`.
 - **Відмовостійкість (Fault Tolerance):** Помилки транспорту чи збої мережі ізольовані блоками `try-catch` з логуванням винятків (`log.error(...)`). Тимчасова недоступність поштового сервера не призводить до відкату основної бізнес-транзакції (наприклад, створення замовлення чи блокування акаунта успішно фіксуються в БД навіть за збою поштового шлюзу).
 
 ---
@@ -57,9 +61,17 @@
 
 | Подія / Метод | Одержувач | Тригер у системі | Вміст листа |
 |---|---|---|---|
-| **Нове замовлення**<br>`sendNewOrderAlertToManagers(Order)` | `managers@readmania.ua` (команда менеджерів) | Створення звичайного або благодійного замовлення клієнтом (`POST /api/orders`) | Номер замовлення, тип (`REGULAR`/`GIFT`), спосіб оплати, сума до сплати та назва благодійного закладу (у разі подарунка). |
-| **Зміна статусу замовлення**<br>`sendOrderStatusChanged(Order)` | Email покупця (`order.getUser().getEmail()`) | Зміна статусу менеджером (`PATCH /api/manager/orders/{id}/status`, масові операції) або скасування покупцем (`POST /api/orders/{id}/cancel`) | Номер замовлення та новий встановлений статус (`AWAITING_PAYMENT`, `PAID`, `DELIVERED`, `CANCELLED`). |
-| **Відновлення пароля**<br>`sendPasswordResetLink(email, rawToken)` | Email користувача | Запит на скидання пароля (`POST /api/auth/password-reset/request`) | Посилання виду `/reset-password?token={rawToken}` із попередженням про термін дії токена (1 година). |
-| **Блокування облікового запису**<br>`sendAccountBlocked(email, reason)` | Email заблокованого користувача | Ручне блокування менеджером (`POST /api/manager/users/{id}/block`) | Повідомлення про блокування та причина (`blockReason`), вказана менеджером. |
-| **Розблокування облікового запису**<br>`sendAccountUnblocked(email)` | Email користувача | Схвалення апеляції на розблокування менеджером (`POST /api/manager/users/unblock`) | Повідомлення про відновлення доступу до облікового запису. |
-| **Дострокове завершення виклику**<br>`sendChallengeTerminatedEarly(Challenge)` | Учасники виклику | Дострокове закриття челенджу менеджером (`POST /api/manager/challenges/{id}/terminate`) | Назва виклику та сповіщення про його дострокове завершення. |
+| **Нове замовлення**<br>`sendNewOrderAlertToManagers(Order order)` | `managers@readmania.ua` (команда менеджерів) | Створення звичайного або благодійного замовлення клієнтом (`POST /api/orders`, `POST /api/orders/gift`) | Номер замовлення, сума, позиції та адреса доставки / назва закладу. |
+| **Зміна статусу замовлення**<br>`sendOrderStatusChanged(Order order)` | Email покупця (`order.getUser().getEmail()`) | Зміна статусу менеджером (`PATCH /api/manager/orders/{id}/status`, масові операції) або скасування покупцем (`POST /api/orders/{id}/cancel`) | Номер замовлення та новий встановлений статус (`AWAITING_PAYMENT`, `PAID`, `DELIVERED`, `CANCELLED`). |
+| **Відновлення пароля**<br>`sendPasswordResetLink(User user, String rawToken)` | Email користувача (`user.getEmail()`) | Запит на скидання пароля (`POST /api/auth/password-reset/request`) | Посилання виду `/reset-password?token={rawToken}` із попередженням про термін дії токена (1 година). |
+| **Блокування облікового запису**<br>`sendAccountBlocked(User user)` | Email заблокованого користувача (`user.getEmail()`) | Ручне блокування менеджером (`POST /api/manager/users/{id}/block`) | Повідомлення про блокування та причина (`user.getBlockReason()`), вказана менеджером. |
+| **Розблокування облікового запису**<br>`sendAccountUnblocked(User user)` | Email користувача (`user.getEmail()`) | Схвалення розблокування менеджером (`POST /api/manager/users/unblock`) | Повідомлення про відновлення доступу до облікового запису. |
+| **Дострокове завершення виклику**<br>`sendChallengeTerminatedEarly(User user, Challenge challenge)` | Учасники виклику з прогресом > 0 | Дострокове закриття челенджу менеджером (`POST /api/manager/challenges/{id}/finish`) | Назва виклику та сповіщення про його дострокове завершення. |
+
+---
+
+## 5. Відомі особливості реалізації
+
+1. **Адреса менеджерів:** `managers@readmania.ua` жорстко зафіксована у коді `sendNewOrderAlertToManagers`.
+2. **Відносне посилання скидання пароля:** базову URL-адресу клієнта не винесено в конфігурацію, тому в листі формується відносний шлях `/reset-password?token=...`.
+3. **Логування токенів у dev-режимі:** `LoggingNotificationService` записує токен скидання пароля в журнал `INFO`, тому ця реалізація призначена виключно для профілів `local`, `test`, `default` та не повинна активуватися в `prod`.
