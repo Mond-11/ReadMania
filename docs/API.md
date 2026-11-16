@@ -640,8 +640,8 @@
 |---|---|---|---|---|
 | `GET` | `/api/manager/challenges` | `MANAGER` | **Перегляд усіх читацьких викликів (M4)**<br>Параметри: `status` (`ACTIVE`, `COMPLETED`, `EXPIRED`, `CANCELLED`). | `200 OK` (`List<ChallengeResponse>`), `403` |
 | `POST` | `/api/manager/challenges` | `MANAGER` | **Створення нового читацького виклику (M4.1)**<br>Тіло (`CreateChallengeRequest`): `{ title, name?, description?, requiredBooks, genreId?, deadline, rewardPoints }` | `201 Created` (`ChallengeResponse`), `400`, `403` |
-| `PUT` | `/api/manager/challenges/{id}` | `MANAGER` | **Редагування активного виклику (M4.2)**<br>Тіло (`UpdateChallengeRequest`): `{ title, name?, description?, requiredBooks, genreId?, deadline, rewardPoints }`<br>При зміні умови прогрес користувачів автоматично динамічно перераховується. | `200 OK` (`ChallengeResponse`), `400`, `403`, `404` |
-| `POST` | `/api/manager/challenges/{id}/finish` | `MANAGER` | **Дострокове завершення виклику зі сповіщенням користувачів (M4.3)**<br>Переводить виклик у статус `CANCELLED`, фіксує `finished_at` та сповіщає користувачів із ненульовим прогресом. | `200 OK` (`FinishChallengeResponse`), `400`, `403`, `404` |
+| `PUT` | `/api/manager/challenges/{id}` | `MANAGER` | **Редагування активного виклику (M4.2)**<br>Тіло (`UpdateChallengeRequest`): `{ title, name?, description?, requiredBooks, genreId?, deadline, rewardPoints }`<br>При зміні умови прогрес користувачів автоматично динамічно перераховується. Виклик із минулим строком редагувати не можна (`400`): після строку він автоматично переходить у `EXPIRED`. | `200 OK` (`ChallengeResponse`), `400`, `403`, `404` |
+| `POST` | `/api/manager/challenges/{id}/finish` | `MANAGER` | **Дострокове завершення виклику зі сповіщенням користувачів (M4.3)**<br>Переводить виклик у статус `CANCELLED`, фіксує `finished_at` та сповіщає користувачів із ненульовим прогресом. Для виклику з минулим строком — `400`. | `200 OK` (`FinishChallengeResponse`), `400`, `403`, `404` |
 
 #### Модель `FinishChallengeResponse`:
 ```json

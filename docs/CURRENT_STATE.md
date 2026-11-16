@@ -145,7 +145,7 @@
 8. **Ініціалізація першого менеджера при старті (`ManagerBootstrapInitializer`):**
    - Компонент `ApplicationRunner`, що зчитує змінні `APP_INITIAL_MANAGER_EMAIL` та `APP_INITIAL_MANAGER_PASSWORD` (властивості `app.initial-manager.email`, `app.initial-manager.password`) та створює менеджера у разі його відсутності в БД.
 9. **Планувальник автоматичного завершення викликів (@EnableScheduling):**
-   - Щодванадцять секунд / щохвилини перевіряє активні читацькі виклики з простроченим дедлайном і переводить їх у стан `COMPLETED`.
+   - Щохвилини (`ChallengeService.expireOverdueChallenges`) перевіряє активні читацькі виклики з простроченим дедлайном і переводить їх у стан `EXPIRED` (`finished_at` = дедлайн). До наступного запуску такий виклик уже не показується Користувачам як активний і не редагується (`400`).
 10. **Апеляція на розблокування (`POST /api/auth/unblock-request`):**
     - Публічний ендпоінт, що перевіряє пароль заблокованого користувача і створює/оновлює запис у `unblock_requests`.
 11. **Сесійні cookie та мережевий захист:**
@@ -298,7 +298,7 @@
 | **A.4** | Видавництво та рік видання книги з індексом сортування `idx_books_publication_year` | **Повністю закрито** | `V9__schema_fixes.sql`, `Book`, `CatalogService`, `CatalogIntegrationTest` |
 | **A.10**| Знімок контактної особи закладу (`institutionContactPerson`) у замовленні | **Повністю закрито** | `V9__schema_fixes.sql`, `Order`, `OrderService`, `OrderIntegrationTest` |
 | **CSRF**| CSRF-захист cookie/header для SPA (`CookieCsrfTokenRepository` + `SpaCsrfTokenRequestHandler`) | **Повністю закрито** | `SecurityConfig`, `CsrfCookieFilter`, `SpaCsrfTokenRequestHandler` |
-| **Cron**| Автоматичне завершення прострочених читацьких викликів | **Повністю закрито** | `ReadmaniaBackendApplication` (@EnableScheduling), `ChallengeService` (@Scheduled) |
+| **Cron**| Автоматичне завершення прострочених читацьких викликів | **Повністю закрито** | `ReadmaniaBackendApplication` (@EnableScheduling), `ChallengeService.expireOverdueChallenges` (@Scheduled), `Slice4GamificationAndGiftSetIT` |
 | **Boot**| Ініціалізація початкового менеджера через змінні середовища | **Повністю закрито** | `ManagerBootstrapInitializer` (`app.initial-manager.*`) |
 | **OpenAPI**| Експорт актуальної схеми OpenAPI у `docs/openapi.json` | **Повністю закрито** | `springdoc-openapi`, `OpenApiExportIT`, `docs/openapi.json` |
 | **Mail**| Поштовий сервіс сповіщень (`NotificationService`: SMTP / Logging) | **Повністю закрито** | `SmtpNotificationService`, `LoggingNotificationService`, `docs/EMAIL_NOTIFICATIONS.md` |
