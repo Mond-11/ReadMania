@@ -22,11 +22,13 @@ public class CreateGiftOrderRequest {
     public CreateGiftOrderRequest() {
     }
 
-    public CreateGiftOrderRequest(Long institutionId, List<OrderItemRequest> items, PaymentMethod paymentMethod, int bonusPoints) {
+    // Jackson uses this constructor for JSON, so fields missing in the request arrive as null:
+    // bonusPoints and paymentMethod are optional in the API and fall back to their defaults.
+    public CreateGiftOrderRequest(Long institutionId, List<OrderItemRequest> items, PaymentMethod paymentMethod, Integer bonusPoints) {
         this.institutionId = institutionId;
         this.items = items;
-        this.paymentMethod = paymentMethod;
-        this.bonusPoints = bonusPoints;
+        this.paymentMethod = paymentMethod != null ? paymentMethod : PaymentMethod.TRANSFER;
+        this.bonusPoints = bonusPoints != null ? bonusPoints : 0;
     }
 
     public Long getInstitutionId() {
