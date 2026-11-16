@@ -1,18 +1,19 @@
-import { Alert, Button, Checkbox, Grid, NumberInput, Radio, SegmentedControl, Select, Stack, Text, TextInput } from '@mantine/core';
+import { ActionIcon, Alert, Button, Checkbox, Grid, NumberInput, Radio, SegmentedControl, Select, Stack, Text, TextInput } from '@mantine/core';
 import { useForm } from '@mantine/form';
 import { useDebouncedValue } from '@mantine/hooks';
 import { useQueryClient } from '@tanstack/react-query';
 import { useState } from 'react';
 import { Link, useNavigate } from 'react-router';
 import { applyFormErrors } from '../../../shared/api/errors.js';
+import { POINT_FORMS, plural } from '../../../shared/format.js';
 import { useInstitutions } from '../../../shared/hooks/useInstitutions.js';
 import {
-  CHECKOUT, DELIVERY_METHOD, INSTITUTION_TYPE, PAYMENT_METHOD, TERMS, labelOf, toOptions,
+  CHECKOUT, DELIVERY_METHOD, INSTITUTION_TYPE, PAYMENT_METHOD, labelOf, toOptions,
 } from '../../../shared/labels.js';
 import { notifyError, notifySuccess } from '../../../shared/notify.js';
 import { ErrorState, FormActions, PageLoader, Section } from '../../../shared/ui/index.js';
 import { myOrderPath } from '../../orders/index.js';
-import { CART_KEY, useCreateOrder, useDeliveryCities, useDeliveryWarehouses, useOrderPreview } from '../api.js';
+import { CART_KEY, useCart, useCreateOrder, useDeliveryCities, useDeliveryWarehouses, useOrderPreview } from '../api.js';
 import { OrderSummary } from './OrderSummary.jsx';
 import { TransferRequisites } from './TransferRequisites.jsx';
 
@@ -66,7 +67,14 @@ export function CheckoutForm({ user }) {
   const createOrder = useCreateOrder({ gift: isGift });
 
   const maxPoints = preview.data?.maxBonusPoints ?? 0;
-  const hasUnavailable = preview.data?.items.some((item) => !item.available) ?? false;
+  // SRS C2: the order is placed for the available positions. Out-of-stock or removed books are left in the cart
+  // and do not block the checkout; only a quantity above the stock (or nothing to order at all) does.
+  const cart = useCart();
+  const cartItems = cart.data?.items ?? [];
+  const skipped = cartItems.filter((item) => !item.available);
+  const tooMany = cartItems.some((item) => item.available && item.quantity > item.stock);
+  const nothingAvailable = cartItems.length > 0 && skipped.length === cartItems.length;
+  const hasUnavailable = tooMany || nothingAvailable;
   const institution = institutions.data?.find((i) => String(i.id) === form.values.institutionId);
 
   const handleError = (error) => {
@@ -122,8 +130,13 @@ export function CheckoutForm({ user }) {
           )}
           {hasUnavailable && (
             <Alert color="red" title={CHECKOUT.unavailableTitle}>
-              {CHECKOUT.unavailableText}{' '}
+              {nothingAvailable ? CHECKOUT.nothingAvailableText : CHECKOUT.unavailableText}{' '}
               <Button component={Link} to="/cart" variant="subtle" size="compact-sm">{CHECKOUT.backToCart}</Button>
+            </Alert>
+          )}
+          {!hasUnavailable && skipped.length > 0 && (
+            <Alert color="yellow" title={CHECKOUT.skippedTitle}>
+              {CHECKOUT.skippedText(skipped.map((item) => `«${item.title}»`).join(', '))}
             </Alert>
           )}
 
@@ -290,6 +303,7 @@ export function CheckoutForm({ user }) {
           {paymentMethod === 'TRANSFER' && <TransferRequisites />}
 
           <Section title={CHECKOUT.bonusSection}>
+            {/* SRS C8: a «−/+» counter with step 1 from 0 to the maximum; the button at a limit is disabled. */}
             <NumberInput
               label={CHECKOUT.bonusPoints}
               description={`${CHECKOUT.bonusBalance}: ${user.bonusBalance ?? 0} · ${CHECKOUT.bonusMax}: ${maxPoints}. ${CHECKOUT.bonusLimitHint}`}
@@ -300,7 +314,28 @@ export function CheckoutForm({ user }) {
               allowNegative={false}
               clampBehavior="strict"
               disabled={maxPoints === 0}
-              suffix={` ${TERMS.bonusPoints}`}
+              suffix={` ${plural(bonusPoints, POINT_FORMS)}`}
+              hideControls
+              leftSection={
+                <ActionIcon
+                  variant="subtle"
+                  aria-label={CHECKOUT.bonusDecrease}
+                  disabled={bonusPoints <= 0}
+                  onClick={() => form.setFieldValue('bonusPoints', Math.max(0, bonusPoints - 1))}
+                >
+                  −
+                </ActionIcon>
+              }
+              rightSection={
+                <ActionIcon
+                  variant="subtle"
+                  aria-label={CHECKOUT.bonusIncrease}
+                  disabled={bonusPoints >= maxPoints}
+                  onClick={() => form.setFieldValue('bonusPoints', Math.min(maxPoints, bonusPoints + 1))}
+                >
+                  +
+                </ActionIcon>
+              }
               {...form.getInputProps('bonusPoints')}
             />
           </Section>

@@ -16,7 +16,8 @@ export function OrderSummary({ preview }) {
   return (
     <Section title={CHECKOUT.summarySection}>
       <Stack gap="xs" component="ul" style={{ listStyle: 'none', padding: 0, margin: 0 }}>
-        {preview.items.map((item) => (
+        {/* Only what will be ordered: unavailable positions stay in the cart (SRS C2). */}
+        {preview.items.filter((item) => item.available).map((item) => (
           <Group key={item.bookId} component="li" justify="space-between" gap="sm" wrap="nowrap" align="baseline">
             <Text size="sm" style={{ minWidth: 0 }}>
               {item.title} × {item.quantity}
