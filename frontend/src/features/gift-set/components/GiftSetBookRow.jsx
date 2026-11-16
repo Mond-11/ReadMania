@@ -18,8 +18,9 @@ export function GiftSetBookRow({ book, onReplace, onRemove, disabled }) {
       >
         <IconTrash />
       </ActionIcon>
-      <Group align="stretch" wrap="nowrap" gap="sm">
-        <div style={{ aspectRatio: '2 / 3', minWidth: 56, flexShrink: 0, background: 'var(--rm-bg)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+      <Group align="flex-start" wrap="nowrap" gap="sm">
+        {/* Fixed-width cover: stretched to the card height it grew wide and squeezed the title. */}
+        <div style={{ width: 72, aspectRatio: '2 / 3', flexShrink: 0, overflow: 'hidden', borderRadius: 4, background: 'var(--rm-bg)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
           {book.coverUrl ? (
             <Image src={book.coverUrl} alt="" loading="lazy" fit="cover" h="100%" w="100%" />
           ) : (
