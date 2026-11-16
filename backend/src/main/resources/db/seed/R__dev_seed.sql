@@ -3,7 +3,7 @@
 
 -- 1. Користувачі
 -- Менеджер: manager@readmania.ua / Manager123!
--- Покупець: user@readmania.ua / User123!
+-- Покупець: user@readmania.ua / User123! (баланс 106 = сума його транзакцій у розділі 15)
 -- Активний читач: reader@readmania.ua / User123!
 -- Заблокований користувач: blocked@readmania.ua / User123!
 INSERT INTO users (email, password_hash, full_name, role, status, bonus_balance, failed_login_attempts, blocked_at, block_reason)
@@ -11,11 +11,11 @@ SELECT 'manager@readmania.ua', '$2a$10$8bfpwagFWI9BqEtBHk2bMeAopSArM3YhEUCa46DJX
 WHERE NOT EXISTS (SELECT 1 FROM users WHERE LOWER(email) = LOWER('manager@readmania.ua'));
 
 INSERT INTO users (email, password_hash, full_name, role, status, bonus_balance, failed_login_attempts, blocked_at, block_reason)
-SELECT 'user@readmania.ua', '$2a$10$oFEL5AgyKCKHuAfkwdTN3ukXwBSeJKZTdHcqwuPakaC1duPxMMBV2', 'Тестовий Покупець', 'USER', 'ACTIVE', 150, 0, NULL, NULL
+SELECT 'user@readmania.ua', '$2a$10$oFEL5AgyKCKHuAfkwdTN3ukXwBSeJKZTdHcqwuPakaC1duPxMMBV2', 'Тестовий Покупець', 'USER', 'ACTIVE', 106, 0, NULL, NULL
 WHERE NOT EXISTS (SELECT 1 FROM users WHERE LOWER(email) = LOWER('user@readmania.ua'));
 
 INSERT INTO users (email, password_hash, full_name, role, status, bonus_balance, failed_login_attempts, blocked_at, block_reason)
-SELECT 'reader@readmania.ua', '$2a$10$oFEL5AgyKCKHuAfkwdTN3ukXwBSeJKZTdHcqwuPakaC1duPxMMBV2', 'Олена Петренко', 'USER', 'ACTIVE', 50, 0, NULL, NULL
+SELECT 'reader@readmania.ua', '$2a$10$oFEL5AgyKCKHuAfkwdTN3ukXwBSeJKZTdHcqwuPakaC1duPxMMBV2', 'Олена Петренко', 'USER', 'ACTIVE', 0, 0, NULL, NULL
 WHERE NOT EXISTS (SELECT 1 FROM users WHERE LOWER(email) = LOWER('reader@readmania.ua'));
 
 INSERT INTO users (email, password_hash, full_name, role, status, bonus_balance, failed_login_attempts, blocked_at, block_reason)
@@ -449,11 +449,13 @@ WHERE u.email = 'user@readmania.ua' AND o.user_id = u.id AND o.created_at = TIME
       SELECT 1 FROM bonus_transactions WHERE user_id = u.id AND order_id = o.id AND type = 'SPENT'
   );
 
--- Нарахування балів за замовлення
+-- Нарахування балів за доставлені замовлення: 1 бал за кожні повні 100 грн вартості видань (до знижки),
+-- так само для звичайного замовлення й замовлення в дар (SRS 7.2.1, крок 7) — як у ManagerOrderService.
 INSERT INTO bonus_transactions (user_id, points, type, order_id, created_at)
-SELECT u.id, 10, 'ORDER_REWARD', o.id, TIMESTAMPTZ '2026-11-10 14:30:00+02'
+SELECT u.id, FLOOR(o.items_total / 100)::int, 'ORDER_REWARD', o.id, o.status_changed_at
 FROM users u, orders o
-WHERE u.email = 'user@readmania.ua' AND o.user_id = u.id AND o.created_at = TIMESTAMPTZ '2026-11-08 10:00:00+02'
+WHERE u.email = 'user@readmania.ua' AND o.user_id = u.id AND o.status = 'DELIVERED'
+  AND o.created_at IN (TIMESTAMPTZ '2026-11-08 10:00:00+02', TIMESTAMPTZ '2026-11-11 09:00:00+02')
   AND NOT EXISTS (
       SELECT 1 FROM bonus_transactions WHERE order_id = o.id AND type = 'ORDER_REWARD'
   );
@@ -467,11 +469,11 @@ WHERE u.email = 'user@readmania.ua' AND c.title = 'Майстри фантаст
       SELECT 1 FROM bonus_transactions WHERE user_id = u.id AND challenge_id = c.id AND type = 'CHALLENGE_REWARD'
   );
 
--- Бонус за оцінку книги
+-- Бонус за оцінку: 1 бал за кожне оцінене видання (обидві оцінки з розділу 14)
 INSERT INTO bonus_transactions (user_id, points, type, book_id, created_at)
-SELECT u.id, 50, 'RATING_REWARD', b.id, TIMESTAMPTZ '2026-11-10 16:00:00+02'
+SELECT u.id, 1, 'RATING_REWARD', b.id, TIMESTAMPTZ '2026-11-10 16:00:00+02'
 FROM users u, books b
-WHERE u.email = 'user@readmania.ua' AND b.isbn = '978-966-03-7000-1'
+WHERE u.email = 'user@readmania.ua' AND b.isbn IN ('978-966-03-7000-1', '978-966-03-7000-2')
   AND NOT EXISTS (
       SELECT 1 FROM bonus_transactions WHERE user_id = u.id AND book_id = b.id AND type = 'RATING_REWARD'
   );
