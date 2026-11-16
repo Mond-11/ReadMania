@@ -28,7 +28,7 @@ export function useLoyalty() {
   });
 }
 
-// Active challenges with the user's progress (the backend returns only ACTIVE ones).
+// Challenges with the user's progress: all active ones plus the ones this user completed (also already ended).
 export function useChallenges() {
   return useQuery({
     queryKey: ['challenges', 'my'],
