@@ -247,13 +247,15 @@ docker compose up -d --build
   - Backend: `http://localhost:8080/actuator/health`
   - Frontend: `http://localhost:5173`
 
-**Статус / Логи / Зупинка:**
+**Статус / Логи / Зупинка / Резервне копіювання:**
 ```bash
 ./run-docker.sh status   # перевірка стану контейнерів
 ./run-docker.sh logs     # перегляд логів у реальному часі
 ./run-docker.sh restart  # перезапуск з перезбіркою образів
 ./run-docker.sh down     # зупинка контейнерів
 ./run-docker.sh clean    # повне очищення (контейнери + томи PostgreSQL)
+./run-docker.sh backup   # створення резервної копії БД (pg_dump -Fc, ротація 14 днів)
+./run-docker.sh restore  # відновлення БД з резервної копії (pg_restore)
 ```
 
 ### 2. Запуск бекенду локально (без Docker для бекенду)
