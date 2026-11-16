@@ -103,6 +103,9 @@ public class Slice4GamificationAndGiftSetIT extends BaseIntegrationTest {
     private ChallengeCompletionRepository challengeCompletionRepository;
 
     @Autowired
+    private ua.readmania.service.challenge.ChallengeService challengeService;
+
+    @Autowired
     private PasswordEncoder passwordEncoder;
 
     @Autowired
@@ -513,6 +516,53 @@ public class Slice4GamificationAndGiftSetIT extends BaseIntegrationTest {
         mockMvc.perform(get("/api/challenges"))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$[?(@.name == 'Літній марафон')]").isEmpty());
+    }
+
+    @Test
+    @DisplayName("M4: Після строку виклик завершується автоматично (EXPIRED), а чинний залишається активним")
+    void shouldExpireOverdueChallengesAutomatically() {
+        // PostgreSQL keeps microseconds; Linux clocks give nanoseconds, so the deadline is truncated to compare exactly.
+        Instant deadline = Instant.now().minus(1, ChronoUnit.HOURS).truncatedTo(ChronoUnit.MICROS);
+        Challenge overdue = new Challenge("Минулий марафон", "Опис", 3, null, deadline, 20);
+        overdue.setStatus(ChallengeStatus.ACTIVE);
+        overdue = challengeRepository.save(overdue);
+        Challenge current = new Challenge("Чинний марафон", "Опис", 3, null, Instant.now().plus(5, ChronoUnit.DAYS), 20);
+        current.setStatus(ChallengeStatus.ACTIVE);
+        current = challengeRepository.save(current);
+
+        int expired = challengeService.expireOverdueChallenges();
+
+        assertThat(expired).isGreaterThanOrEqualTo(1);
+        Challenge reloadedOverdue = challengeRepository.findById(overdue.getId()).orElseThrow();
+        assertThat(reloadedOverdue.getStatus()).isEqualTo(ChallengeStatus.EXPIRED);
+        assertThat(reloadedOverdue.getFinishedAt()).isEqualTo(deadline);
+        assertThat(challengeRepository.findById(current.getId()).orElseThrow().getStatus()).isEqualTo(ChallengeStatus.ACTIVE);
+    }
+
+    @Test
+    @DisplayName("M4: Виклик із минулим строком не показується як активний і не змінюється, навіть до запуску планувальника")
+    void shouldHideAndLockOverdueChallengeBeforeSchedulerRuns() throws Exception {
+        MockHttpSession managerSession = loginAs("manager_gamification@example.com", "Password123!");
+        MockHttpSession userSession = loginAs("reader@example.com", "Password123!");
+
+        Challenge overdue = new Challenge("Запізнілий марафон", "Опис", 3, null, Instant.now().minus(1, ChronoUnit.MINUTES), 20);
+        overdue.setStatus(ChallengeStatus.ACTIVE);
+        overdue = challengeRepository.save(overdue);
+
+        mockMvc.perform(get("/api/challenges").session(userSession))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$[?(@.name == 'Запізнілий марафон')]").isEmpty());
+
+        UpdateChallengeRequest updateRequest = new UpdateChallengeRequest(
+                "Спроба продовжити", "Опис", 3, null, Instant.now().plus(10, ChronoUnit.DAYS), 20);
+        mockMvc.perform(put("/api/manager/challenges/" + overdue.getId())
+                        .session(managerSession)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(updateRequest)))
+                .andExpect(status().isBadRequest());
+
+        mockMvc.perform(post("/api/manager/challenges/" + overdue.getId() + "/finish").session(managerSession))
+                .andExpect(status().isBadRequest());
     }
 
     // ==========================================
