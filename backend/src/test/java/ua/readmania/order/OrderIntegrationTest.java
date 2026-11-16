@@ -358,6 +358,62 @@ class OrderIntegrationTest extends BaseIntegrationTest {
     }
 
     @Test
+    @DisplayName("C1, C2: Недоступна позиція кошика не входить у суму й замовлення та залишається в кошику")
+    @WithMockUser(username = "buyer@example.com", roles = {"USER"})
+    void shouldOrderOnlyAvailableCartItemsAndKeepUnavailableInCart() throws Exception {
+        cartItemRepository.save(new ua.readmania.domain.cart.CartItem(testUser, testBook1, 1));
+        cartItemRepository.save(new ua.readmania.domain.cart.CartItem(testUser, testBook2, 1));
+        testBook2.setStock(0);
+        bookRepository.save(testBook2);
+
+        // Сума кошика й попередній розрахунок рахують лише доступне видання (300 грн)
+        mockMvc.perform(get("/api/cart"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.totalPrice").value(300.00))
+                .andExpect(jsonPath("$.allAvailable").value(false));
+        mockMvc.perform(post("/api/orders/preview")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"bonusPoints\":0}"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.itemsTotal").value(300.00));
+
+        CreateOrderRequest orderReq = new CreateOrderRequest();
+        orderReq.setDeliveryMethod(DeliveryMethod.COURIER);
+        orderReq.setAddress("м. Київ, вул. Хрещатик, 1");
+        orderReq.setContacts(new OrderContactDto("Іван Франко", "+380501234567"));
+        orderReq.setPaymentMethod(PaymentMethod.ON_DELIVERY);
+
+        mockMvc.perform(post("/api/orders")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(orderReq)))
+                .andExpect(status().isCreated())
+                .andExpect(jsonPath("$.items", hasSize(1)))
+                .andExpect(jsonPath("$.items[0].titleSnapshot").value("Соляріс"))
+                .andExpect(jsonPath("$.itemsTotal").value(300.00));
+
+        // Оформлена позиція вилучена з кошика, недоступна — залишилася
+        List<ua.readmania.domain.cart.CartItem> left = cartItemRepository.findByUserId(testUser.getId());
+        assertEquals(1, left.size());
+        assertEquals(testBook2.getId(), left.get(0).getBook().getId());
+    }
+
+    @Test
+    @DisplayName("C2: Замовлення в дар приймається без необов'язкових полів bonusPoints і paymentMethod")
+    @WithMockUser(username = "buyer@example.com", roles = {"USER"})
+    void shouldCreateGiftOrderWithoutOptionalFields() throws Exception {
+        String body = "{\"institutionId\":" + testInstitution.getId()
+                + ",\"items\":[{\"bookId\":" + testBook2.getId() + ",\"quantity\":1}]}";
+
+        mockMvc.perform(post("/api/orders/gift")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(body))
+                .andExpect(status().isCreated())
+                .andExpect(jsonPath("$.type").value("GIFT"))
+                .andExpect(jsonPath("$.paymentMethod").value("TRANSFER"))
+                .andExpect(jsonPath("$.pointsUsed").value(0));
+    }
+
+    @Test
     @DisplayName("C2: Оформлення благодійного замовлення (GIFT) з прив'язкою закладу та оплатою TRANSFER")
     @WithMockUser(username = "buyer@example.com", roles = {"USER"})
     void shouldCreateGiftOrderAndRequireTransferPaymentMethod() throws Exception {

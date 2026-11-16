@@ -31,6 +31,8 @@ import ua.readmania.domain.catalog.BookRepository;
 import ua.readmania.domain.catalog.Genre;
 import ua.readmania.domain.catalog.GenreRepository;
 import ua.readmania.domain.challenge.Challenge;
+import ua.readmania.domain.challenge.ChallengeCompletion;
+import ua.readmania.domain.challenge.ChallengeCompletionRepository;
 import ua.readmania.domain.challenge.ChallengeRepository;
 import ua.readmania.domain.challenge.ChallengeStatus;
 import ua.readmania.domain.loyalty.BonusTransactionRepository;
@@ -96,6 +98,9 @@ public class Slice4GamificationAndGiftSetIT extends BaseIntegrationTest {
 
     @Autowired
     private ChallengeRepository challengeRepository;
+
+    @Autowired
+    private ChallengeCompletionRepository challengeCompletionRepository;
 
     @Autowired
     private PasswordEncoder passwordEncoder;
@@ -480,6 +485,34 @@ public class Slice4GamificationAndGiftSetIT extends BaseIntegrationTest {
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(updateRequest)))
                 .andExpect(status().isBadRequest());
+    }
+
+    @Test
+    @DisplayName("C7: Користувач бачить виконані виклики, навіть якщо строк виклику вже минув")
+    void shouldListCompletedChallengesThatAreNoLongerActive() throws Exception {
+        MockHttpSession userSession = loginAs("reader@example.com", "Password123!");
+
+        Challenge expired = new Challenge(
+                "Літній марафон",
+                "Опис",
+                1,
+                null,
+                Instant.now().plus(1, ChronoUnit.DAYS),
+                15
+        );
+        expired.setStatus(ChallengeStatus.EXPIRED);
+        expired = challengeRepository.save(expired);
+        challengeCompletionRepository.save(new ChallengeCompletion(testUser, expired, Instant.now()));
+
+        mockMvc.perform(get("/api/challenges").session(userSession))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$[?(@.name == 'Літній марафон')].completed").value(true))
+                .andExpect(jsonPath("$[?(@.name == 'Літній марафон')].status").value("EXPIRED"));
+
+        // Гість бачить лише активні виклики
+        mockMvc.perform(get("/api/challenges"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$[?(@.name == 'Літній марафон')]").isEmpty());
     }
 
     // ==========================================

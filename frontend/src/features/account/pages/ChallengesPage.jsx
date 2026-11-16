@@ -13,8 +13,12 @@ export default function ChallengesPage() {
   const loyalty = useLoyalty();
   const challenges = useChallenges();
 
-  // GET /api/challenges returns only active challenges, so completed ones are taken from the bonus log (rewards for challenges).
-  const completed = (loyalty.data?.transactions ?? []).filter((t) => t.type === 'CHALLENGE_REWARD');
+  // GET /api/challenges returns the active challenges plus the ones this user completed (also already ended ones).
+  const all = challenges.data ?? [];
+  const active = all.filter((c) => c.status === 'ACTIVE');
+  const completed = all
+    .filter((c) => c.completed)
+    .sort((a, b) => new Date(b.completedAt ?? 0) - new Date(a.completedAt ?? 0));
 
   return (
     <Stack gap="md">
@@ -38,13 +42,13 @@ export default function ChallengesPage() {
           <PageLoader minHeight={120} />
         ) : challenges.isError ? (
           <ErrorState error={challenges.error} onRetry={challenges.refetch} />
-        ) : challenges.data.length === 0 ? (
+        ) : active.length === 0 ? (
           <EmptyState title={LOYALTY.activeEmpty} hint={LOYALTY.activeEmptyHint} />
         ) : (
           <Stack gap="sm">
             <Text size="sm" c="dimmed">{LOYALTY.progressHint}</Text>
             <SimpleGrid cols={{ base: 1, md: 2 }} spacing="md">
-              {challenges.data.map((c) => (
+              {active.map((c) => (
                 <ChallengeCard key={c.id} challenge={c} />
               ))}
             </SimpleGrid>
@@ -53,17 +57,17 @@ export default function ChallengesPage() {
       </Section>
 
       <Section title={LOYALTY.completedTitle}>
-        {loyalty.isPending ? (
+        {challenges.isPending ? (
           <PageLoader minHeight={80} />
-        ) : completed.length === 0 ? (
+        ) : challenges.isError ? null : completed.length === 0 ? (
           <EmptyState title={LOYALTY.completedEmpty} />
         ) : (
           <Stack gap={6} component="ul" p={0} m={0} style={{ listStyle: 'none' }}>
-            {completed.map((t) => (
-              <Group key={t.id} component="li" justify="space-between" gap="sm" wrap="wrap">
-                <Text fw={600}>{t.challengeName}</Text>
+            {completed.map((c) => (
+              <Group key={c.id} component="li" justify="space-between" gap="sm" wrap="wrap">
+                <Text fw={600}>{c.name}</Text>
                 <Text size="sm" c="dimmed">
-                  {formatDate(t.createdAt)} · +{formatCount(t.points, POINT_FORMS)}
+                  {formatDate(c.completedAt)} · +{formatCount(c.rewardPoints, POINT_FORMS)}
                 </Text>
               </Group>
             ))}

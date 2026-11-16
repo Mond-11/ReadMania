@@ -230,7 +230,7 @@
 
 | Метод | Ендпоінт | Доступ | Опис та параметри | Коди відповідей |
 |---|---|---|---|---|
-| `GET` | `/api/cart` | `USER` | **Отримання вмісту кошика (C1)**<br>Автоматично перевіряє актуальну наявність та залишки (`available`, `stock`). | `200 OK` (`CartResponse`), `401` |
+| `GET` | `/api/cart` | `USER` | **Отримання вмісту кошика (C1)**<br>Автоматично перевіряє актуальну наявність та залишки (`available`, `stock`). Недоступні позиції (видалені або з нульовим залишком) не входять у `totalPrice`. | `200 OK` (`CartResponse`), `401` |
 | `POST` | `/api/cart/items` | `USER` | **Додавання книги до кошика (C1.1)**<br>Тіло (`AddToCartRequest`): `{ bookId, quantity? }` (за замовчуванням `quantity = 1`). Не дозволяє перевищувати `stock`. | `200 OK` (`CartResponse`), `400`, `401`, `404` |
 | `PUT` | `/api/cart/items/{bookId}` | `USER` | **Зміна кількості книги в кошику (C1.2)**<br>Тіло (`UpdateCartItemRequest`): `{ quantity }` (від 1 до поточного `stock`). | `200 OK` (`CartResponse`), `400`, `401`, `404` |
 | `DELETE` | `/api/cart/items/{bookId}` | `USER` | **Вилучення окремої позиції з кошика (C1.3)** | `200 OK` (`CartResponse`), `401`, `404` |
@@ -266,7 +266,7 @@
 | Метод | Ендпоінт | Доступ | Опис та параметри | Коди відповідей |
 |---|---|---|---|---|
 | `POST` | `/api/orders/preview` | `USER` | **Попередній розрахунок вартості та знижки (C8)**<br>Тіло (`OrderPreviewRequest`): `{ items?: [{ bookId, quantity }], bonusPoints?: number }`<br>Якщо `items` не вказано, розраховує для поточного вмісту кошика. Перевіряє правило ліміту знижки до 30% ($\min(\text{balance}, \lfloor \frac{0.30 \times \text{total}}{10} \rfloor)$). | `200 OK` (`OrderPreviewResponse`), `400`, `401` |
-| `POST` | `/api/orders` | `USER` | **Оформлення звичайного замовлення (C2, A.10)**<br>Тіло (`CreateOrderRequest`): `{ items?: [{ bookId, quantity }], deliveryMethod, address, contacts: { recipientName, phone }, paymentMethod, bonusPoints?: number }`<br>Транзакційно списує залишки книг (із захистом від оверселінгу через `@Version`), списує бонуси (`SPENT`), фіксує незмінні знімки цін (`priceSnapshot`) і очищає кошик. Сповіщає менеджерів через `NotificationService`. | `201 Created` (`OrderDetailsResponse`), `400`, `401`, `409 Conflict` (недостатній залишок / оверселінг) |
+| `POST` | `/api/orders` | `USER` | **Оформлення звичайного замовлення (C2, A.10)**<br>Тіло (`CreateOrderRequest`): `{ items?: [{ bookId, quantity }], deliveryMethod, address, contacts: { recipientName, phone }, paymentMethod, bonusPoints?: number }`<br>Якщо `items` не вказано, оформлює доступні позиції кошика (недоступні залишаються в кошику). Транзакційно списує залишки книг (із захистом від оверселінгу через `@Version`), списує бонуси (`SPENT`), фіксує незмінні знімки цін (`priceSnapshot`) і вилучає з кошика оформлені позиції. Сповіщає менеджерів через `NotificationService`. | `201 Created` (`OrderDetailsResponse`), `400`, `401`, `409 Conflict` (недостатній залишок / оверселінг) |
 | `POST` | `/api/orders/gift` | `USER` | **Оформлення замовлення в дар благодійному закладу (C10, A.10)**<br>Тіло (`CreateGiftOrderRequest`): `{ institutionId, items?: [{ bookId, quantity }], paymentMethod, bonusPoints?: number }`<br>Отримує назву, адресу та контактну особу закладу, фіксує їх знімки в замовленні. Спосіб оплати фіксується як `TRANSFER`. | `201 Created` (`OrderDetailsResponse`), `400`, `401`, `409 Conflict` |
 | `GET` | `/api/orders` | `USER` | **Історія замовлень користувача (C4)**<br>Пагінація: `?page=0&size=10&sort=createdAt,desc`. | `200 OK` (`Page<OrderSummaryResponse>`), `401` |
 | `GET` | `/api/orders/{id}` | `USER` | **Детальна інформація про власне замовлення (C4)** | `200 OK` (`OrderDetailsResponse`), `401`, `404` |
@@ -402,7 +402,7 @@
 
 | Метод | Ендпоінт | Доступ | Опис та параметри | Коди відповідей |
 |---|---|---|---|---|
-| `GET` | `/api/challenges` | Публічний / `USER` | **Список активних викликів із розрахунком прогресу (C7)**<br>Для авторизованого користувача автоматично підраховує кількість придбаних/поставлених книг у замовленнях `DELIVERED` та статус виконання. | `200 OK` (`List<ChallengeResponse>`) |
+| `GET` | `/api/challenges` | Публічний / `USER` | **Список активних викликів із розрахунком прогресу (C7)**<br>Для авторизованого користувача автоматично підраховує кількість придбаних/поставлених книг у замовленнях `DELIVERED` та статус виконання, а також додає виконані ним виклики, які вже не активні (прострочені або завершені достроково). | `200 OK` (`List<ChallengeResponse>`) |
 | `GET` | `/api/challenges/{id}` | Публічний / `USER` | **Деталі конкретного читацького виклику з персональним прогресом** | `200 OK` (`ChallengeResponse`), `404` |
 
 #### Модель `ChallengeResponse`:
@@ -459,7 +459,7 @@
 | `PUT` | `/api/manager/genres/{id}` | `MANAGER` | **Редагування жанру (M1)**<br>Тіло (`GenreRequest`): `{ name }` | `200 OK` (`GenreResponse`), `400`, `403`, `404` |
 | `DELETE` | `/api/manager/genres/{id}` | `MANAGER` | **Видалення жанру (M1)**<br>Дозволено лише якщо до жанру не прив'язана жодна книга (`RESTRICT`). | `200 OK` / `204 No Content`, `400`, `403`, `404`, `409 Conflict` |
 | `POST` | `/api/manager/authors` | `MANAGER` | **Створення нового автора (M1)**<br>Тіло (`CreateAuthorRequest`): `{ fullName }`<br>Створює запис автора або повертає 409 Conflict, якщо автор з таким ім'ям уже існує. | `201 Created` (`AuthorResponse`), `400`, `403`, `409 Conflict` |
-| `POST` | `/api/manager/books/import-csv` | `MANAGER` | **Пакетний імпорт книг із CSV-файлу (M2)**<br>Формат: `multipart/form-data`, поле `file`. Підтримує автовизначення роздільників (`,`, `;`, `\t`), валідує поля (включаючи `publisher` та `publicationYear`), завантажує обкладинки за URL, створює відсутні жанри й авторів. | `200 OK` (`CsvImportResponse`), `400`, `403` |
+| `POST` | `/api/manager/books/import-csv` | `MANAGER` | **Пакетний імпорт книг із CSV-файлу (M2)**<br>Формат: `multipart/form-data`, поле `file`. Підтримує автовизначення роздільників (`,`, `;`, `\t`), валідує поля: у кожному рядку обов'язкові всі колонки (назва, автори, видавництво, рік, жанр, опис, ціна, кількість, обкладинка за посиланням http/https, ISBN), завантажує обкладинки за URL, створює відсутні жанри й авторів. | `200 OK` (`CsvImportResponse`), `400`, `403` |
 
 #### Модель `CsvImportResponse`:
 ```json

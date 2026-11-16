@@ -125,7 +125,10 @@ public class OrderService {
                     subtotal,
                     available
             ));
-            itemsTotal = itemsTotal.add(subtotal);
+            // Unavailable positions are shown but not ordered, so they do not affect the total or the bonus limit.
+            if (available) {
+                itemsTotal = itemsTotal.add(subtotal);
+            }
         }
 
         response.setItems(previewItems);
@@ -248,8 +251,8 @@ public class OrderService {
         OrderStatusHistory history = new OrderStatusHistory(savedOrder, null, initialStatus, user, "Оформлення замовлення");
         orderStatusHistoryRepository.save(history);
 
-        // Clear cart
-        cartItemRepository.deleteByUserId(userId);
+        // SRS C2: only the ordered positions leave the cart.
+        removeOrderedFromCart(userId, itemRequests);
 
         log.info("Нове замовлення #{} оформлено користувачем {} на суму {} грн (метод оплати: {})",
                 savedOrder.getId(), user.getEmail(), savedOrder.getTotalToPay(), savedOrder.getPaymentMethod());
@@ -361,7 +364,7 @@ public class OrderService {
         OrderStatusHistory history = new OrderStatusHistory(savedOrder, null, OrderStatus.AWAITING_PAYMENT, user, "Оформлення замовлення в дар");
         orderStatusHistoryRepository.save(history);
 
-        cartItemRepository.deleteByUserId(userId);
+        removeOrderedFromCart(userId, itemRequests);
 
         log.info("Нове благодійне замовлення #{} оформлено для закладу '{}' на суму {} грн",
                 savedOrder.getId(), institution.getName(), savedOrder.getTotalToPay());
@@ -491,13 +494,23 @@ public class OrderService {
         return user;
     }
 
+    private void removeOrderedFromCart(Long userId, List<OrderItemRequest> orderedItems) {
+        List<Long> bookIds = orderedItems.stream().map(OrderItemRequest::getBookId).toList();
+        if (!bookIds.isEmpty()) {
+            cartItemRepository.deleteByUserIdAndBookIdIn(userId, bookIds);
+        }
+    }
+
     private List<OrderItemRequest> resolveItemRequests(Long userId, List<OrderItemRequest> requestedItems) {
         if (requestedItems != null && !requestedItems.isEmpty()) {
             return requestedItems;
         }
         if (userId != null) {
+            // SRS C2: the order is placed for the available cart positions only (not deleted, in stock).
+            // Unavailable ones stay in the cart; the user can only remove them (C1.2).
             List<CartItem> cartItems = cartItemRepository.findByUserId(userId);
             return cartItems.stream()
+                    .filter(ci -> ci.getBook() != null && !ci.getBook().isDeleted() && ci.getBook().getStock() > 0)
                     .map(ci -> new OrderItemRequest(ci.getBook().getId(), ci.getQuantity()))
                     .toList();
         }

@@ -1,7 +1,7 @@
 import { Button, Flex, Paper, Select, Table, Text } from '@mantine/core';
 import { DatePickerInput } from '@mantine/dates';
 import { useDocumentTitle } from '@mantine/hooks';
-import { useMemo } from 'react';
+import { useMemo, useState } from 'react';
 import { Link, useSearchParams } from 'react-router';
 import { formatCount, formatDate, formatNumber, toApiDate, BOOK_FORMS } from '../../../shared/format.js';
 import { useInstitutions } from '../../../shared/hooks/useInstitutions.js';
@@ -20,7 +20,8 @@ export default function GiftLogPage() {
   const dateFrom = validDate(searchParams.get('dateFrom'));
   const dateTo = validDate(searchParams.get('dateTo'));
   // Books are delivered in the past, so a future date can only match nothing: the pickers cap at today.
-  const today = toApiDate(new Date());
+  // Today is read once per mount (a lazy initializer): calling Date during every render is impure.
+  const [today] = useState(() => toApiDate(new Date()));
   const fromFuture = Boolean(dateFrom && dateFrom > today);
   const toFuture = Boolean(dateTo && dateTo > today);
   // The backend answers 400 when dateTo < dateFrom; the pickers prevent it, a hand-edited URL is caught here.

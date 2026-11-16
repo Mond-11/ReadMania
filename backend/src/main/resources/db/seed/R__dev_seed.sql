@@ -67,9 +67,14 @@ INSERT INTO authors (name) VALUES
 ON CONFLICT DO NOTHING;
 
 -- 6. Благодійні заклади (без дублювання, з WHERE NOT EXISTS)
+-- Тип закладу за SRS — лише дитячий будинок, інтернат або бібліотека, тому колишню «лікарню» перейменовано на дитячий будинок.
+UPDATE institutions SET name = 'Київський міський дитячий будинок №1'
+WHERE name = 'Київська міська дитяча клінічна лікарня №1'
+  AND NOT EXISTS (SELECT 1 FROM institutions WHERE LOWER(name) = LOWER('Київський міський дитячий будинок №1'));
+
 INSERT INTO institutions (name, type, address, contact_person, phone)
-SELECT 'Київська міська дитяча клінічна лікарня №1', 'ORPHANAGE', 'м. Київ, вул. Богатирська, 30', 'Олена Ковальчук', '+380442010101'
-WHERE NOT EXISTS (SELECT 1 FROM institutions WHERE LOWER(name) = LOWER('Київська міська дитяча клінічна лікарня №1'));
+SELECT 'Київський міський дитячий будинок №1', 'ORPHANAGE', 'м. Київ, вул. Богатирська, 30', 'Олена Ковальчук', '+380442010101'
+WHERE NOT EXISTS (SELECT 1 FROM institutions WHERE LOWER(name) = LOWER('Київський міський дитячий будинок №1'));
 
 INSERT INTO institutions (name, type, address, contact_person, phone)
 SELECT 'Львівський обласний дитячий притулок "Сонечко"', 'BOARDING_SCHOOL', 'м. Львів, вул. Личаківська, 150', 'Михайло Гриньків', '+380322550202'
@@ -354,7 +359,7 @@ WHERE o.user_id = u.id AND u.email = 'reader@readmania.ua' AND o.created_at = TI
 INSERT INTO orders (user_id, type, status, delivery_method, payment_method, recipient_name, recipient_phone, delivery_address, institution_id, institution_name, institution_contact_person, items_total, discount_amount, points_used, total_to_pay, created_at, status_changed_at, delivered_at)
 SELECT u.id, 'GIFT', 'DELIVERED', 'COURIER', 'TRANSFER', 'Олена Ковальчук', '+380442010101', 'м. Київ, вул. Богатирська, 30', inst.id, inst.name, inst.contact_person, 900.00, 0.00, 0, 900.00, TIMESTAMPTZ '2026-11-11 09:00:00+02', TIMESTAMPTZ '2026-11-12 11:00:00+02', TIMESTAMPTZ '2026-11-12 11:00:00+02'
 FROM users u, institutions inst
-WHERE u.email = 'user@readmania.ua' AND inst.name = 'Київська міська дитяча клінічна лікарня №1'
+WHERE u.email = 'user@readmania.ua' AND inst.name = 'Київський міський дитячий будинок №1'
   AND NOT EXISTS (
       SELECT 1 FROM orders WHERE user_id = u.id AND created_at = TIMESTAMPTZ '2026-11-11 09:00:00+02'
   );

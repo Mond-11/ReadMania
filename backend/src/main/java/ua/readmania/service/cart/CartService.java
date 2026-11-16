@@ -149,7 +149,8 @@ public class CartService {
             }
 
             totalItems += item.getQuantity();
-            if (itemResponse.getSubtotal() != null) {
+            // SRS C1/C2: an unavailable position can only be removed and is not ordered, so it does not count in the total.
+            if (itemResponse.isAvailable() && itemResponse.getSubtotal() != null) {
                 totalPrice = totalPrice.add(itemResponse.getSubtotal());
             }
         }
