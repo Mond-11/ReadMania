@@ -29,19 +29,22 @@ ReadMania/
 │   │   ├── http-client.private.env.json.example # Шаблон для приватних секретів (паролів)
 │   │   ├── auth.http                  # Запити домену автентифікації, профілю та сесій
 │   │   ├── catalog.http               # Запити каталогу книг, фільтрації, авторів та жанрів
+│   │   ├── delivery.http              # Запити проксі доставки («Нова пошта»)
+│   │   ├── manager.http               # Запити операцій менеджера
 │   │   └── orders.http                # Запити замовлень, розрахунків, масових дій та переходів
 │   └── src/
 │       ├── main/
 │       │   ├── java/ua/readmania/
 │       │   │   ├── ReadmaniaBackendApplication.java  # Головна точка входу Spring Boot застосунку (@EnableAsync, @EnableScheduling)
 │       │   │   ├── ManagerBootstrapInitializer.java  # Автоматичне створення першого менеджера при старті
-│       │   │   ├── LocalCoverSeeder.java             # Автоматичне засівання обкладинок книг у профілі local
+│       │   │   ├── LocalCoverSeeder.java             # Автоматичне засівання обкладинок книг у профілях local/dev/default
 │       │   │   ├── common/            # Загальносистемні компоненти та обробка винятків
 │       │   │   │   ├── GlobalExceptionHandler.java   # Централізований обробник помилок (Problem Details RFC 9457)
 │       │   │   │   ├── NotFoundException.java        # Доменний виняток для ресурсів, що не знайдено (404)
 │       │   │   │   ├── ConflictException.java        # Доменний виняток для конфліктів стану (409)
 │       │   │   │   ├── OrderStatusConflictException.java # Доменний виняток для конфліктів статусів замовлень (409)
 │       │   │   │   ├── AccountBlockedException.java  # Виняток для заблокованих облікових записів (403)
+│       │   │   │   ├── LoginRateLimitedException.java # Виняток для обмеження спроб входу (403)
 │       │   │   │   ├── BusinessRuleException.java    # Доменний виняток для порушення бізнес-правил (400/409)
 │       │   │   │   └── ValidationError.java          # Модель деталізації помилок валідації (field, message)
 │       │   │   ├── controller/        # REST API контролери
@@ -53,9 +56,17 @@ ReadMania/
 │       │   │   │   ├── OrderController.java          # Оформлення замовлень, історія та скасування покупцем
 │       │   │   │   ├── ManagerOrderController.java   # Управління замовленнями, FSM-переходи, масові операції
 │       │   │   │   ├── LoyaltyController.java        # Бонусний баланс та журнал операцій
-│       │   │   │   ├── ChallengeController.java      # Читацькі виклики
-│       │   │   │   ├── InstitutionController.java    # Благодійні заклади
-│       │   │   │   └── RatingController.java         # Оцінювання книг та публічні рейтинги
+│       │   │   │   ├── ChallengeController.java      # Читацькі виклики (публічний перегляд з прогресом)
+│       │   │   │   ├── ManagerChallengeController.java # Керування читацькими викликами менеджером
+│       │   │   │   ├── GiftSetController.java        # Генерація та підбір подарункових наборів
+│       │   │   │   ├── InstitutionController.java    # Благодійні заклади (публічний перелік)
+│       │   │   │   ├── ManagerInstitutionController.java # Керування благодійними закладами
+│       │   │   │   ├── ManagerGiftLogController.java # Журнал подарованих книг
+│       │   │   │   ├── ManagerAnalyticsController.java # Аналітична панель менеджера
+│       │   │   │   ├── ManagerUserController.java    # Адміністрування користувачів (пошук, картка, блокування, M5)
+│       │   │   │   ├── RatingController.java         # Оцінювання книг та публічні рейтинги
+│       │   │   │   └── DeliveryController.java       # Довідники доставки «Нової пошти»
+│       │   │   ├── delivery/          # Клієнт зовнішнього API «Нової пошти» (NovaPoshtaDeliveryService)
 │       │   │   ├── service/           # Сервісний шар бізнес-логіки
 │       │   │   │   ├── AuthService.java              # Логіка входу, захисту від brute-force, відновлення пароля
 │       │   │   │   ├── UserService.java              # Керування профілем, зміна email/пароля
@@ -63,6 +74,11 @@ ReadMania/
 │       │   │   │   ├── ManagerCatalogService.java    # CRUD книг, жанрів, авторів
 │       │   │   │   ├── CsvImportService.java         # Пакетний імпорт видань із валідацією полів
 │       │   │   │   ├── CartService.java              # Логіка кошика
+│       │   │   │   ├── GiftSetService.java           # Генерація подарункових наборів
+│       │   │   │   ├── AnalyticsService.java         # Аналітика затребуваності, залишків та рейтингів
+│       │   │   │   ├── GiftLogService.java           # Журнал подарованих книг
+│       │   │   │   ├── ManagerUserService.java       # Пошук, картка, блокування/розблокування користувачів
+│       │   │   │   ├── ManagerInactiveUserService.java # Виявлення та видалення неактивних акаунтів (M5)
 │       │   │   │   ├── order/                        # OrderService, ManagerOrderService (FSM 4 статусів)
 │       │   │   │   ├── loyalty/                      # LoyaltyService
 │       │   │   │   ├── challenge/                    # ChallengeService (прогрес та планувальник @Scheduled)
@@ -70,14 +86,14 @@ ReadMania/
 │       │   │   │   ├── rating/                       # RatingService (приватність користувачів)
 │       │   │   │   └── notification/                 # NotificationService, LoggingNotificationService, SmtpNotificationService
 │       │   │   ├── domain/            # Доменний шар (JPA-сутності та Spring Data репозиторії)
-│       │   │   │   ├── user/          # User, Role, UserStatus, PasswordResetToken, UnblockRequest
+│       │   │   │   ├── user/          # User, Role, UserStatus, PasswordResetToken, UnblockRequest, UserSpecifications
 │       │   │   │   ├── catalog/       # Book, Genre, Author, BookCover, BookSpecifications, BookRepository
 │       │   │   │   ├── cart/          # CartItem, CartItemId, CartItemRepository
 │       │   │   │   ├── institution/   # Institution, InstitutionType, InstitutionRepository
 │       │   │   │   ├── order/         # Order, OrderItem, OrderStatusHistory, OrderRepository
 │       │   │   │   ├── loyalty/       # BonusTransaction, Rating, BonusTransactionRepository, RatingRepository
 │       │   │   │   ├── challenge/     # Challenge, ChallengeCompletion, ChallengeRepository
-│       │   │   │   └── gift/          # GiftLog, GiftLogRepository
+│       │   │   │   └── gift/          # GiftLog, GiftLogRepository, GiftLogSpecifications
 │       │   │   ├── dto/               # Об'єкти передачі даних (Request / Response DTOs)
 │       │   │   └── security/          # Безпека та автентифікація
 │       │   │       ├── SecurityConfig.java           # Конфігурація Spring Security (RBAC, default deny, BCrypt, CSRF)
@@ -86,13 +102,15 @@ ReadMania/
 │       │   │       ├── ProblemDetailsAuthenticationEntryPoint.java  # Обробник 401 Unauthorized
 │       │   │       ├── ProblemDetailsAccessDeniedHandler.java       # Обробник 403 Forbidden з типізованими URI
 │       │   │       ├── AccountStatusFilter.java      # Фільтр перевірки блокування акаунта під час активної сесії
-│       │   │       └── CustomUserDetails.java        # Адаптер користувача для Spring Security
+│       │   │       ├── CustomUserDetails.java        # Адаптер користувача для Spring Security
+│       │   │       └── CustomUserDetailsService.java # Завантаження користувача за email
 │       │   └── resources/
 │       │       ├── application.yml         # Основна конфігурація застосунку (БД, JPA, Flyway, Actuator, сесії)
+│       │       ├── application-local.yml   # Профіль для локальної розробки (Swagger, seed, менеджер)
 │       │       ├── application-prod.yml    # Профіль для продакшн-середовища (Secure cookie, SMTP)
 │       │       ├── application-example.yml # Приклад конфігурації для локального налаштування
 │       │       ├── db/migration/
-│       │       │   ├── V1__init.sql        # Початкова схема бази даних
+│       │       │   ├── V1__init.sql        # Початкова версія (порожній файл для нумерації)
 │       │       │   ├── V2__users.sql       # Користувачі, ролі, статус та бонуси
 │       │       │   ├── V3__catalog.sql     # Жанри, автори, книги (3НФ), обкладинки
 │       │       │   ├── V4__cart_institutions.sql # Кошик та благодійні заклади
@@ -100,9 +118,10 @@ ReadMania/
 │       │       │   ├── V6__loyalty.sql     # Журнал бонусів та оцінки книг
 │       │       │   ├── V7__challenges.sql  # Читацькі виклики
 │       │       │   ├── V8__gift_log.sql    # Журнал благодійних дарунків
-│       │       │   └── V9__schema_fixes.sql # Фікси SRS: 4 статуси, видавництво, рік, контакти закладу
+│       │       │   ├── V9__schema_fixes.sql # Фікси SRS: 4 статуси, видавництво, рік, контакти закладу
+│       │       │   └── V10__institutions_unique_name.sql # Злиття дублікатів та унікальний індекс закладів
 │       │       ├── db/seed/
-│       │       │   └── R__dev_seed.sql     # Початкові дані для локальної розробки (profile local)
+│       │       │   └── R__dev_seed.sql     # Початкові тестові дані (застосовується у default та local)
 │       │       └── seed-covers/            # Зразки обкладинок книг (.png) для локального каталогу
 │       └── test/
 │           ├── java/ua/readmania/
@@ -142,13 +161,16 @@ ReadMania/
 │   ├── .oxlintrc.json                 # Налаштування лінтера Oxlint
 │   └── README.md                      # Документація клієнтської частини
 ├── docs/                              # Проєктна документація
+│   ├── DEVELOPER_GUIDE.md             # Повна та вичерпна настанова розробника бекенду
 │   ├── API.md                         # Специфікація REST API ендпоінтів та контрактів
 │   ├── openapi.json                   # Експортована схема OpenAPI 3.1 для кодогенерації клієнта
 │   ├── CURRENT_STATE.md               # Поточний стан системи, матриця відповідності вимогам ТЗ/SRS
 │   ├── DATABASE_DECISIONS.md          # Реєстр архітектурних рішень щодо БД (M1, 3НФ, M5, лояльність тощо)
+│   ├── EMAIL_NOTIFICATIONS.md         # Архітектура та функціонування поштової підсистеми
 │   ├── ERD.md                         # Діаграма сутностей і зв'язків (Mermaid ERD) та опис схеми
-│   ├── Технічне завдання розробки Вебзастосунку.pdf # ТЗ проєкту
-│   └── Cпецифікація вимог до Вебзастосунку.pdf       # SRS проєкту
+│   ├── Тех_завдання.pdf               # Технічне завдання проєкту (ТЗ)
+│   ├── Специфікація_вимог.pdf         # Специфікація вимог до програмного засобу (SRS)
+│   └── Проєктування_досвіду_користувача.pdf # Проєктування досвіду користувача (UX)
 ├── docker-compose.yml                 # Оркестрація локального середовища: PostgreSQL 17, Backend та Frontend
 ├── run-docker.sh                      # Скрипт швидкого керування повним стеком контейнерів Docker
 ├── .editorconfig                      # Стандарти форматування коду
@@ -161,17 +183,19 @@ ReadMania/
 
 ## Ключові архітектурні рішення
 
+> **Детальна документація:** Повний та вичерпний опис архітектури, підсистем, моделі даних, безпеки, REST API, обробки помилок і тестування наведено в [Настанові розробника (DEVELOPER_GUIDE.md)](docs/DEVELOPER_GUIDE.md).
+
 ### 1. Безпека та контроль доступу (Spring Security)
-- **Розмежування доступу:** реалізовано правило *Default Deny* для всіх шляхів `/api/**`. Публічно відкриті лише `/api/auth/register`, `/api/auth/login`, `/api/auth/password-reset/**`, `/api/auth/unblock-request`, `/api/catalog/**` та `/actuator/health`. Ендпоінти `/api/manager/**` суворо обмежені роллю `MANAGER`.
+- **Розмежування доступу:** реалізовано правило *Default Deny* для всіх шляхів `/api/**`. Публічно відкриті лише `/api/auth/register`, `/api/auth/login`, `/api/auth/logout`, `/api/auth/password-reset/**`, `/api/auth/unblock-request`, `/api/catalog/**`, `/api/institutions/**`, `/api/challenges/**`, `/api/gift-sets/**`, `/api/ratings/book/**`, `/api/delivery/**` та `/actuator/health`. Ендпоінти `/api/manager/**` суворо обмежені роллю `MANAGER`.
 - **Шифрування паролів:** `BCryptPasswordEncoder` (відкриті паролі ніде не зберігаються та не логуються).
 - **Сесії та Cookie:** `HttpOnly`, `SameSite=Lax`, автоматичний прапорець `Secure` у профілі `prod`.
-- **CSRF-захист для SPA:** налаштовано `CookieCsrfTokenRepository.withHttpOnlyFalse()` та `SpaCsrfTokenRequestHandler`. Клієнтський застосунок отримує токен у cookie `XSRF-TOKEN` та передає його у заголовку `X-XSRF-TOKEN` під час запитів зі зміною стану (`POST`, `PUT`, `PATCH`, `DELETE`).
+- **CSRF-захист для SPA:** налаштовано `CookieCsrfTokenRepository.withHttpOnlyFalse()` та `SpaCsrfTokenRequestHandler`. Клієнтський застосунок отримує токен у cookie `XSRF-TOKEN` та передає його у заголовку `X-XSRF-TOKEN` під час запитів зі зміною стану (`POST`, `PUT`, `PATCH`, `DELETE`). CSRF увімкнено в усіх профілях, крім `test`.
 - **Контроль активних сесій:** наявний `AccountStatusFilter` для миттєвої перевірки статусу блокування облікового запису на рівні кожного запиту у відкритій сесії.
 - **Захист від Brute-Force:** після 5 поспіль невдалих спроб входу обліковий запис тимчасово блокується на 15 хвилин з типізованою відповіддю `urn:readmania:error:login-rate-limited` та полем `retryAfter`.
 - **Ініціалізація Менеджера (Bootstrap):** компонент `ManagerBootstrapInitializer` (`ApplicationRunner`) створює першого менеджера на продакшні за наявності змінних середовища `APP_INITIAL_MANAGER_EMAIL` та `APP_INITIAL_MANAGER_PASSWORD`.
 
 ### 2. Сповіщення та фонові задачі
-- **Поштовий сервіс (`NotificationService`):** асинхронна відправка листів (`@Async`, `@EnableAsync`) про замовлення, зміну статусів, блокування/розблокування та скидання пароля.
+- **Поштовий сервіс (`NotificationService`):** асинхронна відправка листів (`@Async`, `@EnableAsync` у `SmtpNotificationService`) про замовлення, зміну статусів, блокування/розблокування та скидання пароля.
   - `@Profile("prod")` — `SmtpNotificationService` на базі JavaMailSender;
   - `@Profile({"local", "test", "default"})` — `LoggingNotificationService` із логуванням тексту повідомлень та збереженням у пам'яті для інтеграційних тестів.
 - **Планувальник читацьких викликів (`@EnableScheduling`):** фонова задача щохвилини перевіряє активні виклики та автоматично переводить виклики з простроченим дедлайном (`deadline < now()`) у стан `EXPIRED`.
@@ -189,14 +213,14 @@ ReadMania/
 
 ### 4. База даних, міграції та схема
 - Використовується **PostgreSQL 17**.
-- Керування схемою здійснюється через **Flyway** (`db/migration/V1__init.sql` ... `V9__schema_fixes.sql`).
+- Керування схемою здійснюється через **Flyway** (`db/migration/V1__init.sql` ... `V10__institutions_unique_name.sql`).
 - Hibernate налаштовано у режимі суворої валідації схеми (`ddl-auto: validate`).
 - Машина станів замовлення (FSM) зведена до **4 актуальних статусів** згідно з SRS: `AWAITING_PAYMENT`, `PAID`, `DELIVERED`, `CANCELLED`.
 - Реалізовано 100% покриття зовнішніх ключів (FK) B-Tree індексами для високої швидкодії `JOIN` та каскадних операцій.
 
 ### 5. Контракти API та OpenAPI 3.1
 - Інтеграційний тест `OpenApiExportIT` автоматично генерує та зберігає актуальну схему у `docs/openapi.json` під час збірки.
-- Swagger UI доступний за адресою `http://localhost:8080/swagger-ui.html` у профілях `local`/`test` та безпечно вимкнений у `prod`.
+- Swagger UI доступний за адресою `http://localhost:8080/swagger-ui.html` виключно у профілі `local` (в інших профілях заборонений або вимкнений).
 
 ---
 
@@ -259,14 +283,16 @@ npm run dev
 ```
 Клієнтський застосунок буде доступний за адресою `http://localhost:5173`. Усі запити до `/api/**` автоматично проксуються через Vite dev server на локальний бекенд `http://localhost:8080`.
 
-### 4. Тестові облікові записи (профіль `local`)
+### 4. Тестові облікові записи (профілі `local` / `default`)
 
-У профілі `local` за замовчуванням доступні такі попередньо створені тестові облікові записи:
+У профілях `local` та `default` доступні такі попередньо створені тестові облікові записи (з `R__dev_seed.sql` та `ManagerBootstrapInitializer`):
 
-| Роль | Email | Пароль | Призначення |
+| Роль | Email | Пароль | Призначення / Особливості |
 |---|---|---|---|
 | **Менеджер** (`MANAGER`) | `manager@readmania.ua` | `Manager123!` | Керування каталогом, замовленнями, користувачами, аналітикою |
-| **Покупець** (`USER`) | `user@readmania.ua` | `User123!` | Перегляд каталогу, кошик, оформлення замовлень, виклики |
+| **Покупець** (`USER`) | `user@readmania.ua` | `User123!` | Статус `ACTIVE`, 150 бонусних балів, кошик, оформлення замовлень |
+| **Покупець** (`USER`) | `reader@readmania.ua` | `User123!` | Статус `ACTIVE`, 50 балів, тестовий токен відновлення пароля `dev-reset-token-reader-12345` |
+| **Заблокований** (`USER`) | `blocked@readmania.ua` | `User123!` | Статус `BLOCKED`, поданий запит на розблокування (`PENDING`) |
 
 > **Примітка:** Менеджер також гарантовано ініціалізується компонентом `ManagerBootstrapInitializer` за налаштуваннями `app.initial-manager.*` або змінними `APP_INITIAL_MANAGER_EMAIL` та `APP_INITIAL_MANAGER_PASSWORD`.
 
@@ -306,6 +332,8 @@ npm run build
 - `auth.http` — реєстрація, вхід (USER/MANAGER), отримання поточного профілю (`/api/auth/me`), завершення сеансу та сценарії помилок (400, 401, 403, 409).
 - `catalog.http` — публічний перегляд книг із пагінацією та фільтрами, деталі книги, жанри, операції менеджера з додавання/редагування видань та обробка помилок.
 - `orders.http` — попередній розрахунок вартості, створення звичайних та подарункових замовлень, перегляд історії, скасування замовлення, зміна статусу менеджером та валідація конфліктів.
+- `manager.http` — операції менеджера: керування викликами, закладами, журналом дарунків, користувачами, аналітика.
+- `delivery.http` — запити до бекенд-проксі довідників доставки «Нової пошти» (`/api/delivery/cities`, `/api/delivery/warehouses`).
 
 ### Налаштування середовища (Environments)
 1. Публічні змінні середовищ (хости, тестові email) зберігаються у `backend/http/http-client.env.json`.
