@@ -157,6 +157,19 @@ public class CsvImportService {
                     continue;
                 }
 
+                // SRS M2: every row must have all values (as in M1.1, where all fields are required).
+                String missing = firstMissing(
+                        new String[] {authorsStr, genreName, description, priceStr, stockStr, coverUrl},
+                        new String[] {"Автори", "Жанр", "Опис", "Ціна", "Кількість", "Обкладинка"});
+                if (missing != null) {
+                    rejectedRows.add(new CsvRejectedRow(rowNumber, cleanIsbn, title, "Не заповнено колонку «" + missing + "»"));
+                    continue;
+                }
+                if (!coverUrl.trim().startsWith("http://") && !coverUrl.trim().startsWith("https://")) {
+                    rejectedRows.add(new CsvRejectedRow(rowNumber, cleanIsbn, title, "Обкладинка має бути посиланням http або https: " + coverUrl));
+                    continue;
+                }
+
                 BigDecimal price;
                 try {
                     price = new BigDecimal(priceStr != null ? priceStr.trim().replace(',', '.') : "0");
@@ -309,5 +322,15 @@ public class CsvImportService {
         }
         tokens.add(sb.toString());
         return tokens;
+    }
+
+    // Name of the first column whose value is empty, or null when all are filled.
+    private static String firstMissing(String[] values, String[] columns) {
+        for (int i = 0; i < values.length; i++) {
+            if (values[i] == null || values[i].isBlank()) {
+                return columns[i];
+            }
+        }
+        return null;
     }
 }

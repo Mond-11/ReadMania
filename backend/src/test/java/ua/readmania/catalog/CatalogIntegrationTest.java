@@ -488,12 +488,13 @@ class CatalogIntegrationTest extends BaseIntegrationTest {
     @DisplayName("M2: Імпорт книг із CSV з покроковою валідацією, створенням авторів/жанрів та звітом")
     void shouldImportBooksFromCsvWithValidationReport() throws Exception {
         String csvContent = """
-                title,isbn,price,stock,publisher,publication_year,description,genre,authors
-                Мистецтво війни,978-966-03-7777-1,280.00,10,Апріорі,2023,Трактат про військову стратегію,Філософія,Сунь-цзи
-                Дублікат у файлі,978-966-03-7777-1,150.00,5,Видавництво,2020,Тест дубліката,Філософія,Сунь-цзи
-                Існуючий у БД,978-966-03-0001-1,300.00,5,Фоліо,2021,Тест дубля БД,Фантастика,Станіслав Лем
-                Битий рядок з від'ємною ціною,978-966-03-8888-2,-50.00,2,Ранок,2022,Опис,Філософія,Автор
-                Битий рядок з некоректним роком,978-966-03-8888-3,100.00,2,Ранок,1200,Опис,Філософія,Автор
+                title,isbn,price,stock,publisher,publication_year,description,genre,authors,cover
+                Мистецтво війни,978-966-03-7777-1,280.00,10,Апріорі,2023,Трактат про військову стратегію,Філософія,Сунь-цзи,http://localhost:1/c.jpg
+                Дублікат у файлі,978-966-03-7777-1,150.00,5,Видавництво,2020,Тест дубліката,Філософія,Сунь-цзи,http://localhost:1/c.jpg
+                Існуючий у БД,978-966-03-0001-1,300.00,5,Фоліо,2021,Тест дубля БД,Фантастика,Станіслав Лем,http://localhost:1/c.jpg
+                Битий рядок з від'ємною ціною,978-966-03-8888-2,-50.00,2,Ранок,2022,Опис,Філософія,Автор,http://localhost:1/c.jpg
+                Битий рядок з некоректним роком,978-966-03-8888-3,100.00,2,Ранок,1200,Опис,Філософія,Автор,http://localhost:1/c.jpg
+                Рядок без жанру,978-966-03-8888-4,100.00,2,Ранок,2022,Опис,,Автор,http://localhost:1/c.jpg
                 """;
 
         MockMultipartFile csvFile = new MockMultipartFile(
@@ -503,14 +504,16 @@ class CatalogIntegrationTest extends BaseIntegrationTest {
         mockMvc.perform(multipart("/api/manager/books/import-csv")
                         .file(csvFile))
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$.totalRows").value(5))
+                .andExpect(jsonPath("$.totalRows").value(6))
                 .andExpect(jsonPath("$.addedCount").value(1))
-                .andExpect(jsonPath("$.rejectedCount").value(4))
-                .andExpect(jsonPath("$.rejectedRows", hasSize(4)))
+                .andExpect(jsonPath("$.rejectedCount").value(5))
+                .andExpect(jsonPath("$.rejectedRows", hasSize(5)))
                 .andExpect(jsonPath("$.rejectedRows[0].reason", containsString("Дублікат ISBN у файлі")))
                 .andExpect(jsonPath("$.rejectedRows[1].reason", containsString("вже існує в базі даних")))
                 .andExpect(jsonPath("$.rejectedRows[2].reason", containsString("Ціна не може бути від'ємною")))
-                .andExpect(jsonPath("$.rejectedRows[3].reason", containsString("Рік видання повинен бути в діапазоні")));
+                .andExpect(jsonPath("$.rejectedRows[3].reason", containsString("Рік видання повинен бути в діапазоні")))
+                // SRS M2: a row with an empty value is rejected with the column name.
+                .andExpect(jsonPath("$.rejectedRows[4].reason", containsString("Не заповнено колонку «Жанр»")));
 
         assertTrue(bookRepository.existsActiveByIsbn("978-966-03-7777-1"));
         Book importedBook = bookRepository.findByIsbn("978-966-03-7777-1").orElseThrow();
