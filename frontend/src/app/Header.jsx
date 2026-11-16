@@ -1,4 +1,4 @@
-import { Badge, Burger, Button, Container, Drawer, Group, Stack, Text, Tooltip, UnstyledButton, VisuallyHidden } from '@mantine/core';
+import { Badge, Burger, Button, Container, Drawer, Group, Stack, Text, UnstyledButton, VisuallyHidden } from '@mantine/core';
 import { useDisclosure } from '@mantine/hooks';
 import { Link, useLocation, useNavigate } from 'react-router';
 import { AUTH_PATHS, useCurrentUser, useLogout } from '../features/auth/index.js';
@@ -6,8 +6,12 @@ import { useCartCount } from '../features/cart/index.js';
 import { NAV, TERMS } from '../shared/labels.js';
 import { notifySuccess } from '../shared/notify.js';
 
-// U8: link to the PDF user guide. While it is null the «Довідка» button is shown disabled with a hint.
-const HELP_URL = null;
+// U8: «Довідка» opens the PDF guide for the role (files in public/help). The manager guide is not linked for
+// Гість or Користувач; the IT specialist guide stays in docs/guides and is not published on the site.
+const HELP_URLS = {
+  user: '/help/readmania-user-guide.pdf',
+  manager: '/help/readmania-manager-guide.pdf',
+};
 
 // First-level pages by role (U1, UX lab 3): the header gives direct access to them from anywhere.
 // '/gift-set' and '/cart' are person A's pages; '/account' and '/manager' are person B's.
@@ -60,17 +64,13 @@ export function Header() {
     </Link>
   );
 
-  const help = HELP_URL ? (
-    <a href={HELP_URL} target="_blank" rel="noreferrer" className="rm-nav-link">
+  // Hidden until /api/auth/me answers, so a Менеджер never briefly gets the user guide.
+  const helpUrl = isLoading ? null : session.isManager ? HELP_URLS.manager : HELP_URLS.user;
+  const help = helpUrl && (
+    <a href={helpUrl} target="_blank" rel="noreferrer" className="rm-nav-link" onClick={close}>
       {NAV.help}
+      <VisuallyHidden>{`. ${NAV.helpOpensPdf}`}</VisuallyHidden>
     </a>
-  ) : (
-    <Tooltip label={NAV.helpSoon}>
-      <UnstyledButton className="rm-nav-link" data-disabled aria-disabled="true">
-        {NAV.help}
-        <VisuallyHidden>{`. ${NAV.helpSoon}`}</VisuallyHidden>
-      </UnstyledButton>
-    </Tooltip>
   );
 
   // Nothing is rendered for the account slot until /api/auth/me answers, so the header does not flicker.
