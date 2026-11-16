@@ -521,7 +521,9 @@ public class Slice4GamificationAndGiftSetIT extends BaseIntegrationTest {
     @Test
     @DisplayName("M4: Після строку виклик завершується автоматично (EXPIRED), а чинний залишається активним")
     void shouldExpireOverdueChallengesAutomatically() {
-        Challenge overdue = new Challenge("Минулий марафон", "Опис", 3, null, Instant.now().minus(1, ChronoUnit.HOURS), 20);
+        // PostgreSQL keeps microseconds; Linux clocks give nanoseconds, so the deadline is truncated to compare exactly.
+        Instant deadline = Instant.now().minus(1, ChronoUnit.HOURS).truncatedTo(ChronoUnit.MICROS);
+        Challenge overdue = new Challenge("Минулий марафон", "Опис", 3, null, deadline, 20);
         overdue.setStatus(ChallengeStatus.ACTIVE);
         overdue = challengeRepository.save(overdue);
         Challenge current = new Challenge("Чинний марафон", "Опис", 3, null, Instant.now().plus(5, ChronoUnit.DAYS), 20);
@@ -533,7 +535,7 @@ public class Slice4GamificationAndGiftSetIT extends BaseIntegrationTest {
         assertThat(expired).isGreaterThanOrEqualTo(1);
         Challenge reloadedOverdue = challengeRepository.findById(overdue.getId()).orElseThrow();
         assertThat(reloadedOverdue.getStatus()).isEqualTo(ChallengeStatus.EXPIRED);
-        assertThat(reloadedOverdue.getFinishedAt()).isEqualTo(overdue.getDeadline());
+        assertThat(reloadedOverdue.getFinishedAt()).isEqualTo(deadline);
         assertThat(challengeRepository.findById(current.getId()).orElseThrow().getStatus()).isEqualTo(ChallengeStatus.ACTIVE);
     }
 
