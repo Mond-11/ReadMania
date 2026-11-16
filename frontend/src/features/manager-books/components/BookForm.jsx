@@ -42,7 +42,11 @@ export function BookForm({ book, onSubmit, onCancel, loading }) {
       price: (v) => (v !== '' && Number(v) > 0 ? null : L.errors.price),
       stock: (v) => (isInt(v) && Number(v) >= 0 ? null : L.errors.stock),
       description: (v) => (isBlank(v) ? L.errors.description : null),
-      cover: (v) => (v && !COVER_TYPES.includes(v.type) ? L.errors.cover : null),
+      // SRS M1.1: all fields are required, the cover too; a book that already has a cover keeps it when no new file is chosen.
+      cover: (v) => {
+        if (!v) return book?.hasCover ? null : L.errors.coverRequired;
+        return COVER_TYPES.includes(v.type) ? null : L.errors.cover;
+      },
     },
   });
 
@@ -148,6 +152,7 @@ export function BookForm({ book, onSubmit, onCancel, loading }) {
               description={book?.hasCover ? `${L.coverHint} ${L.coverReplaceHint}` : L.coverHint}
               accept={COVER_TYPES.join(',')}
               clearable
+              required={!book?.hasCover}
               {...form.getInputProps('cover')}
             />
           </Stack>
