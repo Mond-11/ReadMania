@@ -1,0 +1,382 @@
+<!doctype html>
+<html lang="uk">
+<head>
+<meta charset="utf-8">
+<title>ReadMania — настанова ІТ-фахівця</title>
+<link rel="stylesheet" href="guide.css">
+<style>
+  .arch { display: grid; grid-template-columns: repeat(4, 1fr); gap: 3mm; align-items: stretch; margin: 4mm 0 2mm; break-inside: avoid; }
+  .arch .box { border: 1px solid var(--line); border-radius: 2mm; padding: 3mm; text-align: center; background: #fafbf9; }
+  .arch .box b { display: block; color: var(--brand); margin-bottom: 1mm; }
+  .arch .box span { font-size: 8.6pt; color: var(--muted); }
+  .arch .box.hl { background: var(--accent-soft); border-color: var(--accent); }
+  .arch-ext { display: grid; grid-template-columns: 1fr 1fr; gap: 3mm; margin: 0 0 5mm 50%; font-size: 8.6pt; break-inside: avoid; }
+  .arch-ext div { border: 1px dashed var(--line); border-radius: 2mm; padding: 2mm 3mm; text-align: center; color: var(--muted); }
+  .arrows { display: grid; grid-template-columns: repeat(4, 1fr); text-align: center; color: var(--muted); font-size: 8.4pt; margin-top: -1mm; }
+</style>
+</head>
+<body>
+
+<section class="cover">
+  <div class="brand">ReadMania</div>
+  <div class="kicker">Настанова ІТ-фахівця</div>
+  <h1>Розгортання, супровід і резервне копіювання</h1>
+  <p class="lead">Вимоги до середовища, встановлення в хмарі, налаштування пошти й HTTPS, щоденні резервні копії, відновлення, оновлення версій і структура бази даних.</p>
+  <div class="bar"></div>
+  <div class="meta">
+    <span>Для кого</span><b>ІТ-фахівець (адміністратор) замовника</b>
+    <span>Версія</span><b>1.0, листопад 2026</b>
+    <span>Відповідно до</span><b>ТЗ, розділи 4.2 і 5; SRS, вимоги R5, U8</b>
+  </div>
+</section>
+
+<nav class="toc">
+  <h2>Зміст</h2>
+  <ol>
+    <li><a href="#arch">Архітектура</a></li>
+    <li><a href="#req">Вимоги до середовища</a></li>
+    <li><a href="#delivery">Склад поставки</a></li>
+    <li><a href="#local">Локальний запуск</a></li>
+    <li><a href="#deploy">Розгортання в хмарі</a>
+      <ol><li><a href="#vm">Підготовка сервера</a></li><li><a href="#env">Змінні середовища</a></li><li><a href="#compose">Запуск</a></li><li><a href="#https">HTTPS</a></li><li><a href="#first">Перший запуск</a></li><li><a href="#paas">Варіант PaaS</a></li></ol></li>
+    <li><a href="#mail">Електронна пошта</a></li>
+    <li><a href="#backup">Резервне копіювання й відновлення</a></li>
+    <li><a href="#update">Оновлення версії</a></li>
+    <li><a href="#monitor">Моніторинг і журнали</a></li>
+    <li><a href="#db">Структура бази даних</a></li>
+    <li><a href="#trouble">Типові проблеми</a></li>
+  </ol>
+</nav>
+
+<!-- 1 -->
+<section class="chapter" id="arch">
+  <h2><span class="num">1</span>Архітектура</h2>
+  <p>ReadMania — вебзастосунок із трьох частин, кожна з яких працює у власному Docker-контейнері. Зовні доступний лише вебсервер; бекенд і база даних — тільки у внутрішній мережі.</p>
+  <div class="arch">
+    <div class="box"><b>Браузер</b><span>Гість, Користувач, Менеджер</span></div>
+    <div class="box hl"><b>Проксі з HTTPS</b><span>Caddy або nginx, порт 443, сертифікат Let’s Encrypt</span></div>
+    <div class="box"><b>frontend</b><span>nginx: React-застосунок і проксі <code>/api</code> → backend</span></div>
+    <div class="box"><b>backend</b><span>Spring Boot 4.1, Java 21, порт 8080</span></div>
+  </div>
+  <div class="arrows"><span></span><span>→ HTTPS</span><span>→ HTTP :80</span><span>↓ JDBC</span></div>
+  <div class="arch-ext">
+    <div><b>PostgreSQL 17</b><br>дані й обкладинки</div>
+    <div><b>Зовнішні сервіси</b><br>SMTP-сервер, API «Нової пошти»</div>
+  </div>
+  <table>
+    <tr><th>Компонент</th><th>Технології</th><th>Призначення</th></tr>
+    <tr><td>frontend</td><td>React 19, Vite, Mantine; nginx</td><td>Інтерфейс користувача. nginx віддає статичні файли й передає запити <code>/api</code>, <code>/actuator</code> до бекенду.</td></tr>
+    <tr><td>backend</td><td>Java 21, Spring Boot 4.1, Spring Security, JPA, Flyway</td><td>Бізнес-логіка, REST API, сеанси, розсилка листів, міграції схеми БД під час запуску.</td></tr>
+    <tr><td>db</td><td>PostgreSQL 17</td><td>Усі дані магазину, включно з файлами обкладинок.</td></tr>
+  </table>
+  <div class="note">
+    <b>Профілі бекенду</b>
+    <ul>
+      <li><code>local</code> — для розробки й демонстрації: листи пишуться в журнал, у базу додаються тестові дані.</li>
+      <li><code>prod</code> — для роботи: листи надсилаються через SMTP, cookie сеансу лише через HTTPS, Swagger вимкнено, тестові дані не додаються.</li>
+    </ul>
+  </div>
+</section>
+
+<!-- 2 -->
+<section class="chapter" id="req">
+  <h2><span class="num">2</span>Вимоги до середовища</h2>
+  <p>Хостинг замовник обирає сам (ТЗ, 4.2.1). Підходить віртуальна машина (AWS, DigitalOcean, Hetzner) або PaaS (Render тощо).</p>
+  <table>
+    <tr><th>Параметр</th><th>Мінімум</th><th>Примітка</th></tr>
+    <tr><td>Процесор</td><td>1–2 vCPU</td><td></td></tr>
+    <tr><td>Оперативна пам’ять</td><td>2 ГБ</td><td>бекенд споживає близько 0,5–1 ГБ</td></tr>
+    <tr><td>Диск</td><td>10 ГБ SSD</td><td>плюс місце для локальних резервних копій</td></tr>
+    <tr><td>Операційна система</td><td>Linux x86_64 (Ubuntu 24.04 LTS або новіша)</td><td></td></tr>
+    <tr><td>Програмне забезпечення</td><td>Docker Engine 24+, Docker Compose 2.24+</td><td>для варіанту без Docker: JRE 21 і PostgreSQL 17</td></tr>
+    <tr><td>База даних</td><td>PostgreSQL 17</td><td>у контейнері або керована (managed) служба провайдера</td></tr>
+    <tr><td>Мережа</td><td>доменне ім’я, відкриті порти 80 і 443</td><td>порт 80 потрібен лише для отримання сертифіката й переадресації на HTTPS</td></tr>
+    <tr><td>Пошта</td><td>обліковий запис SMTP</td><td>SendGrid, Gmail, поштовий сервер замовника</td></tr>
+  </table>
+  <div class="note warn">
+    <b>Версія Java</b>
+    <p>ТЗ згадує JRE 17+, але поточна версія застосунку зібрана під <b>Java 21</b>. Docker-образ бекенду вже містить потрібну JRE.</p>
+  </div>
+  <h3>Показники надійності (ТЗ 4.2.1)</h3>
+  <table>
+    <tr><th>Показник</th><th>Значення</th></tr>
+    <tr><td>Доступність</td><td>не менше 99% часу на місяць</td></tr>
+    <tr><td>Резервне копіювання</td><td>щодня, зберігання 14 днів в окремому сховищі</td></tr>
+    <tr><td>Допустима втрата даних (RPO)</td><td>не більше 24 годин</td></tr>
+    <tr><td>Час відновлення (RTO)</td><td>не більше 3 годин</td></tr>
+    <tr><td>Шифрування з’єднань</td><td>HTTPS, TLS 1.2 або 1.3</td></tr>
+  </table>
+</section>
+
+<!-- 3 -->
+<section class="chapter" id="delivery">
+  <h2><span class="num">3</span>Склад поставки</h2>
+  <p>Замовник отримує:</p>
+  <ul>
+    <li><b>вихідний код</b> у репозиторії: каталоги <code>backend/</code> і <code>frontend/</code>, у кожному <code>Dockerfile</code>; у корені — <code>docker-compose.yml</code>;</li>
+    <li><b>шаблони конфігурації</b>: <code>backend/src/main/resources/application-example.yml</code> і перелік змінних середовища з розділу 5.2;</li>
+    <li><b>міграції бази даних</b> у <code>backend/src/main/resources/db/migration</code>: схема створюється автоматично під час першого запуску бекенду;</li>
+    <li><b>документацію</b> в каталозі <code>docs/</code>: опис API (<code>API.md</code>, <code>openapi.json</code>), ER-діаграму (<code>ERD.md</code>), опис розсилки листів, ці настанови;</li>
+    <li><b>початковий дамп бази</b> зі структурою й довідниками — за домовленістю, у форматі <code>pg_dump -Fc</code>.</li>
+  </ul>
+  <p>Наповнення каталогу після передачі виконує Менеджер через вебпанель: імпорт із CSV або додавання вручну. SQL для цього не потрібен.</p>
+</section>
+
+<!-- 4 -->
+<section class="chapter" id="local">
+  <h2><span class="num">4</span>Локальний запуск</h2>
+  <p>Для перевірки, навчання чи демонстрації застосунок запускається однією командою на комп’ютері з Docker Desktop.</p>
+  <pre><span class="c"># у корені репозиторію</span>
+docker compose up -d --build
+<span class="c"># або те саме через скрипт</span>
+./run-docker.sh up</pre>
+  <table>
+    <tr><th>Адреса</th><th>Що відкриває</th></tr>
+    <tr><td class="mono">http://localhost:5173</td><td>сайт</td></tr>
+    <tr><td class="mono">http://localhost:8080/swagger-ui.html</td><td>опис API (лише профіль <code>local</code>)</td></tr>
+    <tr><td class="mono">http://localhost:8080/actuator/health</td><td>стан бекенду</td></tr>
+  </table>
+  <p>Локальний профіль створює тестового Менеджера <code>manager@readmania.ua</code> (пароль у <code>docker-compose.yml</code>) і тестові дані каталогу. Зупинити: <code>docker compose down</code>; видалити разом із даними: <code>docker compose down -v</code>.</p>
+  <div class="note danger">
+    <b>Не для робочого сервера</b>
+    <p><code>docker-compose.yml</code> містить відкриті тестові паролі, профіль <code>local</code> і відкритий порт бази даних. Для роботи використовуйте налаштування з розділу 5.</p>
+  </div>
+</section>
+
+<!-- 5 -->
+<section class="chapter" id="deploy">
+  <h2><span class="num">5</span>Розгортання в хмарі</h2>
+  <p>Нижче — порядок для віртуальної машини з Docker. Для PaaS див. <a href="#paas">5.6</a>.</p>
+
+  <h3 id="vm">Підготовка сервера</h3>
+  <ol class="steps">
+    <li>Створіть ВМ з Ubuntu 24.04 LTS (2 vCPU, 2 ГБ RAM, 20 ГБ SSD).</li>
+    <li>Направте доменне ім’я (запис <code>A</code>) на IP-адресу сервера.</li>
+    <li>Відкрийте у брандмауері лише порти 22 (SSH), 80 і 443.</li>
+    <li>Установіть Docker за офіційною інструкцією й увімкніть автозапуск: <code>sudo systemctl enable docker</code>.</li>
+    <li>Скопіюйте на сервер код застосунку, наприклад у <code>/opt/readmania</code>.</li>
+  </ol>
+
+  <h3 id="env">Змінні середовища</h3>
+  <p>Секрети зберігайте у файлі <code>/opt/readmania/.env</code> з правами <code>600</code>. Ніколи не додавайте цей файл до репозиторію.</p>
+  <table>
+    <tr><th>Змінна</th><th class="nowrap">Обов’язкова</th><th>Призначення</th></tr>
+    <tr><td class="mono">SPRING_PROFILES_ACTIVE</td><td>так</td><td><code>prod</code></td></tr>
+    <tr><td class="mono">DB_URL</td><td>так</td><td><code>jdbc:postgresql://db:5432/readmania</code> або адреса керованої БД</td></tr>
+    <tr><td class="mono">DB_USERNAME, DB_PASSWORD</td><td>так</td><td>обліковий запис БД; пароль — довгий випадковий</td></tr>
+    <tr><td class="mono">APP_INITIAL_MANAGER_EMAIL</td><td class="nowrap">1-й запуск</td><td>email першого Менеджера</td></tr>
+    <tr><td class="mono">APP_INITIAL_MANAGER_PASSWORD</td><td class="nowrap">1-й запуск</td><td>його початковий пароль</td></tr>
+    <tr><td class="mono">SPRING_MAIL_HOST, SPRING_MAIL_PORT</td><td>так</td><td>SMTP-сервер, наприклад <code>smtp.sendgrid.net</code>, <code>587</code></td></tr>
+    <tr><td class="mono">SPRING_MAIL_USERNAME, SPRING_MAIL_PASSWORD</td><td>так</td><td>логін і пароль або API-ключ SMTP; логін також стає адресою відправника</td></tr>
+    <tr><td class="mono">SPRING_MAIL_PROPERTIES_MAIL_SMTP_AUTH</td><td>так</td><td><code>true</code></td></tr>
+    <tr><td class="mono">SPRING_MAIL_PROPERTIES_MAIL_SMTP_STARTTLS_ENABLE</td><td>так</td><td><code>true</code></td></tr>
+    <tr><td class="mono">APP_NOVAPOSHTA_API_KEY</td><td>ні</td><td>ключ API «Нової пошти» для списку міст і відділень; без нього адресу вводять вручну</td></tr>
+  </table>
+  <pre><span class="c"># /opt/readmania/.env — приклад, значення замініть своїми</span>
+POSTGRES_PASSWORD=довгий-випадковий-пароль
+DB_PASSWORD=довгий-випадковий-пароль
+APP_INITIAL_MANAGER_EMAIL=manager@example.com
+APP_INITIAL_MANAGER_PASSWORD=тимчасовий-пароль
+SPRING_MAIL_HOST=smtp.sendgrid.net
+SPRING_MAIL_PORT=587
+SPRING_MAIL_USERNAME=apikey
+SPRING_MAIL_PASSWORD=ключ-smtp
+APP_NOVAPOSHTA_API_KEY=</pre>
+
+  <h3 id="compose">Запуск</h3>
+  <p>Створіть поруч із <code>docker-compose.yml</code> файл <code>docker-compose.prod.yml</code>, який перевизначає налаштування для роботи:</p>
+  <pre>services:
+  db:
+    environment:
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+    ports: !reset []              <span class="c"># база недоступна ззовні</span>
+    restart: unless-stopped
+  backend:
+    environment:
+      SPRING_PROFILES_ACTIVE: prod
+      DB_PASSWORD: ${DB_PASSWORD}
+      APP_INITIAL_MANAGER_EMAIL: ${APP_INITIAL_MANAGER_EMAIL}
+      APP_INITIAL_MANAGER_PASSWORD: ${APP_INITIAL_MANAGER_PASSWORD}
+      SPRING_MAIL_HOST: ${SPRING_MAIL_HOST}
+      SPRING_MAIL_PORT: ${SPRING_MAIL_PORT}
+      SPRING_MAIL_USERNAME: ${SPRING_MAIL_USERNAME}
+      SPRING_MAIL_PASSWORD: ${SPRING_MAIL_PASSWORD}
+      SPRING_MAIL_PROPERTIES_MAIL_SMTP_AUTH: "true"
+      SPRING_MAIL_PROPERTIES_MAIL_SMTP_STARTTLS_ENABLE: "true"
+    ports: !reset []              <span class="c"># бекенд лише у внутрішній мережі</span>
+    restart: unless-stopped
+  frontend:
+    ports: !override
+      - "127.0.0.1:8081:80"       <span class="c"># доступ лише для проксі з HTTPS</span>
+    restart: unless-stopped</pre>
+  <pre>cd /opt/readmania
+docker compose -f docker-compose.yml -f docker-compose.prod.yml up -d --build
+docker compose ps                 <span class="c"># усі три служби мають бути healthy</span></pre>
+
+  <h3 id="https">HTTPS</h3>
+  <p>Найпростіше — Caddy: він сам отримує й поновлює сертифікат Let’s Encrypt і за замовчуванням використовує лише TLS 1.2 і 1.3.</p>
+  <pre><span class="c"># /etc/caddy/Caddyfile</span>
+shop.example.com {
+    reverse_proxy 127.0.0.1:8081
+}</pre>
+  <pre>sudo apt install caddy
+sudo systemctl reload caddy</pre>
+  <p>Проксі має передавати заголовки <code>X-Forwarded-Proto</code> і <code>X-Forwarded-For</code> (Caddy робить це сам): бекенд налаштований довіряти їм, щоб правильно працювала захищена cookie сеансу.</p>
+  <p class="small">Якщо використовуєте nginx: <code>ssl_protocols TLSv1.2 TLSv1.3;</code>, сертифікат — через <code>certbot --nginx</code>.</p>
+
+  <h3 id="first">Перший запуск</h3>
+  <ol class="steps">
+    <li>Під час старту бекенд сам створює схему БД (Flyway) і першого Менеджера зі змінних <code>APP_INITIAL_MANAGER_*</code>.</li>
+    <li>Відкрийте сайт, увійдіть як Менеджер, змініть пароль у профілі.</li>
+    <li>Видаліть <code>APP_INITIAL_MANAGER_PASSWORD</code> із <code>.env</code> і перезапустіть бекенд.</li>
+    <li>Перевірте лист: наприклад, запросіть відновлення пароля для тестового email.</li>
+    <li>Передайте Менеджеру доступ і <i>Настанову менеджера</i>: далі каталог і заклади наповнюються через вебпанель.</li>
+    <li>Налаштуйте резервне копіювання (розділ 7) і моніторинг (розділ 9).</li>
+  </ol>
+
+  <h3 id="paas">Варіант PaaS</h3>
+  <p>На платформах на кшталт Render застосунок розгортається з репозиторію як два вебсервіси за наявними <code>Dockerfile</code> плюс керована PostgreSQL 17.</p>
+  <ul>
+    <li>Змінні середовища з розділу 5.2 задаються в панелі платформи; <code>DB_URL</code> — адреса керованої БД у форматі <code>jdbc:postgresql://…</code>.</li>
+    <li>HTTPS і сертифікати платформа надає сама.</li>
+    <li>У <code>frontend/nginx.conf</code> замініть адресу <code>http://backend:8080</code> на внутрішню адресу сервісу бекенду.</li>
+    <li>Резервні копії керованої БД увімкніть у панелі з терміном зберігання 14 днів.</li>
+  </ul>
+</section>
+
+<!-- 6 -->
+<section class="chapter" id="mail">
+  <h2><span class="num">6</span>Електронна пошта</h2>
+  <p>У профілі <code>prod</code> листи надсилаються через SMTP-сервер зі змінних <code>SPRING_MAIL_*</code>; адреса відправника — <code>SPRING_MAIL_USERNAME</code>. Надсилання асинхронне: збій пошти не зупиняє оформлення замовлення, а потрапляє в журнал бекенду.</p>
+  <table>
+    <tr><th>Подія</th><th>Одержувач</th></tr>
+    <tr><td>Нове замовлення</td><td>спільна адреса менеджерів <code>managers@readmania.ua</code></td></tr>
+    <tr><td>Зміна статусу замовлення</td><td>покупець</td></tr>
+    <tr><td>Посилання для відновлення пароля</td><td>власник облікового запису</td></tr>
+    <tr><td>Блокування й розблокування</td><td>власник облікового запису</td></tr>
+    <tr><td>Дострокове завершення читацького виклику</td><td>учасники з ненульовим прогресом</td></tr>
+  </table>
+  <div class="note warn">
+    <b>Адреса менеджерів</b>
+    <p>Адреса <code>managers@readmania.ua</code> поки задана в коді. Створіть таку скриньку (або переадресацію) на домені магазину чи замовте розробникам зміну адреси.</p>
+  </div>
+  <p>Щоб листи не потрапляли в спам, налаштуйте для домену відправника записи SPF, DKIM і DMARC за інструкцією вашого поштового провайдера.</p>
+</section>
+
+<!-- 7 -->
+<section class="chapter" id="backup">
+  <h2><span class="num">7</span>Резервне копіювання й відновлення</h2>
+  <p>Усі дані магазину, включно з обкладинками, зберігаються в PostgreSQL, тож достатньо копіювати базу даних. Резервне копіювання налаштовується на сервері (у застосунок воно не вбудоване).</p>
+
+  <h3>Щоденна копія</h3>
+  <p>Скрипт <code>/opt/readmania/backup.sh</code>:</p>
+  <pre>#!/usr/bin/env bash
+set -euo pipefail
+DIR=/var/backups/readmania
+mkdir -p "$DIR"
+FILE="$DIR/readmania-$(date +%F).dump"
+<span class="c"># стиснений дамп у форматі custom: швидке й вибіркове відновлення</span>
+docker exec readmania-db pg_dump -U readmania -d readmania -Fc > "$FILE"
+<span class="c"># копія в окреме сховище (S3-сумісне, інший регіон)</span>
+rclone copy "$FILE" offsite:readmania-backups/
+<span class="c"># зберігаємо 14 днів локально й у сховищі</span>
+find "$DIR" -name 'readmania-*.dump' -mtime +14 -delete
+rclone delete --min-age 14d offsite:readmania-backups/</pre>
+  <pre>chmod 700 /opt/readmania/backup.sh
+sudo crontab -e
+<span class="c"># щодня о 03:00</span>
+0 3 * * * /opt/readmania/backup.sh >> /var/log/readmania-backup.log 2>&1</pre>
+  <p>Так виконуються вимоги ТЗ: копія щодня, зберігання 14 днів в окремому сховищі, втрата даних не більше 24 годин. Раз на місяць перевіряйте, що копії з’являються й відновлюються (наприклад, на тестовій ВМ).</p>
+
+  <h3>Відновлення</h3>
+  <ol class="steps">
+    <li>Зупиніть бекенд, щоб ніхто не змінював дані: <code>docker compose stop backend</code>.</li>
+    <li>Візьміть останню копію з сервера або зі сховища (<code>rclone copy offsite:readmania-backups/&lt;файл&gt; .</code>).</li>
+    <li>Відновіть базу:
+<pre>docker exec -i readmania-db pg_restore -U readmania -d readmania \
+  --clean --if-exists --no-owner &lt; readmania-2026-11-15.dump</pre></li>
+    <li>Запустіть бекенд: <code>docker compose start backend</code>, перевірте <code>/actuator/health</code> і вхід на сайт.</li>
+  </ol>
+  <p>Якщо сервер втрачено повністю: створіть нову ВМ за розділом 5, запустіть лише службу <code>db</code>, відновіть дамп, потім запустіть решту. За наявності готової інструкції це займає близько години, що вкладається у 3 години за ТЗ.</p>
+</section>
+
+<!-- 8 -->
+<section class="chapter" id="update">
+  <h2><span class="num">8</span>Оновлення версії</h2>
+  <ol class="steps">
+    <li>Зробіть позапланову резервну копію: <code>/opt/readmania/backup.sh</code>.</li>
+    <li>Отримайте нову версію коду (<code>git pull</code> або архів від розробників).</li>
+    <li>Перезберіть і перезапустіть контейнери:
+<pre>docker compose -f docker-compose.yml -f docker-compose.prod.yml up -d --build</pre></li>
+    <li>Бекенд сам застосує нові міграції БД під час запуску. Перевірте журнал: <code>docker compose logs backend | grep -i flyway</code>.</li>
+    <li>Перевірте вхід, каталог і оформлення тестового замовлення.</li>
+  </ol>
+  <div class="note warn">
+    <b>Відкат</b>
+    <p>Міграції змінюють схему БД, тому для повернення до попередньої версії відновіть резервну копію, зроблену перед оновленням, і запустіть попередню версію коду.</p>
+  </div>
+</section>
+
+<!-- 9 -->
+<section class="chapter" id="monitor">
+  <h2><span class="num">9</span>Моніторинг і журнали</h2>
+  <ul>
+    <li><b>Стан:</b> <code>https://shop.example.com/actuator/health</code> повертає <code>{"status":"UP"}</code>. Додайте цю адресу до зовнішнього моніторингу (UptimeRobot, Better Stack) з перевіркою кожні 5 хвилин і сповіщенням на пошту.</li>
+    <li><b>Контейнери:</b> <code>docker compose ps</code> показує стан і healthcheck кожної служби; <code>restart: unless-stopped</code> перезапускає їх після збою чи перезавантаження сервера.</li>
+    <li><b>Журнали:</b> <code>docker compose logs -f backend</code> (помилки, надсилання листів, міграції), <code>docker compose logs frontend</code> (запити nginx).</li>
+    <li><b>Диск:</b> слідкуйте за вільним місцем (<code>df -h</code>); копії й журнали Docker з часом ростуть.</li>
+    <li><b>Оновлення безпеки ОС:</b> <code>sudo apt update &amp;&amp; sudo apt upgrade</code> раз на місяць або <code>unattended-upgrades</code>.</li>
+  </ul>
+  <h3>Безпека</h3>
+  <ul>
+    <li>Паролі користувачів зберігаються лише у вигляді хешів; сеанс — у cookie з <code>HttpOnly</code>, <code>SameSite=Lax</code> і <code>Secure</code>; є захист від CSRF.</li>
+    <li>Після 5 невдалих спроб входу вхід для email блокується на 15 хвилин; сеанс завершується через 30 хвилин бездіяльності.</li>
+    <li>Доступ до сервера — лише SSH за ключем; база даних і бекенд не мають відкритих портів.</li>
+  </ul>
+</section>
+
+<!-- 10 -->
+<section class="chapter" id="db">
+  <h2><span class="num">10</span>Структура бази даних</h2>
+  <p>Схему створюють міграції Flyway; повна ER-діаграма — у <code>docs/ERD.md</code>. Історія застосованих міграцій — у службовій таблиці <code>flyway_schema_history</code>.</p>
+  <table>
+    <tr><th>Таблиця</th><th>Вміст</th></tr>
+    <tr><td class="mono">users</td><td>облікові записи: email, хеш пароля, роль, стан, дати реєстрації, входу й блокування, баланс балів</td></tr>
+    <tr><td class="mono">password_reset_tokens</td><td>одноразові посилання для відновлення пароля (діють 1 годину)</td></tr>
+    <tr><td class="mono">unblock_requests</td><td>запити на розблокування з обґрунтуванням</td></tr>
+    <tr><td class="mono">genres, authors</td><td>довідники жанрів і авторів</td></tr>
+    <tr><td class="mono">books, book_authors</td><td>видання та їхні автори</td></tr>
+    <tr><td class="mono">book_covers</td><td>файли обкладинок</td></tr>
+    <tr><td class="mono">cart_items</td><td>кошики покупців</td></tr>
+    <tr><td class="mono">institutions</td><td>заклади-одержувачі</td></tr>
+    <tr><td class="mono">orders, order_items</td><td>замовлення та їхній склад (ціна фіксується на момент оформлення)</td></tr>
+    <tr><td class="mono">order_status_history</td><td>історія змін статусу: хто, коли, коментар</td></tr>
+    <tr><td class="mono">bonus_transactions</td><td>журнал нарахувань і списань бонусних балів</td></tr>
+    <tr><td class="mono">ratings</td><td>оцінки видань покупцями</td></tr>
+    <tr><td class="mono">challenges, challenge_completions</td><td>читацькі виклики та їх виконання</td></tr>
+    <tr><td class="mono">gift_log</td><td>журнал подарованих книг</td></tr>
+  </table>
+  <div class="note danger">
+    <b>Не змінюйте дані вручну</b>
+    <p>Залишки, бали й статуси пов’язані між собою. Виправлення SQL-запитами в обхід застосунку може порушити цілісність. Усі щоденні дії виконуються через вебпанель Менеджера.</p>
+  </div>
+</section>
+
+<!-- 11 -->
+<section class="chapter" id="trouble">
+  <h2><span class="num">11</span>Типові проблеми</h2>
+  <table>
+    <tr><th>Ознака</th><th>Причина й рішення</th></tr>
+    <tr><td>Бекенд не стартує, у журналі <code>Connection refused</code> до БД</td><td>База ще запускається або неправильні <code>DB_URL</code> / пароль. Перевірте <code>docker compose ps</code> і змінні.</td></tr>
+    <tr><td>У журналі <code>Validate failed: Migrations have failed validation</code> / <code>checksum mismatch</code></td><td>Застосовану міграцію змінили після запуску. Не редагуйте вручну; зверніться до розробників за новою міграцією або виправленням.</td></tr>
+    <tr><td>Після входу одразу «Сеанс завершено»</td><td>Сайт відкрито через HTTP, а cookie має позначку <code>Secure</code>. Відкривайте лише через HTTPS і перевірте, що проксі передає <code>X-Forwarded-Proto</code>.</td></tr>
+    <tr><td>Листи не надходять</td><td>Перевірте <code>SPRING_MAIL_*</code> і журнал бекенду; переконайтеся, що провайдер не блокує порт 587; налаштуйте SPF/DKIM.</td></tr>
+    <tr><td>Немає списку міст «Нової пошти»</td><td>Не задано або недійсний <code>APP_NOVAPOSHTA_API_KEY</code>. Покупці можуть ввести відділення вручну.</td></tr>
+    <tr><td>Сайт відкривається, але дані не завантажуються (помилка 502)</td><td>Бекенд не працює або ще стартує. <code>docker compose logs backend</code>.</td></tr>
+    <tr><td>Закінчується місце на диску</td><td>Очистіть старі образи (<code>docker image prune</code>), перевірте ротацію копій і журналів.</td></tr>
+    <tr><td>Менеджер забув пароль</td><td>Скористайтеся відновленням пароля на сторінці входу (потрібна робоча пошта).</td></tr>
+  </table>
+</section>
+
+</body>
+</html>
