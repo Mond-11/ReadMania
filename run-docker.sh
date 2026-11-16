@@ -44,8 +44,16 @@ case "$COMMAND" in
     docker compose down -v
     echo "Очищення завершено."
     ;;
+  backup)
+    shift || true
+    exec ./scripts/backup.sh "$@"
+    ;;
+  restore)
+    shift || true
+    exec ./scripts/restore.sh "$@"
+    ;;
   *)
-    echo "Використання: $0 {up|down|restart|logs|status|clean}"
+    echo "Використання: $0 {up|down|restart|logs|status|clean|backup|restore}"
     exit 1
     ;;
 esac

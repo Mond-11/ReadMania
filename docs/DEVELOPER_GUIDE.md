@@ -77,7 +77,7 @@
 | Читацький виклик | `Challenge`, `ChallengeCompletion` | Завдання з умовою, строком і нагородою в балах |
 | Подарунковий набір | `GiftSetService` (без окремої таблиці) | Випадковий добір видань за сумою, жанрами та кількістю |
 | Обліковий запис без активності | `ManagerInactiveUserService` | Активний запис без входу понад 2 роки або заблокований запис, не розблокований понад 2 роки |
-| Дамп БД | — (зовнішня процедура `pg_dump`) | Резервна копія БД (SRS, R5) |
+| Дамп БД | `scripts/backup.sh`, `scripts/restore.sh`, контейнер `db-backup` | Резервна копія БД (`pg_dump` у форматі custom `-Fc`), щоденний автоматичний запуск і зберігання 14 днів (SRS, R5) |
 
 Скорочення: **ВВ** — варіант використання; **ТЗ** — технічне завдання; **SRS** — специфікація вимог до програмного засобу; **FSM** — скінченний автомат станів; **DTO** — об'єкт передачі даних; **RBAC** — розмежування доступу за ролями.
 
@@ -393,15 +393,18 @@ ReadMania/
 
 ### 3.3. Запуск повного стеку в Docker
 
-Оркестрацію описано в `docker-compose.yml`. Стек складається з трьох сервісів в одній мережі `readmania-net` (драйвер `bridge`):
+Оркестрацію описано в `docker-compose.yml`. Стек складається з чотирьох сервісів в одній мережі `readmania-net` (драйвер `bridge`):
 
 | Сервіс | Контейнер | Образ / збірка | Порт хоста | Перевірка стану (healthcheck) | Залежність |
 |---|---|---|---|---|---|
 | `db` | `readmania-db` | `postgres:17`, `POSTGRES_INITDB_ARGS=--encoding=UTF8`, том `pgdata` | 5432 | `pg_isready -U readmania -d readmania` | — |
+| `db-backup` | `readmania-db-backup` | `postgres:17` (`scripts/docker-backup-daemon.sh`), том `./backups:/backups` | — | — | `db: service_healthy` |
 | `backend` | `readmania-backend` | `./backend/Dockerfile` | 8080 | `curl -f http://localhost:8080/actuator/health` | `db: service_healthy` |
 | `frontend` | `readmania-frontend` | `./frontend/Dockerfile` | 5173 → 80 | `wget -qO- http://localhost:80/` | `backend: service_healthy` |
 
 Змінні середовища контейнера `backend`: `SPRING_PROFILES_ACTIVE=local`, `DB_URL=jdbc:postgresql://db:5432/readmania`, `DB_USERNAME`, `DB_PASSWORD`, `APP_INITIAL_MANAGER_EMAIL`, `APP_INITIAL_MANAGER_PASSWORD`, `APP_NOVAPOSHTA_API_KEY` (береться із середовища хоста; за замовчуванням порожня).
+
+Контейнер `db-backup` реалізує автоматичне щоденне резервне копіювання БД (SRS R5): щоденно о 03:00 UTC (та при старті контейнера) створюється стиснений кастомний дамп (`pg_dump -Fc`), зберігається у томі `./backups` та автоматично виконується ротація з видаленням копій, старших за 14 днів.
 
 Скрипт `run-docker.sh` обгортає команди Docker Compose:
 
@@ -413,6 +416,8 @@ ReadMania/
 | `./run-docker.sh logs` | — | `docker compose logs -f` |
 | `./run-docker.sh status` | `ps` | `docker compose ps` |
 | `./run-docker.sh clean` | — | `docker compose down -v` (**видаляє том `pgdata` разом з усіма даними БД**) |
+| `./run-docker.sh backup` | — | Створення резервної копії БД через `scripts/backup.sh` (`pg_dump -Fc`, зберігання 14 днів, SRS R5) |
+| `./run-docker.sh restore` | — | Відновлення БД з дампу через `scripts/restore.sh` (`pg_restore`, SRS R4, R5) |
 
 Адреси після запуску: інтерфейс — `http://localhost:5173`; API — `http://localhost:8080`; Swagger UI — `http://localhost:8080/swagger-ui.html`; стан бекенду — `http://localhost:8080/actuator/health`.
 
@@ -2493,8 +2498,8 @@ cd backend
 | P4 | ≥ 100 одночасних користувачів | Оптимістичні блокування; навантажувальних тестів немає | ☑️ |
 | R1, R2 | SLA ≥ 95 %, доступність хостингу ≥ 99 % | Хостинг | ⬜ |
 | R3 | Інформативні відповіді на помилки | `GlobalExceptionHandler`, RFC 9457, SPA forward | ✅ (`GlobalExceptionHandlerTest`) |
-| R4 | Відновлення ≤ 3 год | Docker-образи, `HEALTHCHECK`; процедуру відновлення не описано | ⬜ |
-| R5 | Щоденний `pg_dump`, зберігання 14 днів | Скриптів резервного копіювання в репозиторії **немає**; схема зберігає обкладинки в БД, тож вони потраплять у дамп | ⬜ |
+| R4 | Відновлення ≤ 3 год | Docker-образи, `HEALTHCHECK`, скрипт відновлення `scripts/restore.sh`, процедуру описано в `docs/guides/it-guide.html` | ✅ |
+| R5 | Щоденний `pg_dump`, зберігання 14 днів | Сервіс `db-backup` у `docker-compose.yml` (демон `scripts/docker-backup-daemon.sh`, щодня о 03:00 UTC), скрипти `scripts/backup.sh`, `scripts/restore.sh`, команди `./run-docker.sh backup` та `restore`; кастомний стиснений дамп (`-Fc`), автоматична ротація з видаленням копій старше 14 днів, збереження обкладинок у БД | ✅ |
 | U1 | Елементи керування за роллю | Бекенд: RBAC (`/api/manager/**`); UI — фронтенд | ✅ (`SecurityConfigTest`) |
 | U2 | Валідація на front-end і back-end | Bean Validation у DTO, `@Valid` | ✅ |
 | U3 | Повідомлення з полем, причиною, прикладом | `errors[{field, message}]`, тексти `message` у DTO | ✅ |
@@ -2592,5 +2597,5 @@ flowchart LR
 | 13 | Надлишкові індекси `idx_authors_lower_name`, `idx_password_reset_tokens_token` | 4.8 |
 | 14 | Тест `ReadmaniaBackendApplicationTests` не виконується через шаблони surefire | 10.4 |
 | 15 | Профіль `default` застосовує `R__dev_seed.sql` і `LocalCoverSeeder`; у продуктивному середовищі обов'язково активуйте `prod` | 1.6, 3.5 |
-| 16 | Резервного копіювання (`pg_dump`, SRS R5) у репозиторії немає | 11.2 |
+| 16 | Резервне копіювання автоматизовано через контейнер `db-backup` та скрипти `scripts/backup.sh`, `scripts/restore.sh` (SRS R5) | 3.3, 11.2 |
 | 17 | Застарілий Javadoc `SecurityConfig` про вимкнений CSRF | 1.6 |

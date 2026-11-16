@@ -19,6 +19,30 @@ services:
     networks:
       - readmania-net
 
+  db-backup:
+    image: postgres:17
+    container_name: readmania-db-backup
+    restart: unless-stopped
+    environment:
+      PGHOST: db
+      PGPORT: 5432
+      PGDATABASE: readmania
+      PGUSER: readmania
+      PGPASSWORD: readmania
+      BACKUP_DIR: /backups
+      RETENTION_DAYS: 14
+      BACKUP_TIME: "03:00"
+      RUN_ON_STARTUP: "true"
+    volumes:
+      - ./backups:/backups
+      - ./scripts/docker-backup-daemon.sh:/usr/local/bin/docker-backup-daemon.sh:ro
+    entrypoint: ["/usr/local/bin/docker-backup-daemon.sh"]
+    depends_on:
+      db:
+        condition: service_healthy
+    networks:
+      - readmania-net
+
   backend:
     build:
       context: ./backend
