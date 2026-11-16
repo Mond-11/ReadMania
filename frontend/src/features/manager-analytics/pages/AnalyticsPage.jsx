@@ -2,6 +2,7 @@ import { Flex, Tabs, Text } from '@mantine/core';
 import { DatePickerInput } from '@mantine/dates';
 import { useDocumentTitle } from '@mantine/hooks';
 import dayjs from 'dayjs';
+import { useState } from 'react';
 import { useSearchParams } from 'react-router';
 import { toApiDate } from '../../../shared/format.js';
 import { MANAGER_ANALYTICS as L, TERMS } from '../../../shared/labels.js';
@@ -58,13 +59,15 @@ function TabPanelBody({ kind, period, invalid }) {
 }
 
 export default function AnalyticsPage() {
-  useDocumentTitle(`${L.tabDemand} — ${TERMS.appName}`);
   const [searchParams, setSearchParams] = useSearchParams();
   const requested = searchParams.get('tab');
   const kind = TABS[requested] ? requested : 'demand';
+  // The browser tab names the open analytics tab.
+  useDocumentTitle(`${TABS[kind].label} — ${TERMS.appName}`);
 
   // Default period is the last 3 months, same as the backend; sent explicitly so the pickers match the data.
-  const today = toApiDate(new Date());
+  // Today is read once per mount (a lazy initializer): calling Date during every render is impure.
+  const [today] = useState(() => toApiDate(new Date()));
   const to = validDate(searchParams.get('to')) ?? today;
   const from = validDate(searchParams.get('from')) ?? toApiDate(dayjs(to).subtract(3, 'month').toDate());
   const toFuture = to > today;
