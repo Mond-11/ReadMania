@@ -565,7 +565,7 @@ export const NAV = {
   account: "Особистий кабінет",
   managerPanel: "Панель менеджера",
   help: "Довідка",
-  helpSoon: "Настанова користувача готується",
+  helpOpensPdf: "PDF, відкриється в новій вкладці",
   login: "Увійти",
   logout: "Вийти",
   loggedOut: "Ви вийшли з облікового запису",
