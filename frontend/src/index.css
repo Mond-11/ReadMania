@@ -66,8 +66,9 @@ body {
   display: inline-flex;
   align-items: center;
   min-height: 40px;
+  gap: 7px;
   padding: 6px 12px;
-  border-radius: 4px;
+  border-radius: 8px;
   color: var(--rm-header-text);
   font-size: 0.95rem;
   text-decoration: none;
@@ -81,7 +82,8 @@ body {
 }
 .rm-nav-link[aria-current='page'] {
   font-weight: 700;
-  box-shadow: inset 0 -2px 0 var(--rm-header-text);
+  background-color: rgba(246, 246, 246, 0.12);
+  box-shadow: inset 0 0 0 1px rgba(246, 246, 246, 0.28);
 }
 
 .rm-drawer {
