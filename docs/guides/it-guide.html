@@ -191,6 +191,9 @@ APP_NOVAPOSHTA_API_KEY=</pre>
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
     ports: !reset []              <span class="c"># база недоступна ззовні</span>
     restart: unless-stopped
+  db-backup:
+    environment:
+      PGPASSWORD: ${POSTGRES_PASSWORD}   <span class="c"># щоденні копії, розділ 7</span>
   backend:
     environment:
       SPRING_PROFILES_ACTIVE: prod
@@ -266,35 +269,32 @@ sudo systemctl reload caddy</pre>
 <!-- 7 -->
 <section class="chapter" id="backup">
   <h2><span class="num">7</span>Резервне копіювання й відновлення</h2>
-  <p>Усі дані магазину, включно з обкладинками, зберігаються в PostgreSQL, тож достатньо копіювати базу даних. Резервне копіювання налаштовується на сервері (у застосунок воно не вбудоване).</p>
+  <p>Усі дані магазину, включно з обкладинками, зберігаються в PostgreSQL, тож достатньо копіювати базу даних. Щоденні копії робить сам застосунок: у <code>docker-compose.yml</code> є служба <code>db-backup</code>, яка запускається разом з базою.</p>
 
   <h3>Щоденна копія</h3>
-  <p>Скрипт <code>/opt/readmania/backup.sh</code>:</p>
-  <pre>#!/usr/bin/env bash
-set -euo pipefail
-DIR=/var/backups/readmania
-mkdir -p "$DIR"
-FILE="$DIR/readmania-$(date +%F).dump"
-<span class="c"># стиснений дамп у форматі custom: швидке й вибіркове відновлення</span>
-docker exec readmania-db pg_dump -U readmania -d readmania -Fc > "$FILE"
-<span class="c"># копія в окреме сховище (S3-сумісне, інший регіон)</span>
-rclone copy "$FILE" offsite:readmania-backups/
-<span class="c"># зберігаємо 14 днів локально й у сховищі</span>
-find "$DIR" -name 'readmania-*.dump' -mtime +14 -delete
-rclone delete --min-age 14d offsite:readmania-backups/</pre>
-  <pre>chmod 700 /opt/readmania/backup.sh
-sudo crontab -e
-<span class="c"># щодня о 03:00</span>
-0 3 * * * /opt/readmania/backup.sh >> /var/log/readmania-backup.log 2>&1</pre>
-  <p>Так виконуються вимоги ТЗ: копія щодня, зберігання 14 днів в окремому сховищі, втрата даних не більше 24 годин. Раз на місяць перевіряйте, що копії з’являються й відновлюються (наприклад, на тестовій ВМ).</p>
+  <table>
+    <tr><th>Що робить <code>db-backup</code></th><th>Налаштування</th></tr>
+    <tr><td>щодня робить стиснений дамп <code>pg_dump -Fc</code> у файл <code>readmania-&lt;дата-час&gt;.dump</code></td><td><code>BACKUP_TIME</code>, за замовчуванням <code>03:00</code> (UTC)</td></tr>
+    <tr><td>одразу після запуску робить першу копію</td><td><code>RUN_ON_STARTUP: "true"</code></td></tr>
+    <tr><td>видаляє копії, старші за 14 днів</td><td><code>RETENTION_DAYS: 14</code></td></tr>
+    <tr><td>зберігає копії в папці <code>backups/</code> поруч із застосунком (вона не потрапляє в Git)</td><td>том <code>./backups:/backups</code></td></tr>
+  </table>
+  <p>Позапланова копія: <code>./run-docker.sh backup</code> (скрипт <code>scripts/backup.sh</code>, та сама ротація 14 днів). Перевірити роботу служби: <code>docker compose logs db-backup</code> і <code>ls backups/</code>.</p>
+  <h4>Окреме сховище</h4>
+  <p>За ТЗ копії мають лежати ще й в окремому сховищі хмарного провайдера. Це налаштовує ІТ-фахівець: створіть S3-сумісний бакет з обмеженим доступом, налаштуйте для нього <code>rclone</code> на сервері (наприклад, віддалене сховище <code>offsite</code>) і передайте його скрипту:</p>
+  <pre><span class="c"># позапланова копія з вивантаженням у сховище</span>
+OFFSITE_REMOTE=offsite:readmania-backups ./run-docker.sh backup
+<span class="c"># або щодня після копії db-backup (crontab -e)</span>
+30 3 * * * rclone copy /opt/readmania/backups offsite:readmania-backups --max-age 24h &amp;&amp; rclone delete --min-age 14d offsite:readmania-backups</pre>
+  <p>Так виконуються вимоги ТЗ і SRS R5: копія щодня, зберігання 14 днів, автоматичне видалення старших, втрата даних не більше 24 годин. Раз на місяць перевіряйте, що копії з’являються й відновлюються (наприклад, на тестовій ВМ).</p>
 
   <h3>Відновлення</h3>
   <ol class="steps">
     <li>Зупиніть бекенд, щоб ніхто не змінював дані: <code>docker compose stop backend</code>.</li>
-    <li>Візьміть останню копію з сервера або зі сховища (<code>rclone copy offsite:readmania-backups/&lt;файл&gt; .</code>).</li>
-    <li>Відновіть базу:
-<pre>docker exec -i readmania-db pg_restore -U readmania -d readmania \
-  --clean --if-exists --no-owner &lt; readmania-2026-11-15.dump</pre></li>
+    <li>За потреби поверніть копію зі сховища в папку <code>backups/</code> (<code>rclone copy offsite:readmania-backups/&lt;файл&gt; backups/</code>).</li>
+    <li>Відновіть базу скриптом: без параметра він бере останню копію, або вкажіть файл:
+<pre>./run-docker.sh restore
+./run-docker.sh restore backups/readmania-2026-11-15_030000.dump</pre></li>
     <li>Запустіть бекенд: <code>docker compose start backend</code>, перевірте <code>/actuator/health</code> і вхід на сайт.</li>
   </ol>
   <p>Якщо сервер втрачено повністю: створіть нову ВМ за розділом 5, запустіть лише службу <code>db</code>, відновіть дамп, потім запустіть решту. За наявності готової інструкції це займає близько години, що вкладається у 3 години за ТЗ.</p>
@@ -304,7 +304,7 @@ sudo crontab -e
 <section class="chapter" id="update">
   <h2><span class="num">8</span>Оновлення версії</h2>
   <ol class="steps">
-    <li>Зробіть позапланову резервну копію: <code>/opt/readmania/backup.sh</code>.</li>
+    <li>Зробіть позапланову резервну копію: <code>./run-docker.sh backup</code>.</li>
     <li>Отримайте нову версію коду (<code>git pull</code> або архів від розробників).</li>
     <li>Перезберіть і перезапустіть контейнери:
 <pre>docker compose -f docker-compose.yml -f docker-compose.prod.yml up -d --build</pre></li>

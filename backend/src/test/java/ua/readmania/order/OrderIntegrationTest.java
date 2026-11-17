@@ -560,6 +560,32 @@ class OrderIntegrationTest extends BaseIntegrationTest {
     }
 
     @Test
+    @DisplayName("SRS 7.2.1: за доставлене звичайне замовлення 1 бал за кожні повні 100 грн вартості видань до знижки")
+    @WithMockUser(username = "manager@example.com", roles = {"MANAGER"})
+    void shouldAwardOnePointPerFullHundredOfItemsTotalBeforeDiscount() throws Exception {
+        // 470 грн видань, 10 балів (100 грн) знижки: нараховується floor(470 / 100) = 4, а не від суми до сплати
+        Order order = new Order(testUser, OrderType.REGULAR, PaymentMethod.ON_DELIVERY, new BigDecimal("470.00"), new BigDecimal("100.00"), 10);
+        order.setDeliveryMethod(DeliveryMethod.COURIER);
+        order.setDeliveryAddress("м. Київ, вул. Тестова, 1");
+        order.setRecipientName("Тестовий Покупець");
+        order.setRecipientPhone("+380501234567");
+        order.addItem(new OrderItem(order, testBook1, "Соляріс", new BigDecimal("470.00"), 1));
+        order = orderRepository.save(order);
+        int initialBalance = testUser.getBonusBalance();
+
+        UpdateOrderStatusRequest deliveredReq = new UpdateOrderStatusRequest(
+                OrderStatus.AWAITING_PAYMENT, OrderStatus.DELIVERED, "Оплачено й отримано");
+        mockMvc.perform(patch("/api/manager/orders/" + order.getId() + "/status")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(deliveredReq)))
+                .andExpect(status().isOk());
+
+        assertEquals(initialBalance + 4, userRepository.findById(testUser.getId()).orElseThrow().getBonusBalance());
+        assertEquals(4, bonusTransactionRepository.findByOrderIdAndType(order.getId(), BonusTransactionType.ORDER_REWARD)
+                .orElseThrow().getPoints());
+    }
+
+    @Test
     @DisplayName("C7, C8, M9: Побічні дії при DELIVERED: нарахування бонусів, виконання викликів та gift_log")
     @WithMockUser(username = "manager@example.com", roles = {"MANAGER"})
     void shouldExecuteSideEffectsWhenOrderBecomesDelivered() throws Exception {
