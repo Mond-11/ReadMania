@@ -1,5 +1,6 @@
 import { Badge, Burger, Button, Container, Drawer, Group, Stack, Text, UnstyledButton, VisuallyHidden } from '@mantine/core';
 import { useDisclosure } from '@mantine/hooks';
+import { IconBooks, IconGift, IconLayoutDashboard, IconUserCircle } from '@tabler/icons-react';
 import { Link, useLocation, useNavigate } from 'react-router';
 import { AUTH_PATHS, useCurrentUser, useLogout } from '../features/auth/index.js';
 import { useCartCount } from '../features/cart/index.js';
@@ -17,10 +18,10 @@ const HELP_URLS = {
 // '/gift-set' and '/cart' are person A's pages; '/account' and '/manager' are person B's.
 function navLinks({ isUser, isManager }) {
   return [
-    { to: '/', label: NAV.catalog, match: (p) => p === '/' || p.startsWith('/books/') },
-    isUser && { to: '/gift-set', label: NAV.giftSet },
-    isUser && { to: '/account', label: NAV.account },
-    isManager && { to: '/manager', label: NAV.managerPanel },
+    { to: '/', label: NAV.catalog, icon: IconBooks, match: (p) => p === '/' || p.startsWith('/books/') },
+    isUser && { to: '/gift-set', label: NAV.giftSet, icon: IconGift },
+    isUser && { to: '/account', label: NAV.account, icon: IconUserCircle },
+    isManager && { to: '/manager', label: NAV.managerPanel, icon: IconLayoutDashboard },
   ].filter(Boolean);
 }
 
@@ -93,6 +94,7 @@ export function Header() {
         aria-current={isActive(link, pathname) ? 'page' : undefined}
         onClick={onClick}
       >
+        <link.icon size={18} stroke={1.75} aria-hidden />
         {link.label}
       </Link>
     ));
